@@ -1,22 +1,24 @@
 package com.orientechnologies.orient.core.index;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.metadata.schema.OType;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+
+@Test
 @SuppressWarnings("unchecked")
 public class OSimpleKeyIndexDefinitionTest {
 
   private OSimpleKeyIndexDefinition simpleKeyIndexDefinition;
 
-  @Before
+  @BeforeMethod
   public void beforeMethod() {
     simpleKeyIndexDefinition = new OSimpleKeyIndexDefinition(-1, OType.INTEGER, OType.STRING);
   }
@@ -60,7 +62,7 @@ public class OSimpleKeyIndexDefinitionTest {
     Assert.assertNull(result);
   }
 
-  @Test(expected = NumberFormatException.class)
+  @Test(expectedExceptions = NumberFormatException.class)
   public void testWrongParamTypeListItem() {
     simpleKeyIndexDefinition.createValue(Arrays.asList("a", "3"));
   }
@@ -89,7 +91,7 @@ public class OSimpleKeyIndexDefinitionTest {
 
   @Test
   public void testCreateValueCompositeKeyEmptyList() {
-    final Object result = simpleKeyIndexDefinition.createValue(Collections.<Object>emptyList());
+    final Object result = simpleKeyIndexDefinition.createValue(Collections.<Object> emptyList());
 
     Assert.assertNull(result);
   }
@@ -101,7 +103,7 @@ public class OSimpleKeyIndexDefinitionTest {
     Assert.assertNull(result);
   }
 
-  @Test(expected = NumberFormatException.class)
+  @Test(expectedExceptions = NumberFormatException.class)
   public void testWrongParamType() {
     simpleKeyIndexDefinition.createValue("a", "3");
   }
@@ -136,7 +138,7 @@ public class OSimpleKeyIndexDefinitionTest {
     databaseDocumentTx.create();
 
     final ODocument storeDocument = simpleKeyIndexDefinition.toStream();
-    storeDocument.save(databaseDocumentTx.getClusterNameById(databaseDocumentTx.getDefaultClusterId()));
+    storeDocument.save();
 
     final ODocument loadDocument = databaseDocumentTx.load(storeDocument.getIdentity());
     final OSimpleKeyIndexDefinition loadedKeyIndexDefinition = new OSimpleKeyIndexDefinition();
@@ -147,7 +149,7 @@ public class OSimpleKeyIndexDefinitionTest {
     Assert.assertEquals(loadedKeyIndexDefinition, simpleKeyIndexDefinition);
   }
 
-  @Test(expected = OIndexException.class)
+  @Test(expectedExceptions = OIndexException.class)
   public void testGetDocumentValueToIndex() {
     simpleKeyIndexDefinition.getDocumentValueToIndex(new ODocument());
   }

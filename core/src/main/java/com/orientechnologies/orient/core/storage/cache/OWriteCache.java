@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,113 +14,80 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.core.storage.cache;
 
-import com.orientechnologies.common.types.OModifiableBoolean;
 import com.orientechnologies.orient.core.command.OCommandOutputListener;
-import com.orientechnologies.orient.core.storage.cache.local.OBackgroundExceptionListener;
 import com.orientechnologies.orient.core.storage.impl.local.OLowDiskSpaceListener;
-import com.orientechnologies.orient.core.storage.impl.local.OPageIsBrokenListener;
-import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OLogSequenceNumber;
-import com.orientechnologies.orient.core.storage.impl.local.statistic.OPerformanceStatisticManager;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 
 public interface OWriteCache {
-  /**
-   * Adds listener which is called by cache if corruption of file page is detected.
-   */
-  void addPageIsBrokenListener(OPageIsBrokenListener listener);
-
-  /**
-   * Removes listener which is called by cache if corruption of file page is detected.
-   */
-  @SuppressWarnings("unused")
-  void removePageIsBrokenListener(OPageIsBrokenListener listener);
+  void startFuzzyCheckpoints();
 
   void addLowDiskSpaceListener(OLowDiskSpaceListener listener);
 
   void removeLowDiskSpaceListener(OLowDiskSpaceListener listener);
 
-  long bookFileId(String fileName);
+  long bookFileId(String fileName) throws IOException;
 
-  /**
-   * Registers new file in write cache and returns file id assigned to this file.
-   * <p>
-   * File id consist of two parts:
-   * <ol>
-   * <li>Internal id is permanent and can not be changed during life of storage {@link #internalFileId(long)}</li>
-   * <li>Write cache id  which is changed between storage open/close cycles</li>
-   * </ol>
-   * <p>
-   * If file with the same name is deleted and then new file is created this file with have the same internal id.
-   *
-   * @param fileName Name of file to register inside storage.
-   *
-   * @return Id of registered file
-   */
-  long loadFile(String fileName) throws IOException;
+  long openFile(String fileName) throws IOException;
+
+  void openFile(long fileId) throws IOException;
+
+  void openFile(String fileName, long fileId) throws IOException;
 
   long addFile(String fileName) throws IOException;
 
-  long addFile(String fileName, long fileId) throws IOException;
+  void addFile(String fileName, long fileId) throws IOException;
 
-  /**
-   * Returns id associated with given file or value &lt; 0 if such file does not exist.
-   *
-   * @param fileName File name id of which has to be returned.
-   *
-   * @return id associated with given file or value &lt; 0 if such file does not exist.
-   */
-  long fileIdByName(String fileName);
+  boolean checkLowDiskSpace();
 
-  boolean checkLowDiskSpace() throws IOException;
+  void makeFuzzyCheckpoint();
 
-  void makeFuzzyCheckpoint(long segmentId) throws IOException;
+  void lock() throws IOException;
 
-  void flushTillSegment(long segmentId);
+  void unlock() throws IOException;
 
   boolean exists(String fileName);
 
   boolean exists(long fileId);
 
-  CountDownLatch store(long fileId, long pageIndex, OCachePointer dataPointer);
+  Future store(long fileId, long pageIndex, OCachePointer dataPointer);
 
-  OCachePointer[] load(long fileId, long startPageIndex, int pageCount, boolean addNewPages, OModifiableBoolean cacheHit,
-      boolean verifyChecksums) throws IOException;
+  OCachePointer load(long fileId, long pageIndex, boolean addNewPages) throws IOException;
 
   void flush(long fileId);
 
   void flush();
 
-  long getFilledUpTo(long fileId);
+  long getFilledUpTo(long fileId) throws IOException;
 
   long getExclusiveWriteCachePagesSize();
+
+  boolean isOpen(long fileId);
+
+  Long isOpen(String fileName) throws IOException;
+
+  void setSoftlyClosed(long fileId, boolean softlyClosed) throws IOException;
+
+  void setSoftlyClosed(boolean softlyClosed) throws IOException;
+
+  boolean wasSoftlyClosed(long fileId) throws IOException;
 
   void deleteFile(long fileId) throws IOException;
 
   void truncateFile(long fileId) throws IOException;
 
-  void renameFile(long fileId, String newFileName) throws IOException;
-
-  /**
-   * Replaces the file content with the content of the provided file.
-   *
-   * @param fileId         the file id of the file to replace the content of.
-   * @param newContentFile the new content file to replace the current content with.
-   */
-  void replaceFileContentWith(long fileId, Path newContentFile) throws IOException;
+  void renameFile(long fileId, String oldFileName, String newFileName) throws IOException;
 
   long[] close() throws IOException;
 
-  void close(long fileId, boolean flush);
+  void close(long fileId, boolean flush) throws IOException;
 
   OPageDataVerificationError[] checkStoredPages(OCommandOutputListener commandOutputListener);
 
@@ -128,93 +95,5 @@ public interface OWriteCache {
 
   String fileNameById(long fileId);
 
-  /**
-   * Obtains native file name by the given file id.
-   * <p>
-   * Native file name is a file name of a "physical" on-disk file, it may differ from the "virtual" logical file name.
-   *
-   * @param fileId the file id to obtain the native file name of.
-   *
-   * @return the obtained native file name or {@code null} if the passed file id doesn't correspond to any file.
-   */
-  String nativeFileNameById(long fileId);
-
   int getId();
-
-  Map<String, Long> files();
-
-  /**
-   * DO NOT DELETE THIS METHOD IT IS USED IN ENTERPRISE STORAGE
-   *
-   * @return Size of page inside of cache.
-   */
-  int pageSize();
-
-  /**
-   * DO NOT DELETE THIS METHOD IT IS USED IN ENTERPRISE STORAGE
-   * <p>
-   * Takes two ids and checks whether they are equal from point of view of write cache. In other words
-   * methods checks whether two ids in reality contain the same internal ids.
-   */
-  boolean fileIdsAreEqual(long firsId, long secondId);
-
-  /**
-   * Finds if there was file in write cache with given id which is deleted right now.
-   * If such file exists it creates new file with the same name at it was in deleted file.
-   *
-   * @param fileId If of file which should be restored
-   *
-   * @return Name of restored file or <code>null</code> if such name does not exist
-   */
-  String restoreFileById(long fileId) throws IOException;
-
-  /**
-   * Adds listener which is triggered if exception is cast inside background flush data thread.
-   *
-   * @param listener Listener to trigger
-   */
-  void addBackgroundExceptionListener(OBackgroundExceptionListener listener);
-
-  /**
-   * Removes listener which is triggered if exception is cast inside background flush data thread.
-   *
-   * @param listener Listener to remove
-   */
-  void removeBackgroundExceptionListener(OBackgroundExceptionListener listener);
-
-  /**
-   * Directory which contains all files managed by write cache.
-   *
-   * @return Directory which contains all files managed by write cache or <code>null</code> in case of in memory database.
-   */
-  Path getRootDirectory();
-
-  /**
-   * Returns internal file id which is unique and always the same for given file
-   * in contrary to external id which changes over close/open cycle of cache.
-   *
-   * @param fileId External file id.
-   *
-   * @return Internal file id.
-   */
-  int internalFileId(long fileId);
-
-  /**
-   * Converts unique internal file id to external one.
-   * External id is combination of internal id and write cache id, which changes every time when cache is closed and opened again.
-   *
-   * @param fileId Internal file id.
-   *
-   * @return External file id.
-   *
-   * @see #internalFileId(long)
-   * @see #getId()
-   */
-  long externalFileId(int fileId);
-
-  OLogSequenceNumber getMinimalNotFlushedLSN();
-
-  void updateDirtyPagesTable(OCachePointer pointer);
-
-  OPerformanceStatisticManager getPerformanceStatisticManager();
 }

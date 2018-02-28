@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2015 OrientDB LTD (info(-at-)orientdb.com)
+ *  *  Copyright 2015 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
@@ -28,11 +28,10 @@ import com.orientechnologies.orient.core.exception.OQueryParsingException;
 import com.orientechnologies.orient.core.query.live.OLiveQueryHook;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
-import java.util.Locale;
 import java.util.Map;
 
 /**
- * @author Luigi Dell'Aquila (l.dellaquila-(at)-orientdb.com)
+ * @author Luigi Dell'Aquila
  */
 public class OCommandExecutorSQLLiveUnsubscribe extends OCommandExecutorSQLAbstract implements OCommandDistributedReplicateRequest {
   public static final String KEYWORD_LIVE_UNSUBSCRIBE = "LIVE UNSUBSCRIBE";
@@ -45,11 +44,9 @@ public class OCommandExecutorSQLLiveUnsubscribe extends OCommandExecutorSQLAbstr
   private Object executeUnsubscribe() {
     try {
 
-      OLiveQueryHook.unsubscribe(Integer.parseInt(unsubscribeToken), getDatabase());
+      OLiveQueryHook.unsubscribe(Integer.parseInt(unsubscribeToken));
       ODocument result = new ODocument();
       result.field("unsubscribed", unsubscribeToken);
-      result.field("unsubscribe", true);
-      result.field("token", unsubscribeToken);
 
       return result;
     } catch (Exception e) {
@@ -66,7 +63,7 @@ public class OCommandExecutorSQLLiveUnsubscribe extends OCommandExecutorSQLAbstr
 
   @Override
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_QUICK_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   public Object execute(final Map<Object, Object> iArgs) {
@@ -85,7 +82,7 @@ public class OCommandExecutorSQLLiveUnsubscribe extends OCommandExecutorSQLAbstr
     String remainingText = requestText.getText().trim().substring(5).trim();
     requestText.setText(remainingText);
     try {
-      if (remainingText.toLowerCase(Locale.ENGLISH).startsWith("unsubscribe")) {
+      if (remainingText.toLowerCase().startsWith("unsubscribe")) {
         remainingText = remainingText.substring("unsubscribe".length()).trim();
         if (remainingText.contains(" ")) {
           throw new OQueryParsingException("invalid unsubscribe token for live query: " + remainingText);

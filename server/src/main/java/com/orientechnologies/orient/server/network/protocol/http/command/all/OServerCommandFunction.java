@@ -1,6 +1,6 @@
 /*
     *
-    *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+    *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
     *  *
     *  *  Licensed under the Apache License, Version 2.0 (the "License");
     *  *  you may not use this file except in compliance with the License.
@@ -14,27 +14,20 @@
     *  *  See the License for the specific language governing permissions and
     *  *  limitations under the License.
     *  *
-    *  * For more information: http://orientdb.com
+    *  * For more information: http://www.orientechnologies.com
     *
     */
 package com.orientechnologies.orient.server.network.protocol.http.command.all;
 
-import com.orientechnologies.orient.server.config.OServerCommandConfiguration;
-import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
-import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
-
 import java.io.IOException;
+
+ import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
+ import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
 
 public class OServerCommandFunction extends OServerCommandAbstractLogic {
    private static final String[] NAMES = { "GET|function/*", "POST|function/*" };
 
-  public OServerCommandFunction() {
-  }
-
-  public OServerCommandFunction(final OServerCommandConfiguration iConfig) {
-  }
-
-  @Override
+   @Override
    public String[] init(final OHttpRequest iRequest, final OHttpResponse iResponse) {
      final String[] parts = checkSyntax(iRequest.url, 3, "Syntax error: function/<database>/<name>[/param]*");
      iRequest.data.commandInfo = "Execute a function";

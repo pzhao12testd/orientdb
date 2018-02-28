@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,7 @@ import java.util.List;
 /**
  * Works against multi value objects like collections, maps and arrays.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodMultiValue extends OAbstractSQLMethod {
 
@@ -58,7 +58,7 @@ public class OSQLMethodMultiValue extends OAbstractSQLMethod {
     final List<Object> list = new ArrayList<Object>();
     for (int i = 0; i < iParams.length; ++i) {
       if (OMultiValue.isMultiValue(iParams[i])) {
-        for (Object o : OMultiValue.getMultiValueIterable(iParams[i], false)) {
+        for (Object o : OMultiValue.getMultiValueIterable(iParams[i])) {
           list.add(ODocumentHelper.getFieldValue(iThis, o.toString(), iContext));
         }
       } else {

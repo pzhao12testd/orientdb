@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,52 +14,47 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.common.collection;
-
-import com.orientechnologies.common.log.OLogManager;
-import com.orientechnologies.common.util.OCallable;
-import com.orientechnologies.common.util.OResettable;
-import com.orientechnologies.common.util.OSizeable;
-import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.db.record.ORecordLazyMultiValue;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.executor.OResultSet;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.orientechnologies.common.log.OLogManager;
+import com.orientechnologies.common.util.OCallable;
+import com.orientechnologies.common.util.OResettable;
+import com.orientechnologies.common.util.OSizeable;
+
 /**
  * Handles Multi-value types such as Arrays, Collections and Maps. It recognizes special Orient collections.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  */
 @SuppressWarnings("unchecked")
 public class OMultiValue {
 
   /**
    * Checks if a class is a multi-value type.
-   *
-   * @param iType Class to check
-   *
+   * 
+   * @param iType
+   *          Class to check
    * @return true if it's an array, a collection or a map, otherwise false
    */
   public static boolean isMultiValue(final Class<?> iType) {
-    return OCollection.class.isAssignableFrom(iType) || Collection.class.isAssignableFrom(iType) || iType.isArray() || Map.class
-        .isAssignableFrom(iType) || OMultiCollectionIterator.class.isAssignableFrom(iType) || (
-        Iterable.class.isAssignableFrom(iType) && !(OIdentifiable.class.isAssignableFrom(iType))) || OResultSet.class
-        .isAssignableFrom(iType);
+    return OCollection.class.isAssignableFrom(iType)
+        || Collection.class.isAssignableFrom(iType)
+        || (iType.isArray() || Map.class.isAssignableFrom(iType) || OMultiCollectionIterator.class.isAssignableFrom(iType) || OCollection.class
+            .isAssignableFrom(iType));
   }
 
   /**
    * Checks if the object is a multi-value type.
-   *
-   * @param iObject Object to check
-   *
+   * 
+   * @param iObject
+   *          Object to check
    * @return true if it's an array, a collection or a map, otherwise false
    */
   public static boolean isMultiValue(final Object iObject) {
@@ -72,9 +67,9 @@ public class OMultiValue {
 
   /**
    * Returns the size of the multi-value object
-   *
-   * @param iObject Multi-value object (array, collection or map)
-   *
+   * 
+   * @param iObject
+   *          Multi-value object (array, collection or map)
    * @return the size of the multi value object
    */
   public static int getSize(final Object iObject) {
@@ -93,21 +88,14 @@ public class OMultiValue {
       return ((Map<?, Object>) iObject).size();
     if (iObject.getClass().isArray())
       return Array.getLength(iObject);
-    if ((iObject instanceof Iterable && !(iObject instanceof ODocument))) {
-      int i = 0;
-      for (Object o : (Iterable) iObject) {
-        i++;
-      }
-      return i;
-    }
     return 0;
   }
 
   /**
    * Returns the first item of the Multi-value object (array, collection or map)
-   *
-   * @param iObject Multi-value object (array, collection or map)
-   *
+   * 
+   * @param iObject
+   *          Multi-value object (array, collection or map)
    * @return The first item if any
    */
   public static Object getFirstValue(final Object iObject) {
@@ -126,9 +114,9 @@ public class OMultiValue {
         return ((Map<?, Object>) iObject).values().iterator().next();
       else if (iObject.getClass().isArray())
         return Array.get(iObject, 0);
-    } catch (RuntimeException e) {
+    } catch (Exception e) {
       // IGNORE IT
-      OLogManager.instance().debug(iObject, "Error on reading the first item of the Multi-value field '%s'", iObject, e);
+      OLogManager.instance().debug(iObject, "Error on reading the first item of the Multi-value field '%s'", iObject);
     }
 
     return null;
@@ -136,9 +124,9 @@ public class OMultiValue {
 
   /**
    * Returns the last item of the Multi-value object (array, collection or map)
-   *
-   * @param iObject Multi-value object (array, collection or map)
-   *
+   * 
+   * @param iObject
+   *          Multi-value object (array, collection or map)
    * @return The last item if any
    */
   public static Object getLastValue(final Object iObject) {
@@ -163,9 +151,9 @@ public class OMultiValue {
         return last;
       } else if (iObject.getClass().isArray())
         return Array.get(iObject, Array.getLength(iObject) - 1);
-    } catch (RuntimeException e) {
+    } catch (Exception e) {
       // IGNORE IT
-      OLogManager.instance().debug(iObject, "Error on reading the last item of the Multi-value field '%s'", iObject, e);
+      OLogManager.instance().debug(iObject, "Error on reading the last item of the Multi-value field '%s'", iObject);
     }
 
     return null;
@@ -173,10 +161,11 @@ public class OMultiValue {
 
   /**
    * Returns the iIndex item of the Multi-value object (array, collection or map)
-   *
-   * @param iObject Multi-value object (array, collection or map)
-   * @param iIndex  integer as the position requested
-   *
+   * 
+   * @param iObject
+   *          Multi-value object (array, collection or map)
+   * @param iIndex
+   *          integer as the position requested
    * @return The first item if any
    */
   public static Object getValue(final Object iObject, final int iIndex) {
@@ -210,9 +199,8 @@ public class OMultiValue {
         return Array.get(iObject, iIndex);
       else if (iObject instanceof Iterator<?> || iObject instanceof Iterable<?>) {
 
-        final Iterator<Object> it = (iObject instanceof Iterable<?>) ?
-            ((Iterable<Object>) iObject).iterator() :
-            (Iterator<Object>) iObject;
+        final Iterator<Object> it = (iObject instanceof Iterable<?>) ? ((Iterable<Object>) iObject).iterator()
+            : (Iterator<Object>) iObject;
         for (int i = 0; it.hasNext(); ++i) {
           final Object o = it.next();
           if (i == iIndex) {
@@ -226,23 +214,26 @@ public class OMultiValue {
         if (it instanceof OResettable)
           ((OResettable) it).reset();
       }
-    } catch (RuntimeException e) {
+    } catch (Exception e) {
       // IGNORE IT
-      OLogManager.instance().debug(iObject, "Error on reading the first item of the Multi-value field '%s'", iObject, e);
+      OLogManager.instance().debug(iObject, "Error on reading the first item of the Multi-value field '%s'", iObject);
     }
     return null;
   }
-
+  
   /**
-   * Sets the value of the Multi-value object (array or collection) at iIndex
-   *
-   * @param iObject Multi-value object (array, collection)
-   * @param iValue  The value to set at this specified index.
-   * @param iIndex  integer as the position requested
+   * Sets the value of the Multi-value object (array or collection) at iIndex 
+   * 
+   * @param iObject
+   *          Multi-value object (array, collection)
+   * @param iValue
+   *          The value to set at this specified index.      
+   * @param iIndex
+   *          integer as the position requested
    */
   public static void setValue(final Object iObject, final Object iValue, final int iIndex) {
     if (iObject instanceof List<?>) {
-      ((List<Object>) iObject).set(iIndex, iValue);
+      ((List<Object>)iObject).set(iIndex, iValue);
     } else if (iObject.getClass().isArray()) {
       Array.set(iObject, iIndex, iValue);
     } else {
@@ -251,104 +242,38 @@ public class OMultiValue {
   }
 
   /**
-   * Returns an <code>Iterable<Object></code> object to browse the multi-value instance (array, collection or map).
-   *
-   * @param iObject Multi-value object (array, collection or map)
+   * Returns an <code>Iterable<Object></code> object to browse the multi-value instance (array, collection or map)
+   * 
+   * @param iObject
+   *          Multi-value object (array, collection or map)
    */
   public static Iterable<Object> getMultiValueIterable(final Object iObject) {
     if (iObject == null)
       return null;
 
-    if (iObject instanceof Iterable<?> && !(iObject instanceof ODocument))
-      return (Iterable<Object>) iObject;
-    else if (iObject instanceof Collection<?>)
-      return ((Collection<Object>) iObject);
-    else if (iObject instanceof Map<?, ?>)
-      return ((Map<?, Object>) iObject).values();
-    else if (iObject.getClass().isArray())
-      return new OIterableObjectArray<Object>(iObject);
-    else if (iObject instanceof Iterator<?>) {
-      final List<Object> temp = new ArrayList<Object>();
-      for (Iterator<Object> it = (Iterator<Object>) iObject; it.hasNext(); )
-        temp.add(it.next());
-      return temp;
-    }
-
-    return new OIterableObject<Object>(iObject);
-  }
-
-  /**
-   * Returns an <code>Iterable<Object></code> object to browse the multi-value instance (array, collection or map).
-   *
-   * @param iObject             Multi-value object (array, collection or map)
-   * @param iForceConvertRecord allow to force settings to convert RIDs to records while browsing.
-   */
-  public static Iterable<Object> getMultiValueIterable(final Object iObject, final boolean iForceConvertRecord) {
-    if (iObject == null)
-      return null;
-
-    if (!iForceConvertRecord && iObject instanceof ORecordLazyMultiValue
-        && ((ORecordLazyMultiValue) iObject).isAutoConvertToRecord() != iForceConvertRecord) {
-      // RETURN THE LOW LEVEL ITERATOR
-      return new Iterable() {
-        @Override
-        public Iterator<?> iterator() {
-          return ((ORecordLazyMultiValue) iObject).rawIterator();
-        }
-      };
-    }
-
-    if (iObject instanceof Iterable<?> && !(iObject instanceof ODocument))
-      return (Iterable<Object>) iObject;
-    else if (iObject instanceof Collection<?>)
-      return ((Collection<Object>) iObject);
-    else if (iObject instanceof Map<?, ?>)
-      return ((Map<?, Object>) iObject).values();
-    else if (iObject.getClass().isArray())
-      return new OIterableObjectArray<Object>(iObject);
-    else if (iObject instanceof Iterator<?>) {
-      final List<Object> temp = new ArrayList<Object>();
-      for (Iterator<Object> it = (Iterator<Object>) iObject; it.hasNext(); )
-        temp.add(it.next());
-      return temp;
-    }
-
-    return new OIterableObject<Object>(iObject);
-  }
-
-  /**
-   * Returns an <code>Iterator<Object></code> object to browse the multi-value instance (array, collection or map)
-   *
-   * @param iObject             Multi-value object (array, collection or map)
-   * @param iForceConvertRecord allow to force settings to convert RIDs to records while browsing.
-   */
-
-  public static Iterator<Object> getMultiValueIterator(final Object iObject, final boolean iForceConvertRecord) {
-    if (iObject == null)
-      return null;
-
-    if (!iForceConvertRecord && iObject instanceof ORecordLazyMultiValue
-        && ((ORecordLazyMultiValue) iObject).isAutoConvertToRecord() != iForceConvertRecord)
-      // RETURN THE LOW LEVEL ITERATOR
-      return (Iterator) ((ORecordLazyMultiValue) iObject).rawIterator();
-
-    if (iObject instanceof Iterator<?>)
-      return (Iterator<Object>) iObject;
-
     if (iObject instanceof Iterable<?>)
-      return ((Iterable<Object>) iObject).iterator();
-    if (iObject instanceof Map<?, ?>)
-      return ((Map<?, Object>) iObject).values().iterator();
-    if (iObject.getClass().isArray())
-      return new OIterableObjectArray<Object>(iObject).iterator();
+      return (Iterable<Object>) iObject;
+    else if (iObject instanceof Collection<?>)
+      return ((Collection<Object>) iObject);
+    else if (iObject instanceof Map<?, ?>)
+      return ((Map<?, Object>) iObject).values();
+    else if (iObject.getClass().isArray())
+      return new OIterableObjectArray<Object>(iObject);
+    else if (iObject instanceof Iterator<?>) {
+      final List<Object> temp = new ArrayList<Object>();
+      for (Iterator<Object> it = (Iterator<Object>) iObject; it.hasNext();)
+        temp.add(it.next());
+      return temp;
+    }
 
     return new OIterableObject<Object>(iObject);
   }
 
   /**
    * Returns an <code>Iterator<Object></code> object to browse the multi-value instance (array, collection or map)
-   *
-   * @param iObject Multi-value object (array, collection or map)
+   * 
+   * @param iObject
+   *          Multi-value object (array, collection or map)
    */
 
   public static Iterator<Object> getMultiValueIterator(final Object iObject) {
@@ -370,9 +295,9 @@ public class OMultiValue {
 
   /**
    * Returns a stringified version of the multi-value object.
-   *
-   * @param iObject Multi-value object (array, collection or map)
-   *
+   * 
+   * @param iObject
+   *          Multi-value object (array, collection or map)
    * @return a stringified version of the multi-value object.
    */
   public static String toString(final Object iObject) {
@@ -382,13 +307,13 @@ public class OMultiValue {
       final Iterable<Object> coll = (Iterable<Object>) iObject;
 
       sb.append('[');
-      for (final Iterator<Object> it = coll.iterator(); it.hasNext(); ) {
+      for (final Iterator<Object> it = coll.iterator(); it.hasNext();) {
         try {
           Object e = it.next();
           sb.append(e == iObject ? "(this Collection)" : e);
           if (it.hasNext())
             sb.append(", ");
-        } catch (NoSuchElementException ignore) {
+        } catch (NoSuchElementException ex) {
           // IGNORE THIS
         }
       }
@@ -399,7 +324,7 @@ public class OMultiValue {
       Entry<String, Object> e;
 
       sb.append('{');
-      for (final Iterator<Entry<String, Object>> it = map.entrySet().iterator(); it.hasNext(); ) {
+      for (final Iterator<Entry<String, Object>> it = map.entrySet().iterator(); it.hasNext();) {
         try {
           e = it.next();
 
@@ -408,7 +333,7 @@ public class OMultiValue {
           sb.append(e.getValue() == iObject ? "(this Map)" : e.getValue());
           if (it.hasNext())
             sb.append(", ");
-        } catch (NoSuchElementException ignore) {
+        } catch (NoSuchElementException ex) {
           // IGNORE THIS
         }
       }
@@ -420,15 +345,20 @@ public class OMultiValue {
 
   /**
    * Utility function that add a value to the main object. It takes care about collections/array and single values.
-   *
-   * @param iObject MultiValue where to add value(s)
-   * @param iToAdd  Single value, array of values or collections of values. Map are not supported.
-   *
+   * 
+   * @param iObject
+   *          MultiValue where to add value(s)
+   * @param iToAdd
+   *          Single value, array of values or collections of values. Map are not supported.
    * @return
    */
-  @SuppressFBWarnings("BC_UNCONFIRMED_CAST")
   public static Object add(final Object iObject, final Object iToAdd) {
     if (iObject != null) {
+      if (!isMultiValue(iObject)) {
+        final List<Object> result = new ArrayList<Object>();
+        result.add(iObject);
+      }
+
       if (iObject instanceof Collection<?> || iObject instanceof OCollection<?>) {
         // COLLECTION - ?
         final OCollection<Object> coll;
@@ -458,19 +388,21 @@ public class OMultiValue {
         } else
           coll = (OCollection<Object>) iObject;
 
-        if (!(iToAdd instanceof Map) && isMultiValue(iToAdd)) {
+        if (isMultiValue(iToAdd)) {
           // COLLECTION - COLLECTION
-          for (Object o : getMultiValueIterable(iToAdd, false)) {
-            if (!(o instanceof Map) && isMultiValue(o))
+          for (Object o : getMultiValueIterable(iToAdd)) {
+            if (isMultiValue(o))
               add(coll, o);
             else
               coll.add(o);
           }
-        } else if (iToAdd != null && iToAdd.getClass().isArray()) {
+        }
+
+        else if (iToAdd != null && iToAdd.getClass().isArray()) {
           // ARRAY - COLLECTION
           for (int i = 0; i < Array.getLength(iToAdd); ++i) {
             Object o = Array.get(iToAdd, i);
-            if (!(o instanceof Map) && isMultiValue(o))
+            if (isMultiValue(o))
               add(coll, o);
             else
               coll.add(o);
@@ -478,10 +410,11 @@ public class OMultiValue {
 
         } else if (iToAdd instanceof Map<?, ?>) {
           // MAP
-          coll.add(iToAdd);
+          for (Entry<Object, Object> entry : ((Map<Object, Object>) iToAdd).entrySet())
+            coll.add(entry.getValue());
         } else if (iToAdd instanceof Iterator<?>) {
           // ITERATOR
-          for (Iterator<?> it = (Iterator<?>) iToAdd; it.hasNext(); )
+          for (Iterator<?> it = (Iterator<?>) iToAdd; it.hasNext();)
             coll.add(it.next());
         } else
           coll.add(iToAdd);
@@ -517,12 +450,13 @@ public class OMultiValue {
 
   /**
    * Utility function that remove a value from the main object. It takes care about collections/array and single values.
-   *
-   * @param iObject         MultiValue where to add value(s)
-   * @param iToRemove       Single value, array of values or collections of values. Map are not supported.
-   * @param iAllOccurrences True if the all occurrences must be removed or false of only the first one (Like
-   *                        java.util.Collection.remove())
-   *
+   * 
+   * @param iObject
+   *          MultiValue where to add value(s)
+   * @param iToRemove
+   *          Single value, array of values or collections of values. Map are not supported.
+   * @param iAllOccurrences
+   *          True if the all occurrences must be removed or false of only the first one (Like java.util.Collection.remove())
    * @return
    */
   public static Object remove(Object iObject, Object iToRemove, final boolean iAllOccurrences) {
@@ -580,7 +514,9 @@ public class OMultiValue {
             else
               removeFromOCollection(iObject, coll, o, iAllOccurrences);
           }
-        } else if (iToRemove != null && iToRemove.getClass().isArray()) {
+        }
+
+        else if (iToRemove != null && iToRemove.getClass().isArray()) {
           // ARRAY - COLLECTION
           for (int i = 0; i < Array.getLength(iToRemove); ++i) {
             Object o = Array.get(iToRemove, i);
@@ -717,7 +653,6 @@ public class OMultiValue {
     return array(iValue, iClass, null);
   }
 
-  @SuppressFBWarnings("PZLA_PREFER_ZERO_LENGTH_ARRAYS")
   public static <T> T[] array(final Object iValue, final Class<? extends T> iClass, final OCallable<Object, Object> iCallback) {
     if (iValue == null)
       return null;
@@ -728,12 +663,12 @@ public class OMultiValue {
       // CREATE STATIC ARRAY AND FILL IT
       result = (T[]) Array.newInstance(iClass, getSize(iValue));
       int i = 0;
-      for (Iterator<T> it = (Iterator<T>) getMultiValueIterator(iValue, false); it.hasNext(); ++i)
+      for (Iterator<T> it = (Iterator<T>) getMultiValueIterator(iValue); it.hasNext(); ++i)
         result[i] = (T) convert(it.next(), iCallback);
     } else if (isIterable(iValue)) {
       // SIZE UNKNOWN: USE A LIST AS TEMPORARY OBJECT
       final List<T> temp = new ArrayList<T>();
-      for (Iterator<T> it = (Iterator<T>) getMultiValueIterator(iValue, false); it.hasNext(); )
+      for (Iterator<T> it = (Iterator<T>) getMultiValueIterator(iValue); it.hasNext();)
         temp.add((T) convert(it.next(), iCallback));
 
       if (iClass.equals(Object.class))
@@ -796,51 +731,5 @@ public class OMultiValue {
     }
 
     return -1;
-  }
-
-  public static Object toSet(final Object o) {
-    if (o instanceof Set<?>)
-      return o;
-    else if (o instanceof Collection<?>)
-      return new HashSet<Object>((Collection<?>) o);
-    else if (o instanceof Map<?, ?>) {
-      final Collection values = ((Map) o).values();
-      return values instanceof Set ? values : new HashSet(values);
-    } else if (o.getClass().isArray()) {
-      final HashSet set = new HashSet();
-      int tot = Array.getLength(o);
-      for (int i = 0; i < tot; ++i) {
-        set.add(Array.get(o, i));
-      }
-      return set;
-    } else if (o instanceof OMultiValue) {
-    } else if (o instanceof Iterator<?>) {
-      final HashSet set = new HashSet();
-      while (((Iterator<?>) o).hasNext()) {
-        set.add(((Iterator<?>) o).next());
-      }
-
-      if (o instanceof OResettable)
-        ((OResettable) o).reset();
-
-      return set;
-    } else if (o instanceof Iterable && !(o instanceof OIdentifiable)) {
-      Iterator iterator = ((Iterable) o).iterator();
-      Set result = new HashSet();
-      while (iterator.hasNext()) {
-        result.add(iterator.next());
-      }
-      return result;
-    }
-
-    final HashSet set = new HashSet(1);
-    set.add(o);
-    return set;
-  }
-
-  public static <T> List<T> getSingletonList(final T item) {
-    final List<T> list = new ArrayList<T>(1);
-    list.add(item);
-    return list;
   }
 }

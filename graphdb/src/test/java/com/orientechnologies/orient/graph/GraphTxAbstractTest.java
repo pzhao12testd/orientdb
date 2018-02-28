@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -25,12 +25,10 @@ import org.junit.BeforeClass;
 
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 
-import java.util.Locale;
-
 /**
  * Base class for tests against transactional Graphs.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public abstract class GraphTxAbstractTest {
   protected static OrientGraph graph;
@@ -40,7 +38,7 @@ public abstract class GraphTxAbstractTest {
   }
 
   public static ENV getEnvironment() {
-    String envName = System.getProperty("orientdb.test.env", "dev").toUpperCase(Locale.ENGLISH);
+    String envName = System.getProperty("orientdb.test.env", "dev").toUpperCase();
     ENV result = null;
     try {
       result = ENV.valueOf(envName);
@@ -65,7 +63,6 @@ public abstract class GraphTxAbstractTest {
       final String storageType = getStorageType();
       final String buildDirectory = System.getProperty("buildDirectory", ".");
 
-      System.out.println("buildDirectory = " + buildDirectory);
       final String url = System.getProperty("url");
 
       if (url != null)

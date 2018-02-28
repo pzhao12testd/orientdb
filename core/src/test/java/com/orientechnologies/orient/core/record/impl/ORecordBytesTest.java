@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 
 package com.orientechnologies.orient.core.record.impl;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+
+import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 /**
  * @author bogdan
@@ -33,37 +33,11 @@ public class ORecordBytesTest {
   private static final int SMALL_ARRAY = 3;
   private static final int BIG_ARRAY   = 7;
   private static final int FULL_ARRAY  = 5;
-  private InputStream inputStream;
-  private InputStream emptyStream;
-  private OBlob       testedInstance;
+  private InputStream      inputStream;
+  private InputStream      emptyStream;
+  private ORecordBytes     testedInstance;
 
-  private static void assertArrayEquals(byte[] actual, byte[] expected) {
-    assert actual.length == expected.length;
-    for (int i = 0; i < expected.length; i++) {
-      assert actual[i] == expected[i];
-    }
-  }
-
-  private static Object getFieldValue(Object source, String fieldName) throws NoSuchFieldException, IllegalAccessException {
-    final Class<?> clazz = source.getClass();
-    final Field field = getField(clazz, fieldName);
-    field.setAccessible(true);
-    return field.get(source);
-  }
-
-  private static Field getField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
-    if (clazz == null) {
-      throw new NoSuchFieldException(fieldName);
-    }
-    for (Field item : clazz.getDeclaredFields()) {
-      if (item.getName().equals(fieldName)) {
-        return item;
-      }
-    }
-    return getField(clazz.getSuperclass(), fieldName);
-  }
-
-  @Before
+  @BeforeMethod
   public void setUp() throws Exception {
     inputStream = new ByteArrayInputStream(new byte[] { 1, 2, 3, 4, 5 });
     emptyStream = new ByteArrayInputStream(new byte[] {});
@@ -164,11 +138,37 @@ public class ORecordBytesTest {
     assertArrayEquals(source, expected);
   }
 
+  private static void assertArrayEquals(byte[] actual, byte[] expected) {
+    assert actual.length == expected.length;
+    for (int i = 0; i < expected.length; i++) {
+      assert actual[i] == expected[i];
+    }
+  }
+
+  private static Object getFieldValue(Object source, String fieldName) throws NoSuchFieldException, IllegalAccessException {
+    final Class<?> clazz = source.getClass();
+    final Field field = getField(clazz, fieldName);
+    field.setAccessible(true);
+    return field.get(source);
+  }
+
+  private static Field getField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
+    if (clazz == null) {
+      throw new NoSuchFieldException(fieldName);
+    }
+    for (Field item : clazz.getDeclaredFields()) {
+      if (item.getName().equals(fieldName)) {
+        return item;
+      }
+    }
+    return getField(clazz.getSuperclass(), fieldName);
+  }
+
   private static final class NotFullyAvailableAtTheTimeInputStream extends InputStream {
 
+    private int          pos = -1;
+    private int          interrupt;
     private final byte[] data;
-    private int pos = -1;
-    private       int    interrupt;
 
     private NotFullyAvailableAtTheTimeInputStream(byte[] data, int interrupt) {
       this.data = data;

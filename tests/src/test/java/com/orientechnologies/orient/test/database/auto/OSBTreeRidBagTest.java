@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli(at)orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,35 @@
 
 package com.orientechnologies.orient.test.database.auto;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import com.orientechnologies.orient.core.engine.memory.OEngineMemory;
+import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Optional;
+import org.testng.annotations.Parameters;
+import org.testng.annotations.Test;
+
 import com.orientechnologies.orient.client.db.ODatabaseHelper;
 import com.orientechnologies.orient.client.remote.OEngineRemote;
 import com.orientechnologies.orient.client.remote.OServerAdmin;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
-import com.orientechnologies.orient.core.engine.memory.OEngineMemory;
+import com.orientechnologies.orient.core.db.record.ridbag.sbtree.OSBTreeCollectionManagerShared;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.storage.OStorage;
 import com.orientechnologies.orient.core.storage.OStorageProxy;
-import com.orientechnologies.orient.core.storage.cache.local.OWOWCache;
-import com.orientechnologies.orient.core.storage.impl.local.paginated.OLocalPaginatedStorage;
-import com.orientechnologies.orient.core.storage.ridbag.sbtree.OSBTreeCollectionManagerShared;
-import org.testng.Assert;
-import org.testng.annotations.*;
-import org.testng.annotations.Optional;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
 
 /**
  * @author Artem Orobets (enisher-at-gmail.com)
@@ -59,7 +68,6 @@ public class OSBTreeRidBagTest extends ORidBagTest {
       OServerAdmin server = new OServerAdmin(database.getURL()).connect("root", ODatabaseHelper.getServerRootPassword());
       server.setGlobalConfiguration(OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD, -1);
       server.setGlobalConfiguration(OGlobalConfiguration.RID_BAG_SBTREEBONSAI_TO_EMBEDDED_THRESHOLD, -1);
-      server.close();
     }
 
     OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD.setValue(-1);
@@ -75,7 +83,6 @@ public class OSBTreeRidBagTest extends ORidBagTest {
       OServerAdmin server = new OServerAdmin(database.getURL()).connect("root", ODatabaseHelper.getServerRootPassword());
       server.setGlobalConfiguration(OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD, topThreshold);
       server.setGlobalConfiguration(OGlobalConfiguration.RID_BAG_SBTREEBONSAI_TO_EMBEDDED_THRESHOLD, bottomThreshold);
-      server.close();
     }
   }
 
@@ -130,30 +137,27 @@ public class OSBTreeRidBagTest extends ORidBagTest {
     docClusterFour.save("clusterFour");
 
     final String directory = database.getStorage().getConfiguration().getDirectory();
-
-    final OWOWCache wowCache = (OWOWCache) ((OLocalPaginatedStorage) (database.getStorage())).getWriteCache();
-
-    final File ridBagOneFile = new File(directory, wowCache.nativeFileNameById(wowCache.fileIdByName(
-        OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterIdOne + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION)));
+    final File ridBagOneFile = new File(directory, OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterIdOne
+        + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION);
     Assert.assertTrue(ridBagOneFile.exists());
 
-    final File ridBagTwoFile = new File(directory, wowCache.nativeFileNameById(wowCache.fileIdByName(
-        OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterIdTwo + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION)));
+    final File ridBagTwoFile = new File(directory, OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterIdTwo
+        + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION);
     Assert.assertTrue(ridBagTwoFile.exists());
 
-    final File ridBagThreeFile = new File(directory, wowCache.nativeFileNameById(wowCache.fileIdByName(
-        OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterIdThree + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION)));
+    final File ridBagThreeFile = new File(directory, OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterIdThree
+        + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION);
     Assert.assertTrue(ridBagThreeFile.exists());
 
-    final File ridBagFourFile = new File(directory, wowCache.nativeFileNameById(wowCache.fileIdByName(
-        OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterIdFour + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION)));
+    final File ridBagFourFile = new File(directory, OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterIdFour
+        + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION);
     Assert.assertTrue(ridBagFourFile.exists());
   }
 
   public void testIteratorOverAfterRemove() {
-    ODocument scuti = new ODocument().field("name", "UY Scuti").save(database.getClusterNameById(database.getDefaultClusterId()));
-    ODocument cygni = new ODocument().field("name", "NML Cygni").save(database.getClusterNameById(database.getDefaultClusterId()));
-    ODocument scorpii = new ODocument().field("name", "AH Scorpii").save(database.getClusterNameById(database.getDefaultClusterId()));
+    ODocument scuti = new ODocument().field("name", "UY Scuti").save();
+    ODocument cygni = new ODocument().field("name", "NML Cygni").save();
+    ODocument scorpii = new ODocument().field("name", "AH Scorpii").save();
 
     HashSet<ODocument> expectedResult = new HashSet<ODocument>();
     expectedResult.addAll(Arrays.asList(scuti, scorpii));
@@ -165,7 +169,7 @@ public class OSBTreeRidBagTest extends ORidBagTest {
 
     ODocument doc = new ODocument();
     doc.field("ridBag", bag);
-    doc.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc.save();
 
     bag.remove(cygni);
 
@@ -182,16 +186,16 @@ public class OSBTreeRidBagTest extends ORidBagTest {
     OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD.setValue(5);
 
     ODocument doc_1 = new ODocument();
-    doc_1.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc_1.save();
 
     ODocument doc_2 = new ODocument();
-    doc_2.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc_2.save();
 
     ODocument doc_3 = new ODocument();
-    doc_3.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc_3.save();
 
     ODocument doc_4 = new ODocument();
-    doc_4.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc_4.save();
 
     ODocument doc = new ODocument();
 
@@ -202,15 +206,15 @@ public class OSBTreeRidBagTest extends ORidBagTest {
     bag.add(doc_4);
 
     doc.field("ridBag", bag);
-    doc.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc.save();
 
     doc.reload();
 
     ODocument doc_5 = new ODocument();
-    doc_5.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc_5.save();
 
     ODocument doc_6 = new ODocument();
-    doc_6.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc_6.save();
 
     bag = doc.field("ridBag");
     bag.add(doc_5);
@@ -256,7 +260,7 @@ public class OSBTreeRidBagTest extends ORidBagTest {
     }
 
     assertEmbedded(realDocRidBag.isEmbedded());
-    realDoc.save(database.getClusterNameById(database.getDefaultClusterId()));
+    realDoc.save();
 
     final int clusterId = database.addCluster("ridBagDeleteTest");
 
@@ -266,8 +270,8 @@ public class OSBTreeRidBagTest extends ORidBagTest {
 
     final String directory = database.getStorage().getConfiguration().getDirectory();
 
-    File testRidBagFile = new File(directory,
-        OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterId + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION);
+    File testRidBagFile = new File(directory, OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterId
+        + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION);
     long testRidBagSize = testRidBagFile.length();
 
     for (int i = 0; i < 100; i++) {
@@ -281,8 +285,8 @@ public class OSBTreeRidBagTest extends ORidBagTest {
     database.release();
 
     OGlobalConfiguration.SBTREEBOSAI_FREE_SPACE_REUSE_TRIGGER.setValue(reuseTrigger);
-    testRidBagFile = new File(directory,
-        OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterId + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION);
+    testRidBagFile = new File(directory, OSBTreeCollectionManagerShared.FILE_NAME_PREFIX + clusterId
+        + OSBTreeCollectionManagerShared.DEFAULT_EXTENSION);
 
     Assert.assertEquals(testRidBagFile.length(), testRidBagSize);
 

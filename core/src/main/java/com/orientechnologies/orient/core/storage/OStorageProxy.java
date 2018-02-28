@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,24 +14,31 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.storage;
 
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+
 /**
  * Tagged interface for proxy storage implementation
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public interface OStorageProxy extends OStorage {
   String getUserName();
+
+  Object indexGet(final String iIndexName, final Object iKey, final String iFetchPlan);
+
+  void indexPut(final String iIndexName, final Object iKey, final OIdentifiable iValue);
+
+  boolean indexRemove(final String iIndexName, final Object iKey);
 
   int getUsers();
 
   int addUser();
 
   int removeUser();
-
 }

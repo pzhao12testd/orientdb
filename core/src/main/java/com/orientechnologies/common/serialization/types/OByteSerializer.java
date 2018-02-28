@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,15 +14,14 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.common.serialization.types;
 
-import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChanges;
-
-import java.nio.ByteBuffer;
+import com.orientechnologies.common.directmemory.ODirectMemoryPointer;
+import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChangesTree;
 
 /**
  * Serializer for byte type .
@@ -34,9 +33,9 @@ public class OByteSerializer implements OBinarySerializer<Byte> {
   /**
    * size of byte value in bytes
    */
-  public static final int             BYTE_SIZE = 1;
-  public static final byte            ID        = 2;
-  public static final OByteSerializer INSTANCE  = new OByteSerializer();
+  public static final int       BYTE_SIZE = 1;
+  public static final byte      ID        = 2;
+  public static OByteSerializer INSTANCE  = new OByteSerializer();
 
   public int getObjectSize(Byte object, Object... hints) {
     return BYTE_SIZE;
@@ -88,6 +87,43 @@ public class OByteSerializer implements OBinarySerializer<Byte> {
     return stream[startPosition];
   }
 
+  @Override
+  public void serializeInDirectMemoryObject(final Byte object, ODirectMemoryPointer pointer, long offset, Object... hints) {
+    pointer.setByte(offset, object);
+  }
+
+  public void serializeInDirectMemory(final byte object, ODirectMemoryPointer pointer, long offset, Object... hints) {
+    pointer.setByte(offset, object);
+  }
+
+  @Override
+  public Byte deserializeFromDirectMemoryObject(final ODirectMemoryPointer pointer, final long offset) {
+    return pointer.getByte(offset);
+  }
+
+  @Override
+  public Byte deserializeFromDirectMemoryObject(OWALChangesTree.PointerWrapper wrapper, long offset) {
+    return wrapper.getByte(offset);
+  }
+
+  public byte deserializeFromDirectMemory(final ODirectMemoryPointer pointer, final long offset) {
+    return pointer.getByte(offset);
+  }
+
+  public byte deserializeFromDirectMemory(final OWALChangesTree.PointerWrapper wrapper, final long offset) {
+    return wrapper.getByte(offset);
+  }
+
+  @Override
+  public int getObjectSizeInDirectMemory(final ODirectMemoryPointer pointer, final long offset) {
+    return BYTE_SIZE;
+  }
+
+  @Override
+  public int getObjectSizeInDirectMemory(OWALChangesTree.PointerWrapper wrapper, long offset) {
+    return BYTE_SIZE;
+  }
+
   public boolean isFixedLength() {
     return true;
   }
@@ -99,45 +135,5 @@ public class OByteSerializer implements OBinarySerializer<Byte> {
   @Override
   public Byte preprocess(Byte value, Object... hints) {
     return value;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void serializeInByteBufferObject(Byte object, ByteBuffer buffer, Object... hints) {
-    buffer.put(object);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public Byte deserializeFromByteBufferObject(ByteBuffer buffer) {
-    return buffer.get();
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getObjectSizeInByteBuffer(ByteBuffer buffer) {
-    return BYTE_SIZE;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public Byte deserializeFromByteBufferObject(ByteBuffer buffer, OWALChanges walChanges, int offset) {
-    return walChanges.getByteValue(buffer, offset);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getObjectSizeInByteBuffer(ByteBuffer buffer, OWALChanges walChanges, int offset) {
-    return BYTE_SIZE;
   }
 }

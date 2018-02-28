@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,51 +14,45 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.common.collection;
 
 import com.orientechnologies.common.util.OResettable;
 import com.orientechnologies.common.util.OSizeable;
-import com.orientechnologies.common.util.OSupportsContains;
 import com.orientechnologies.orient.core.db.record.OAutoConvertToRecord;
-import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
-import com.orientechnologies.orient.core.iterator.OLazyWrapperIterator;
-import com.orientechnologies.orient.core.record.impl.ODocument;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
 
 /**
  * Iterator that allow to iterate against multiple collection of elements.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  */
-public class OMultiCollectionIterator<T> implements Iterator<T>, Iterable<T>, OResettable, OSizeable, OSupportsContains,
-    OAutoConvertToRecord {
-  private List<Object> sources;
-  private Iterator<?>  sourcesIterator;
-  private Iterator<T>  partialIterator;
+public class OMultiCollectionIterator<T> implements Iterator<T>, Iterable<T>, OResettable, OSizeable, OAutoConvertToRecord {
+  private Collection<Object> sources;
+  private Iterator<?>        sourcesIterator;
+  private Iterator<T>        partialIterator;
 
-  private int          browsed            = 0;
-  private int          skip               = -1;
-  private int          limit              = -1;
-  private boolean      embedded           = false;
-  private boolean      autoConvert2Record = true;
-
-
-  private int skipped = 0;
+  private int                browsed            = 0;
+  private int                limit              = -1;
+  private boolean            embedded           = false;
+  private boolean            autoConvert2Record = true;
 
   public OMultiCollectionIterator() {
     sources = new ArrayList<Object>();
+  }
+
+  public OMultiCollectionIterator(final Collection<Object> iSources) {
+    sources = iSources;
+    sourcesIterator = iSources.iterator();
+    getNextPartial();
   }
 
   public OMultiCollectionIterator(final Iterator<? extends Collection<?>> iterator) {
@@ -68,17 +62,6 @@ public class OMultiCollectionIterator<T> implements Iterator<T>, Iterable<T>, OR
 
   @Override
   public boolean hasNext() {
-    while(skipped < skip){
-      if(!hasNextInternal()){
-        return false;
-      }
-      partialIterator.next();
-      skipped++;
-    }
-    return hasNextInternal();
-  }
-
-  private boolean hasNextInternal() {
     if (sourcesIterator == null) {
       if (sources == null || sources.isEmpty())
         return false;
@@ -122,7 +105,6 @@ public class OMultiCollectionIterator<T> implements Iterator<T>, Iterable<T>, OR
     sourcesIterator = null;
     partialIterator = null;
     browsed = 0;
-    skipped = 0;
   }
 
   public OMultiCollectionIterator<T> add(final Object iValue) {
@@ -141,10 +123,7 @@ public class OMultiCollectionIterator<T> implements Iterator<T>, Iterable<T>, OR
   public int size() {
     // SUM ALL THE COLLECTION SIZES
     int size = 0;
-    final int totSources = sources.size();
-    for (int i = 0; i < totSources; ++i) {
-      final Object o = sources.get(i);
-
+    for (Object o : sources) {
       if (o != null)
         if (o instanceof Collection<?>)
           size += ((Collection<?>) o).size();
@@ -179,64 +158,12 @@ public class OMultiCollectionIterator<T> implements Iterator<T>, Iterable<T>, OR
     this.limit = limit;
   }
 
-  public int getSkip() {
-    return skip;
-  }
-
-  public void setSkip(final int skip) {
-    this.skip = skip;
-  }
-
   public void setAutoConvertToRecord(final boolean autoConvert2Record) {
     this.autoConvert2Record = autoConvert2Record;
   }
 
   public boolean isAutoConvertToRecord() {
     return autoConvert2Record;
-  }
-
-  @Override
-  public boolean supportsFastContains() {
-    final int totSources = sources.size();
-    for (int i = 0; i < totSources; ++i) {
-      final Object o = sources.get(i);
-
-      if (o != null) {
-        if (o instanceof Set<?> || o instanceof ORidBag) {
-          // OK
-        } else if (o instanceof OLazyWrapperIterator) {
-          if (!((OLazyWrapperIterator) o).canUseMultiValueDirectly())
-            return false;
-        } else {
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
-
-  @Override
-  public boolean contains(final Object value) {
-    final int totSources = sources.size();
-    for (int i = 0; i < totSources; ++i) {
-      Object o = sources.get(i);
-
-      if (o != null) {
-        if (o instanceof OLazyWrapperIterator)
-          o = ((OLazyWrapperIterator) o).getMultiValue();
-
-        if (o instanceof Collection<?>) {
-          if (((Collection<?>) o).contains(value))
-            return true;
-        } else if (o instanceof ORidBag) {
-          if (((ORidBag) o).contains((OIdentifiable) value))
-            return true;
-        }
-      }
-    }
-
-    return false;
   }
 
   @SuppressWarnings("unchecked")
@@ -246,7 +173,7 @@ public class OMultiCollectionIterator<T> implements Iterator<T>, Iterable<T>, OR
         Object next = sourcesIterator.next();
         if (next != null) {
 
-          if (!(next instanceof ODocument) && next instanceof Iterable<?>)
+          if (next instanceof Iterable<?>)
             next = ((Iterable) next).iterator();
 
           if (next instanceof OAutoConvertToRecord)
@@ -271,7 +198,7 @@ public class OMultiCollectionIterator<T> implements Iterator<T>, Iterable<T>, OR
               if (arraySize == 1)
                 partialIterator = new OIterableObject<T>((T) Array.get(next, 0));
               else
-                partialIterator = (Iterator<T>) OMultiValue.getMultiValueIterator(next, false);
+                partialIterator = (Iterator<T>) OMultiValue.getMultiValueIterator(next);
               return true;
             }
           } else {

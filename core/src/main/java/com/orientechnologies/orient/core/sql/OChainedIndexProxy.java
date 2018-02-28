@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
@@ -25,7 +25,12 @@ import com.orientechnologies.common.profiler.OProfilerStub;
 import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.index.*;
+import com.orientechnologies.orient.core.index.OIndex;
+import com.orientechnologies.orient.core.index.OIndexAbstractCursor;
+import com.orientechnologies.orient.core.index.OIndexCursor;
+import com.orientechnologies.orient.core.index.OIndexDefinition;
+import com.orientechnologies.orient.core.index.OIndexInternal;
+import com.orientechnologies.orient.core.index.OIndexKeyCursor;
 import com.orientechnologies.orient.core.iterator.OEmptyIterator;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
@@ -237,20 +242,6 @@ public class OChainedIndexProxy<T> implements OIndex<T> {
     return priorityOfUsage(index) > 0;
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public long getRebuildVersion() {
-    long rebuildVersion = 0;
-
-    for (OIndex<?> index : indexChain) {
-      rebuildVersion += index.getRebuildVersion();
-    }
-
-    return rebuildVersion;
-  }
-
   private static boolean supportNullValues(OIndex<?> index) {
     final ODocument metadata = index.getMetadata();
     if (metadata == null)
@@ -427,6 +418,10 @@ public class OChainedIndexProxy<T> implements OIndex<T> {
     }
   }
 
+  public ODocument checkEntry(final OIdentifiable iRecord, final Object iKey) {
+    return firstIndex.checkEntry(iRecord, iKey);
+  }
+
   //
   // Following methods are not allowed for proxy.
   //
@@ -473,11 +468,6 @@ public class OChainedIndexProxy<T> implements OIndex<T> {
     throw new UnsupportedOperationException("Not allowed operation");
   }
 
-  @Override
-  public long count(Object iKey) {
-    throw new UnsupportedOperationException("Not allowed operation");
-  }
-
   public long getKeySize() {
     throw new UnsupportedOperationException("Not allowed operation");
   }
@@ -488,6 +478,11 @@ public class OChainedIndexProxy<T> implements OIndex<T> {
   }
 
   public OIndex<T> delete() {
+    throw new UnsupportedOperationException("Not allowed operation");
+  }
+
+  @Override
+  public void deleteWithoutIndexLoad(String indexName) {
     throw new UnsupportedOperationException("Not allowed operation");
   }
 
@@ -540,16 +535,6 @@ public class OChainedIndexProxy<T> implements OIndex<T> {
   }
 
   @Override
-  public int getIndexId() {
-    throw new UnsupportedOperationException("Not allowed operation");
-  }
-
-  @Override
-  public boolean isUnique() {
-    return firstIndex.isUnique();
-  }
-
-  @Override
   public OIndexCursor cursor() {
     throw new UnsupportedOperationException("Not allowed operation");
   }
@@ -561,11 +546,6 @@ public class OChainedIndexProxy<T> implements OIndex<T> {
 
   @Override
   public OIndexKeyCursor keyCursor() {
-    throw new UnsupportedOperationException("Not allowed operation");
-  }
-
-  @Override
-  public int getVersion() {
     throw new UnsupportedOperationException("Not allowed operation");
   }
 
@@ -599,7 +579,7 @@ public class OChainedIndexProxy<T> implements OIndex<T> {
   }
 
   @Override
-  public boolean isRebuilding() {
+  public boolean isRebuiding() {
     return false;
   }
 

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,53 +14,45 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
 package com.tinkerpop.blueprints.impls.orient;
 
-import com.orientechnologies.orient.client.remote.OStorageRemote;
-import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import org.apache.commons.configuration.Configuration;
 
 import com.orientechnologies.orient.core.intent.OIntent;
 
-import java.util.Map;
-
 /**
  * Base class to manage graph settings.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com) (http://orientdb.com)
- *
+ * 
+ * @author Luca Garulli (http://www.orientechnologies.com)
  */
 public abstract class OrientConfigurableGraph {
-  protected Settings settings = new Settings();
+  protected Settings             settings                                         = new Settings();
 
-  protected static final boolean     USE_LIGHTWEIGHT_EDGES_DEFAULT                    = false;
-  protected static final boolean     USE_CLASS_FOR_EDGE_LABEL_DEFAULT                 = true;
-  protected static final boolean     USE_CLASS_FOR_VERTEX_LABEL_DEFAULT               = true;
-  protected static final boolean     KEEP_IN_MEMORY_REFERENCES_DEFAULT                = false;
-  protected static final boolean     USE_VERTEX_FIELDS_FOR_EDGE_LABELS                = true;
-  protected static final boolean     SAVE_ORIGINAL_IDS_DEFAULT                        = false;
-  protected static final boolean     STANDARD_ELEMENT_CONSTRAINTS_DEFAULT             = true;
-  protected static final boolean     STANDARD_EXCEPTIONS                              = false;
-  protected static final boolean     WARN_ON_FORCE_CLOSING_TX_DEFAULT                 = true;
-  protected static final boolean     AUTO_SCALE_EDGE_TYPE_DEFAULT                     = false;
-  protected static final boolean     USE_LOG_DEFAULT                                  = true;
-  protected static final int         EDGE_CONTAINER_EMBEDDED_2_TREE_THRESHOLD_DEFAULT = -1;
-  protected static final int         EDGE_CONTAINER_TREE_2_EMBEDDED_THRESHOLD_DEFAULT = -1;
-  protected static final THREAD_MODE THREAD_MODE_DEFAULT                              = THREAD_MODE.AUTOSET_IFNULL;
-  protected static final boolean     AUTO_START_TX_DEFAULT                            = true;
-  protected static final boolean     REQUIRE_TRANSACTION_DEFAULT                      = false;
-  protected static final boolean     STANDARD_TX_REQUIRE_FOR_SQL_OPERATIONS           = true;
-  protected static final int         STANDARD_MAX_RETRIES                             = 50;
+  protected static final boolean USE_LIGHTWEIGHT_EDGES_DEFAULT                    = false;
+  protected final boolean        USE_CLASS_FOR_EDGE_LABEL_DEFAULT                 = true;
+  protected final boolean        USE_CLASS_FOR_VERTEX_LABEL_DEFAULT               = true;
+  protected final boolean        KEEP_IN_MEMORY_REFERENCES_DEFAULT                = false;
+  protected final boolean        USE_VERTEX_FIELDS_FOR_EDGE_LABELS                = true;
+  protected final boolean        SAVE_ORIGINAL_IDS_DEFAULT                        = false;
+  protected final boolean        STANDARD_ELEMENT_CONSTRAINTS_DEFAULT             = true;
+  protected final boolean        WARN_ON_FORCE_CLOSING_TX_DEFAULT                 = true;
+  protected final boolean        AUTO_SCALE_EDGE_TYPE_DEFAULT                     = false;
+  protected final boolean        USE_LOG_DEFAULT                                  = true;
+  protected final int            EDGE_CONTAINER_EMBEDDED_2_TREE_THRESHOLD_DEFAULT = -1;
+  protected final int            EDGE_CONTAINER_TREE_2_EMBEDDED_THRESHOLD_DEFAULT = -1;
+  protected final THREAD_MODE    THREAD_MODE_DEFAULT                              = THREAD_MODE.AUTOSET_IFNULL;
+  protected final boolean        AUTO_START_TX_DEFAULT                            = true;
+  protected final boolean        REQUIRE_TRANSACTION_DEFAULT                      = false;
 
   public enum THREAD_MODE {
     MANUAL, AUTOSET_IFNULL, ALWAYS_AUTOSET
   }
 
-  public static class Settings {
+  public class Settings {
 
     private Boolean     useLightweightEdges                 = null;
     private Boolean     useClassForEdgeLabel                = null;
@@ -69,18 +61,14 @@ public abstract class OrientConfigurableGraph {
     private Boolean     useVertexFieldsForEdgeLabels        = null;
     private Boolean     saveOriginalIds                     = null;
     private Boolean     standardElementConstraints          = null;
-    private Boolean     standardExceptions                  = null;
     private Boolean     warnOnForceClosingTx                = null;
     private Boolean     autoScaleEdgeType                   = null;
     private Integer     edgeContainerEmbedded2TreeThreshold = null;
     private Integer     edgeContainerTree2EmbeddedThreshold = null;
     private THREAD_MODE threadMode                          = null;
     private Boolean     autoStartTx                         = null;
-    private Boolean     txRequiredForSQLGraphOperations     = null;
     private Boolean     requireTransaction                  = null;
     private Boolean     useLog                              = null;
-    private String      connectionStrategy                  = "STICKY";
-    private Integer     maxRetries                          = null;
 
     public Settings copy() {
       final Settings copy = new Settings();
@@ -91,7 +79,6 @@ public abstract class OrientConfigurableGraph {
       copy.useVertexFieldsForEdgeLabels = useVertexFieldsForEdgeLabels;
       copy.saveOriginalIds = saveOriginalIds;
       copy.standardElementConstraints = standardElementConstraints;
-      copy.standardExceptions = standardExceptions;
       copy.warnOnForceClosingTx = warnOnForceClosingTx;
       copy.autoScaleEdgeType = autoScaleEdgeType;
       copy.edgeContainerEmbedded2TreeThreshold = edgeContainerEmbedded2TreeThreshold;
@@ -99,16 +86,13 @@ public abstract class OrientConfigurableGraph {
       copy.threadMode = threadMode;
       copy.autoStartTx = autoStartTx;
       copy.requireTransaction = requireTransaction;
-      copy.txRequiredForSQLGraphOperations = txRequiredForSQLGraphOperations;
       copy.useLog = useLog;
-      copy.connectionStrategy = connectionStrategy;
-      copy.maxRetries = maxRetries;
       return copy;
     }
 
     /**
      * copies only not null settings from the input settings object
-     *
+     * 
      * @param settings
      */
     public void copyFrom(final Settings settings) {
@@ -133,9 +117,6 @@ public abstract class OrientConfigurableGraph {
       if (settings.standardElementConstraints != null) {
         standardElementConstraints = settings.standardElementConstraints;
       }
-      if (settings.standardExceptions != null) {
-        standardExceptions = settings.standardExceptions;
-      }
       if (settings.warnOnForceClosingTx != null) {
         warnOnForceClosingTx = settings.warnOnForceClosingTx;
       }
@@ -157,17 +138,8 @@ public abstract class OrientConfigurableGraph {
       if (settings.requireTransaction != null) {
         requireTransaction = settings.requireTransaction;
       }
-      if (settings.txRequiredForSQLGraphOperations != null) {
-        txRequiredForSQLGraphOperations = settings.txRequiredForSQLGraphOperations;
-      }
       if (settings.useLog != null) {
         useLog = settings.useLog;
-      }
-      if (settings.connectionStrategy != null) {
-        connectionStrategy = settings.connectionStrategy;
-      }
-      if (settings.maxRetries != null) {
-        maxRetries = settings.maxRetries;
       }
     }
 
@@ -224,14 +196,6 @@ public abstract class OrientConfigurableGraph {
     public void setUseLog(final boolean useLog) {
       this.useLog = useLog;
 
-    }
-
-    public String getConnectionStrategy() {
-      return this.connectionStrategy;
-    }
-
-    public void setConnectionStrategy(final String connectionStrategy) {
-      this.connectionStrategy = connectionStrategy;
     }
 
     /**
@@ -293,9 +257,6 @@ public abstract class OrientConfigurableGraph {
       this.autoStartTx = autoStartTx;
     }
 
-    /**
-     * Returns true if it is required that all modification operations are executed inside a transaction.
-     */
     public boolean isRequireTransaction() {
       if (requireTransaction == null) {
         return REQUIRE_TRANSACTION_DEFAULT;
@@ -303,34 +264,8 @@ public abstract class OrientConfigurableGraph {
       return requireTransaction;
     }
 
-    /**
-     * Changes the setting about if all modification operations are executed inside a transaction.
-     */
     public void setRequireTransaction(final boolean requireTransaction) {
       this.requireTransaction = requireTransaction;
-    }
-
-    /**
-     * Changes the setting about usage of transactions on graph modification for SQL commands (create/remove vertex, create/remove
-     * edge).
-     *
-     * @since v2.2.0
-     */
-    public void setTxRequiredForSQLGraphOperations(final boolean iValue) {
-      this.txRequiredForSQLGraphOperations = iValue;
-    }
-
-    /**
-     * Returns true if usage of transactions is needed on graph modification for SQL commands (create/remove vertex, create/remove
-     * edge).
-     *
-     * @since v2.2.0
-     */
-    public boolean isTxRequiredForSQLGraphOperations() {
-      if (txRequiredForSQLGraphOperations == null) {
-        return STANDARD_TX_REQUIRE_FOR_SQL_OPERATIONS;
-      }
-      return txRequiredForSQLGraphOperations;
     }
 
     /**
@@ -421,12 +356,7 @@ public abstract class OrientConfigurableGraph {
     }
 
     /**
-     * Returns true if Blueprints standard exceptions are used:
-     * <li>
-     * <ul>
-     * IllegalStateException instead of ORecordNotFoundException when the record was not found
-     * </ul>
-     * </li>
+     * Returns true if Blueprints standard constraints are applied to elements.
      */
     public boolean isStandardElementConstraints() {
       if (standardElementConstraints == null) {
@@ -440,28 +370,6 @@ public abstract class OrientConfigurableGraph {
      */
     public void setStandardElementConstraints(final boolean allowsPropertyValueNull) {
       this.standardElementConstraints = allowsPropertyValueNull;
-    }
-
-    /**
-     * Returns true if the warning is generated on force the graph closing.
-     */
-    public boolean isStandardExceptions() {
-      if (standardExceptions == null) {
-        return STANDARD_EXCEPTIONS;
-      }
-      return standardExceptions;
-    }
-
-    /**
-     * Changes the setting to throw Blueprints standard exceptions:
-     * <li>
-     * <ul>
-     * IllegalStateException instead of ORecordNotFoundException when the record was not found
-     * </ul>
-     * </li>
-     */
-    public void setStandardExceptions(final boolean stdExceptions) {
-      this.standardExceptions = stdExceptions;
     }
 
     /**
@@ -485,15 +393,14 @@ public abstract class OrientConfigurableGraph {
      * Returns the current thread mode:
      * <ul>
      * <li><b>MANUAL</b> the user has to manually invoke the current database in Thread Local:
-     * ODatabaseRecordThreadLocal.instance().set(graph.getRawGraph());</li>
+     * ODatabaseRecordThreadLocal.INSTANCE.set(graph.getRawGraph());</li>
      * <li><b>AUTOSET_IFNULL</b> (default) each call assures the current graph instance is set in the Thread Local only if no one
      * was set before</li>
      * <li><b>ALWAYS_AUTOSET</b> each call assures the current graph instance is set in the Thread Local</li>
      * </ul>
      *
-     * @return Current Graph instance to allow calls in chain (fluent interface)
-     *
      * @see #setThreadMode(THREAD_MODE)
+     * @return Current Graph instance to allow calls in chain (fluent interface)
      */
 
     public THREAD_MODE getThreadMode() {
@@ -507,37 +414,19 @@ public abstract class OrientConfigurableGraph {
      * Changes the thread mode:
      * <ul>
      * <li><b>MANUAL</b> the user has to manually invoke the current database in Thread Local:
-     * ODatabaseRecordThreadLocal.instance().set(graph.getRawGraph());</li>
+     * ODatabaseRecordThreadLocal.INSTANCE.set(graph.getRawGraph());</li>
      * <li><b>AUTOSET_IFNULL</b> (default) each call assures the current graph instance is set in the Thread Local only if no one
      * was set before</li>
      * <li><b>ALWAYS_AUTOSET</b> each call assures the current graph instance is set in the Thread Local</li>
      * </ul>
      *
-     * @param iControl Value to set
-     *
-     * @return Current Graph instance to allow calls in chain (fluent interface)
-     *
+     * @param iControl
+     *          Value to set
      * @see #getThreadMode()
+     * @return Current Graph instance to allow calls in chain (fluent interface)
      */
     public void setThreadMode(final THREAD_MODE iControl) {
       this.threadMode = iControl;
-    }
-
-    /**
-     * Returns the maximum number of retry in case of auto managed OConcurrentModificationException (like addEdge).
-     */
-    public int getMaxRetries() {
-      if (maxRetries == null) {
-        return STANDARD_MAX_RETRIES;
-      }
-      return maxRetries;
-    }
-
-    /**
-     * Changes the maximum number of retry in case of auto managed OConcurrentModificationException (like addEdge).
-     */
-    public void setMaxRetries(final int maxRetries) {
-      this.maxRetries = maxRetries;
     }
   }
 
@@ -558,27 +447,6 @@ public abstract class OrientConfigurableGraph {
    */
   public OrientConfigurableGraph setUseLightweightEdges(final boolean useDynamicEdges) {
     settings.setUseLightweightEdges(useDynamicEdges);
-    return this;
-  }
-
-  /**
-   * Returns true if usage of transactions is needed on graph modification for SQL commands (create/remove vertex, create/remove
-   * edge).
-   *
-   * @since v2.2.0
-   */
-  public boolean isTxRequiredForSQLGraphOperations() {
-    return settings.isTxRequiredForSQLGraphOperations();
-  }
-
-  /**
-   * Changes the setting about usage of transactions on graph modification for SQL commands (create/remove vertex, create/remove
-   * edge).
-   *
-   * @since v2.2.0
-   */
-  public OrientConfigurableGraph setTxRequiredForSQLGraphOperations(final boolean useTransaction) {
-    settings.setTxRequiredForSQLGraphOperations(useTransaction);
     return this;
   }
 
@@ -729,9 +597,8 @@ public abstract class OrientConfigurableGraph {
    * Changes the setting to postfix vertices fields with edge labels. This improves traversal time by partitioning edges on
    * different collections, one per Edge's class.
    */
-  @Deprecated
   public OrientConfigurableGraph setUseVertexFieldsForEdgeLabels(final boolean useVertexFieldsForEdgeLabels) {
-//    this.settings.setUseVertexFieldsForEdgeLabels(useVertexFieldsForEdgeLabels);
+    this.settings.setUseVertexFieldsForEdgeLabels(useVertexFieldsForEdgeLabels);
     return this;
   }
 
@@ -747,31 +614,6 @@ public abstract class OrientConfigurableGraph {
    */
   public OrientConfigurableGraph setStandardElementConstraints(final boolean allowsPropertyValueNull) {
     this.settings.setStandardElementConstraints(allowsPropertyValueNull);
-    return this;
-  }
-
-  /**
-   * Returns true if Blueprints standard exceptions are used:
-   * <li>
-   * <ul>
-   * IllegalStateException instead of ORecordNotFoundException when the record was not found
-   * </ul>
-   * </li>
-   */
-  public boolean isStandardExceptions() {
-    return settings.isStandardExceptions();
-  }
-
-  /**
-   * Changes the setting to throw Blueprints standard exceptions:
-   * <li>
-   * <ul>
-   * IllegalStateException instead of ORecordNotFoundException when the record was not found
-   * </ul>
-   * </li>
-   */
-  public OrientConfigurableGraph setStandardExceptions(final boolean stdExceptions) {
-    this.settings.setStandardExceptions(stdExceptions);
     return this;
   }
 
@@ -794,15 +636,14 @@ public abstract class OrientConfigurableGraph {
    * Returns the current thread mode:
    * <ul>
    * <li><b>MANUAL</b> the user has to manually invoke the current database in Thread Local:
-   * ODatabaseRecordThreadLocal.instance().set(graph.getRawGraph());</li>
+   * ODatabaseRecordThreadLocal.INSTANCE.set(graph.getRawGraph());</li>
    * <li><b>AUTOSET_IFNULL</b> (default) each call assures the current graph instance is set in the Thread Local only if no one was
    * set before</li>
    * <li><b>ALWAYS_AUTOSET</b> each call assures the current graph instance is set in the Thread Local</li>
    * </ul>
-   *
-   * @return Current Graph instance to allow calls in chain (fluent interface)
-   *
+   * 
    * @see #setThreadMode(THREAD_MODE)
+   * @return Current Graph instance to allow calls in chain (fluent interface)
    */
 
   public THREAD_MODE getThreadMode() {
@@ -813,17 +654,16 @@ public abstract class OrientConfigurableGraph {
    * Changes the thread mode:
    * <ul>
    * <li><b>MANUAL</b> the user has to manually invoke the current database in Thread Local:
-   * ODatabaseRecordThreadLocal.instance().set(graph.getRawGraph());</li>
+   * ODatabaseRecordThreadLocal.INSTANCE.set(graph.getRawGraph());</li>
    * <li><b>AUTOSET_IFNULL</b> (default) each call assures the current graph instance is set in the Thread Local only if no one was
    * set before</li>
    * <li><b>ALWAYS_AUTOSET</b> each call assures the current graph instance is set in the Thread Local</li>
    * </ul>
-   *
-   * @param iControl Value to set
-   *
-   * @return Current Graph instance to allow calls in chain (fluent interface)
-   *
+   * 
+   * @param iControl
+   *          Value to set
    * @see #getThreadMode()
+   * @return Current Graph instance to allow calls in chain (fluent interface)
    */
   public OrientConfigurableGraph setThreadMode(final THREAD_MODE iControl) {
     this.settings.setThreadMode(iControl);
@@ -833,30 +673,6 @@ public abstract class OrientConfigurableGraph {
   public OrientConfigurableGraph setUseLog(final boolean useLog) {
     this.settings.useLog = useLog;
     return this;
-  }
-
-  public String getConnectionStrategy() {
-    Object val = getProperty(OGlobalConfiguration.CLIENT_CONNECTION_STRATEGY.getKey());
-    return val == null ? null : val.toString();
-  }
-
-  public void setConnectionStrategy(final String connectionStrategy) {
-    this.setProperty(OGlobalConfiguration.CLIENT_CONNECTION_STRATEGY.getKey(),connectionStrategy);
-    this.settings.setConnectionStrategy(connectionStrategy);
-  }
-
-  /**
-   * Returns the maximum number of retries in case of auto managed OConcurrentModificationException (like addEdge).
-   */
-  public int getMaxRetries() {
-    return this.settings.getMaxRetries();
-  }
-
-  /**
-   * Changes the maximum number of retries in case of auto managed OConcurrentModificationException (like addEdge).
-   */
-  public void setMaxRetries(final int maxRetries) {
-    this.settings.setMaxRetries(maxRetries);
   }
 
   /**
@@ -934,7 +750,8 @@ public abstract class OrientConfigurableGraph {
    * </tr>
    * </table>
    *
-   * @param configuration of graph
+   * @param configuration
+   *          of graph
    */
   protected void init(final Configuration configuration) {
     final Boolean saveOriginalIds = configuration.getBoolean("blueprints.orientdb.saveOriginalIds", null);
@@ -968,21 +785,5 @@ public abstract class OrientConfigurableGraph {
     final Boolean requireTransaction = configuration.getBoolean("blueprints.orientdb.requireTransaction", null);
     if (requireTransaction != null)
       setRequireTransaction(requireTransaction);
-
-    final Boolean txRequiredForSQLGraphOperations = configuration
-        .getBoolean("blueprints.orientdb.txRequiredForSQLGraphOperations", null);
-    if (txRequiredForSQLGraphOperations != null)
-      setTxRequiredForSQLGraphOperations(txRequiredForSQLGraphOperations);
-
-    final Integer maxRetries = configuration.getInt("blueprints.orientdb.maxRetries", 50);
-    if (maxRetries != null)
-      setMaxRetries(maxRetries);
   }
-
-  protected abstract Object setProperty(final String iName, final Object iValue);
-
-  protected abstract Object getProperty(final String iName);
-
-  protected abstract Map<String,Object> getProperties();
-
 }

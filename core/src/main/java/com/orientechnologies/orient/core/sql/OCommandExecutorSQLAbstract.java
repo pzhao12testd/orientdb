@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandContext.TIMEOUT_STRATEGY;
 import com.orientechnologies.orient.core.command.OCommandDistributedReplicateRequest;
 import com.orientechnologies.orient.core.command.OCommandExecutorAbstract;
@@ -31,18 +30,23 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.metadata.OMetadataInternal;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.metadata.schema.OClassImpl;
 import com.orientechnologies.orient.core.metadata.security.ORule;
 import com.orientechnologies.orient.core.sql.parser.OStatement;
-import com.orientechnologies.orient.core.sql.parser.OStatementCache;
+import com.orientechnologies.orient.core.sql.parser.OrientSql;
+import com.orientechnologies.orient.core.sql.parser.ParseException;
 
-import java.util.*;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * SQL abstract Command Executor implementation.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
- *
+ * 
+ * @author Luca Garulli
+ * 
  */
 public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstract {
 
@@ -70,8 +74,6 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
   public static final String METADATA_PREFIX          = "METADATA:";
   public static final String METADATA_SCHEMA          = "SCHEMA";
   public static final String METADATA_INDEXMGR        = "INDEXMANAGER";
-  public static final String METADATA_STORAGE         = "STORAGE";
-  public static final String METADATA_DATABASE        = "DATABASE";
 
   public static final String DEFAULT_PARAM_USER       = "$user";
 
@@ -100,10 +102,6 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
     throw new OCommandSQLParsingException(iText, parserText, parserGetPreviousPosition());
   }
 
-  protected void throwParsingException(final String iText, Exception e) {
-    throw OException.wrapException(new OCommandSQLParsingException(iText, parserText, parserGetPreviousPosition()), e);
-  }
-
   /**
    * Parses the timeout keyword if found.
    */
@@ -115,7 +113,7 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
 
     try {
       timeoutMs = Long.parseLong(word);
-    } catch (NumberFormatException ignore) {
+    } catch (Exception e) {
       throwParsingException("Invalid " + KEYWORD_TIMEOUT + " value set to '" + word + "' but it should be a valid long. Example: "
           + KEYWORD_TIMEOUT + " 3000");
     }
@@ -161,7 +159,7 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
         for (int clId : cls.getPolymorphicClusterIds()) {
           // FILTER THE CLUSTER WHERE THE USER HAS THE RIGHT ACCESS
           if (clId > -1 && checkClusterAccess(db, db.getClusterNameById(clId)))
-            clusters.add(db.getClusterNameById(clId).toLowerCase(Locale.ENGLISH));
+            clusters.add(db.getClusterNameById(clId).toLowerCase());
         }
     }
 
@@ -174,7 +172,7 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
     final Set<String> clusters = new HashSet<String>();
 
     for (String cluster : iClusterNames) {
-      final String c = cluster.toLowerCase(Locale.ENGLISH);
+      final String c = cluster.toLowerCase();
       // FILTER THE CLUSTER WHERE THE USER HAS THE RIGHT ACCESS
       if (checkClusterAccess(db, c))
         clusters.add(c);
@@ -190,7 +188,7 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
 
     final OMetadataInternal metadata = (OMetadataInternal) db.getMetadata();
     final OIndex<?> idx = metadata.getIndexManager().getIndex(iIndexName);
-    if (idx != null && idx.getDefinition() != null) {
+    if (idx != null) {
       final String clazz = idx.getDefinition().getClassName();
 
       if (clazz != null) {
@@ -199,7 +197,7 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
           for (int clId : cls.getClusterIds()) {
             final String clName = db.getClusterNameById(clId);
             if (clName != null)
-              clusters.add(clName.toLowerCase(Locale.ENGLISH));
+              clusters.add(clName.toLowerCase());
           }
       }
     }
@@ -224,31 +222,24 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
     final boolean strict = getDatabase().getStorage().getConfiguration().isStrictSql();
 
     if (strict) {
+      final InputStream is = new ByteArrayInputStream(queryText.getBytes());
+      final OrientSql osql = new OrientSql(is);
       try {
-        final OStatement result = OStatementCache.get(queryText, getDatabase());
+        final OStatement result = osql.parse();
         preParsedStatement = result;
 
         if (iRequest instanceof OCommandRequestAbstract) {
           final Map<Object, Object> params = ((OCommandRequestAbstract) iRequest).getParameters();
-          StringBuilder builder = new StringBuilder();
-          result.toString(params, builder);
-          return builder.toString();
+          result.replaceParameters(params);
         }
+
         return result.toString();
-      } catch (OCommandSQLParsingException sqlx) {
-        throw sqlx;
-      } catch (Exception e) {
-        throwParsingException("Error parsing query: \n" + queryText + "\n" + e.getMessage(), e);
+      } catch (ParseException e) {
+        throwParsingException(e.getMessage());
       }
-      OClass clazz = getDatabase().getMetadata().getSchema().getClass("Foo");
-      clazz.setCustom("schemaVersion", "1");
-      String version = clazz.getCustom("schemaVersion");
+      return "ERROR!";
     }
     return queryText;
-  }
-
-  protected String decodeClassName(String s) {
-    return OClassImpl.decodeClassName(s);
   }
 
 }

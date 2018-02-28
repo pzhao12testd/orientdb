@@ -12,8 +12,5 @@ class OCreateVertexStatementNoTarget extends OCreateVertexStatement {
     super(p, id);
   }
 
-  @Override public OCreateVertexStatement copy() {
-    return super.copy();
-  }
 }
 /* JavaCC - OriginalChecksum=5213b77f14f5f89255590034bdc0ea54 (do not edit this line) */

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,28 +14,22 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.fetch;
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OFetchException;
-import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
 /**
  * Listener interface used while fetching records.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public interface OFetchListener {
-  /**
-   * Returns true if the listener fetches he fields.
-   */
-  boolean requireFieldProcessing();
-
   /**
    * Fetch the linked field.
    * 
@@ -44,25 +38,25 @@ public interface OFetchListener {
    * @param iLinked
    * @return null if the fetching must stop, otherwise the current field value
    */
-  Object fetchLinked(final ODocument iRoot, final Object iUserObject, final String iFieldName, final ODocument iLinked,
+  public Object fetchLinked(final ODocument iRoot, final Object iUserObject, final String iFieldName, final ODocument iLinked,
       final OFetchContext iContext) throws OFetchException;
 
-  void parseLinked(final ODocument iRootRecord, final OIdentifiable iLinked, final Object iUserObject, final String iFieldName,
-      final OFetchContext iContext) throws OFetchException;
-
-  void parseLinkedCollectionValue(final ODocument iRootRecord, final OIdentifiable iLinked, final Object iUserObject,
+  public void parseLinked(final ODocument iRootRecord, final OIdentifiable iLinked, final Object iUserObject,
       final String iFieldName, final OFetchContext iContext) throws OFetchException;
 
-  Object fetchLinkedMapEntry(final ODocument iRoot, final Object iUserObject, final String iFieldName, final String iKey,
+  public void parseLinkedCollectionValue(final ODocument iRootRecord, final OIdentifiable iLinked, final Object iUserObject,
+      final String iFieldName, final OFetchContext iContext) throws OFetchException;
+
+  public Object fetchLinkedMapEntry(final ODocument iRoot, final Object iUserObject, final String iFieldName, final String iKey,
       final ODocument iLinked, final OFetchContext iContext) throws OFetchException;
 
-  Object fetchLinkedCollectionValue(final ODocument iRoot, final Object iUserObject, final String iFieldName,
+  public Object fetchLinkedCollectionValue(final ODocument iRoot, final Object iUserObject, final String iFieldName,
       final ODocument iLinked, final OFetchContext iContext) throws OFetchException;
 
-  void processStandardField(final ODocument iRecord, final Object iFieldValue, final String iFieldName,
-      final OFetchContext iContext, final Object iUserObject, String iFormat, OType filedType) throws OFetchException;
+  public void processStandardField(final ODocument iRecord, final Object iFieldValue, final String iFieldName,
+      final OFetchContext iContext, final Object iUserObject, String iFormat) throws OFetchException;
 
-  void skipStandardField(final ODocument iRecord, final String iFieldName, final OFetchContext iContext, final Object iUserObject,
-      String iFormat) throws OFetchException;
+  public void skipStandardField(final ODocument iRecord, final String iFieldName, final OFetchContext iContext,
+      final Object iUserObject, String iFormat) throws OFetchException;
 
 }

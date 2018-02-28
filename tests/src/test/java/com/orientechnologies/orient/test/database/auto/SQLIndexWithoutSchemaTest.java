@@ -1,5 +1,13 @@
 package com.orientechnologies.orient.test.database.auto;
 
+import java.util.List;
+
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Parameters;
+import org.testng.annotations.Test;
+
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.index.OIndexDefinition;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
@@ -8,11 +16,6 @@ import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import org.testng.Assert;
-import org.testng.annotations.*;
-
-import java.util.List;
-import java.util.Locale;
 
 /**
  * There is a possibility to create an automatic index for class without creation property in schema.
@@ -28,7 +31,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
   public static final String TEST_CLASS = "sqlIndexWithoutSchemaTest";
 
   @Parameters("url")
-  public SQLIndexWithoutSchemaTest(@Optional final String iURL) {
+  public SQLIndexWithoutSchemaTest(final String iURL) {
     super(iURL);
   }
 
@@ -60,7 +63,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
 
   @Test
   public void testCreateIndex() {
-    database.command(new OCommandSQL("CREATE INDEX indexWithoutSchema ON " + TEST_CLASS + " (prop2) NOTUNIQUE INTEGER METADATA { ignoreNullValues: true }")).execute();
+    database.command(new OCommandSQL("CREATE INDEX indexWithoutSchema ON " + TEST_CLASS + " (prop2) NOTUNIQUE INTEGER")).execute();
 
     database.getMetadata().getIndexManager().reload();
 
@@ -71,7 +74,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
 
     final OIndexDefinition definition = index.getDefinition();
     Assert.assertEquals(definition.getFields().size(), 1);
-    Assert.assertEquals(definition.getFields().get(0).toLowerCase(Locale.ENGLISH), "prop2");
+    Assert.assertEquals(definition.getFields().get(0).toLowerCase(), "prop2");
     Assert.assertEquals(definition.getTypes()[0], OType.INTEGER);
   }
 
@@ -99,7 +102,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
     for (int i = 0, resultsSize = results.size(); i < resultsSize; i++) {
       ODocument result = results.get(i).field("rid");
 
-      Assert.assertEquals(result.<Object>field("prop1"), i + 1);
+      Assert.assertEquals(result.field("prop1"), i + 1);
     }
   }
 
@@ -113,7 +116,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
     for (int i = 0, resultsSize = results.size(); i < resultsSize; i++) {
       ODocument result = results.get(i).field("rid");
 
-      Assert.assertEquals(result.<Object>field("prop1"), i + 6);
+      Assert.assertEquals(result.field("prop1"), i + 6);
     }
   }
 
@@ -142,7 +145,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
   @Test
   public void testCreateCompositeIndex() {
     database.command(
-        new OCommandSQL("CREATE INDEX compositeIndexWithoutSchema ON " + TEST_CLASS + " (cp2, cp3) NOTUNIQUE INTEGER, INTEGER METADATA { ignoreNullValues: true }"))
+        new OCommandSQL("CREATE INDEX compositeIndexWithoutSchema ON " + TEST_CLASS + " (cp2, cp3) NOTUNIQUE INTEGER, INTEGER"))
         .execute();
 
     database.getMetadata().getIndexManager().reload();
@@ -154,8 +157,8 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
 
     final OIndexDefinition definition = index.getDefinition();
     Assert.assertEquals(definition.getFields().size(), 2);
-    Assert.assertEquals(definition.getFields().get(0).toLowerCase(Locale.ENGLISH), "cp2");
-    Assert.assertEquals(definition.getFields().get(1).toLowerCase(Locale.ENGLISH), "cp3");
+    Assert.assertEquals(definition.getFields().get(0).toLowerCase(), "cp2");
+    Assert.assertEquals(definition.getFields().get(1).toLowerCase(), "cp3");
     Assert.assertEquals(definition.getTypes()[0], OType.INTEGER);
     Assert.assertEquals(definition.getTypes()[1], OType.INTEGER);
   }
@@ -185,7 +188,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
     for (int i = 0, resultsSize = results.size(); i < resultsSize; i++) {
       ODocument result = results.get(i).field("rid");
 
-      Assert.assertEquals(result.<Object>field("cp1"), i + 1);
+      Assert.assertEquals(result.field("cp1"), i + 1);
     }
   }
 
@@ -199,7 +202,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
     for (int i = 0, resultsSize = results.size(); i < resultsSize; i++) {
       ODocument result = results.get(i).field("rid");
 
-      Assert.assertEquals(result.<Object>field("cp1"), i + 6);
+      Assert.assertEquals(result.field("cp1"), i + 6);
     }
   }
 
@@ -213,7 +216,7 @@ public class SQLIndexWithoutSchemaTest extends AbstractIndexReuseTest {
         + " WHERE cp2 = 70 and cp3 = 700"));
 
     Assert.assertEquals(result.size(), 1);
-    Assert.assertEquals(result.get(0).<Object>field("cp1"), 7);
+    Assert.assertEquals(result.get(0).field("cp1"), 7);
 
     Assert.assertEquals(profiler.getCounter("db.demo.query.indexUsed"), oldIndexUsage + 1);
     Assert.assertEquals(profiler.getCounter("db.demo.query.compositeIndexUsed"), oldCompositeIndexUsage + 1);

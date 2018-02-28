@@ -2,9 +2,10 @@ package com.orientechnologies.common.serialization;
 
 import java.nio.ByteOrder;
 
-import org.junit.Assert;
+import org.testng.Assert;
+
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 21.05.13
  */
 public abstract class AbstractConverterTest {

@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.object.db;
@@ -224,7 +224,7 @@ public class OObjectLazyMap<TYPE> extends HashMap<Object, Object> implements Ser
     final ORecord record = (ORecord) underlying.get(iKey);
     if (record == null)
       return;
-    TYPE o = (TYPE) getDatabase().getUserObjectByRecord(record, null);
+    TYPE o = getDatabase().getUserObjectByRecord(record, null);
     ((OObjectProxyMethodHandler) (((ProxyObject) o)).getHandler()).setParentObject(sourceRecord);
     super.put(iKey, o);
   }
@@ -237,8 +237,8 @@ public class OObjectLazyMap<TYPE> extends HashMap<Object, Object> implements Ser
     convertAll();
   }
 
-  public void detachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached, Map<Object, Object> lazyObjects) {
-    convertAndDetachAll(nonProxiedInstance, alreadyDetached, lazyObjects);
+  public void detachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached) {
+    convertAndDetachAll(nonProxiedInstance, alreadyDetached);
 
   }
 
@@ -264,13 +264,13 @@ public class OObjectLazyMap<TYPE> extends HashMap<Object, Object> implements Ser
     converted = true;
   }
 
-  protected void convertAndDetachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached, Map<Object, Object> lazyObjects) {
+  protected void convertAndDetachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached) {
     if (converted || !convertToRecord)
       return;
 
     for (java.util.Map.Entry<Object, OIdentifiable> e : underlying.entrySet()) {
       Object o = getDatabase().getUserObjectByRecord((ORecord) ((OIdentifiable) e.getValue()).getRecord(), null);
-      o = ((OObjectDatabaseTx) getDatabase()).detachAll(o, nonProxiedInstance, alreadyDetached, lazyObjects);
+      o = ((OObjectDatabaseTx) getDatabase()).detachAll(o, nonProxiedInstance, alreadyDetached);
       super.put(e.getKey(), o);
     }
 
@@ -278,7 +278,7 @@ public class OObjectLazyMap<TYPE> extends HashMap<Object, Object> implements Ser
   }
 
   @SuppressWarnings("unchecked")
-  protected OObjectDatabaseTx getDatabase() {
+  protected ODatabasePojoAbstract<TYPE> getDatabase() {
     return OLazyCollectionUtil.getDatabase();
   }
 }

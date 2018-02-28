@@ -1,11 +1,13 @@
 package com.orientechnologies.common.comparator;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 11.07.12
  */
+@Test(enabled = false)
 public class UnsafeComparatorTest {
   public void testOneByteArray() {
     final byte[] keyOne = new byte[] { 1 };

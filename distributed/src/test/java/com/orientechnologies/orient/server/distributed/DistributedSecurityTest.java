@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,16 +14,19 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
 import junit.framework.Assert;
+
 import org.junit.Test;
+
+import com.orientechnologies.orient.core.sql.OCommandSQL;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
 
 /**
  * Tests the behavior of security in distributed configuration.
@@ -45,30 +48,30 @@ public class DistributedSecurityTest extends AbstractServerClusterTest {
   @Override
   protected void executeTest() throws Exception {
     for (int s = 0; s < SERVERS; ++s) {
-
-      ODatabaseDocumentTx g = new ODatabaseDocumentTx("plocal:target/server" + s + "/databases/" + getDatabaseName());
-      g.open("reader", "reader");
+      OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server" + s + "/databases/" + getDatabaseName(), "reader",
+          "reader");
+      OrientGraphNoTx g = factory.getNoTx();
 
       try {
 
         try {
           // TRY DELETING ALL OUSER VIA COMMAND
-          Long deleted = g.command(new OCommandSQL("delete from OUser")).execute();
-          Assert.assertEquals(deleted.longValue(), 0l);
+          g.command(new OCommandSQL("delete from OUser")).execute();
+          Assert.assertTrue(false);
         } catch (Exception e) {
           Assert.assertTrue(true);
         }
 
         try {
           // TRY DELETING CURRENT OUSER VIA API
-          g.getUser().getIdentity().getRecord().delete();
+          g.getRawGraph().getUser().getIdentity().getRecord().delete();
           Assert.assertTrue(false);
         } catch (Exception e) {
           Assert.assertTrue(true);
         }
 
       } finally {
-        g.close();
+        g.shutdown();
       }
     }
   }

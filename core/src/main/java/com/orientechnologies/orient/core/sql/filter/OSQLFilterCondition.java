@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,48 +14,44 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql.filter;
 
 import com.orientechnologies.common.collection.OMultiValue;
-import com.orientechnologies.common.exception.OException;
-import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.collate.OCollate;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.config.OStorageConfiguration;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.ORecordElement;
-import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.exception.OQueryParsingException;
 import com.orientechnologies.orient.core.exception.ORecordNotFoundException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
-import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.query.OQueryRuntimeValueMulti;
-import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
-import com.orientechnologies.orient.core.serialization.serializer.record.binary.BytesContainer;
-import com.orientechnologies.orient.core.serialization.serializer.record.binary.OBinaryField;
-import com.orientechnologies.orient.core.serialization.serializer.record.binary.ORecordSerializerBinary;
 import com.orientechnologies.orient.core.sql.OSQLHelper;
 import com.orientechnologies.orient.core.sql.functions.OSQLFunctionRuntime;
 import com.orientechnologies.orient.core.sql.operator.OQueryOperator;
-import com.orientechnologies.orient.core.sql.operator.OQueryOperatorMatches;
 import com.orientechnologies.orient.core.sql.query.OSQLQuery;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
  * Run-time query condition evaluator.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLFilterCondition {
   private static final String NULL_VALUE = "null";
@@ -76,103 +72,56 @@ public class OSQLFilterCondition {
   }
 
   public Object evaluate(final OIdentifiable iCurrentRecord, final ODocument iCurrentResult, final OCommandContext iContext) {
-    boolean binaryEvaluation = operator != null && operator.isSupportingBinaryEvaluate() && iCurrentRecord!= null && iCurrentRecord.getIdentity().isPersistent();
-
-    if (left instanceof OSQLQuery<?>)
-      // EXECUTE SUB QUERIES ONLY ONCE
+    // EXECUTE SUB QUERIES ONCE
+    if (left instanceof OSQLQuery<?>) {
       left = ((OSQLQuery<?>) left).setContext(iContext).execute();
+    }
+    Object l = evaluate(iCurrentRecord, iCurrentResult, left, iContext);
 
-    Object l = evaluate(iCurrentRecord, iCurrentResult, left, iContext, binaryEvaluation);
-
-    if (operator == null || operator.canShortCircuit(l))
+    if (operator != null && operator.canShortCircuit(l)) {
       return l;
+    }
 
-    if (right instanceof OSQLQuery<?>)
-      // EXECUTE SUB QUERIES ONLY ONCE
+    if (right instanceof OSQLQuery<?>) {
       right = ((OSQLQuery<?>) right).setContext(iContext).execute();
-
-    Object r = evaluate(iCurrentRecord, iCurrentResult, right, iContext, binaryEvaluation);
-
-    if (binaryEvaluation && l instanceof OBinaryField) {
-      if (r != null && !(r instanceof OBinaryField)) {
-        final OType type = OType.getTypeByValue(r);
-
-        if (ORecordSerializerBinary.INSTANCE.getCurrentSerializer().getComparator().isBinaryComparable(type)) {
-          final BytesContainer bytes = new BytesContainer();
-          ORecordSerializerBinary.INSTANCE.getCurrentSerializer().serializeValue(bytes, r, type, null);
-          bytes.offset = 0;
-          final OCollate collate = r instanceof OSQLFilterItemField ? ((OSQLFilterItemField) r).getCollate(iCurrentRecord) : null;
-          r = new OBinaryField(null, type, bytes, collate);
-          if (!(right instanceof OSQLFilterItem || right instanceof OSQLFilterCondition))
-            // FIXED VALUE, REPLACE IT
-            right = r;
-        }
-      } else if (r instanceof OBinaryField)
-        // GET THE COPY OR MT REASONS
-        r = ((OBinaryField) r).copy();
     }
 
-    if (binaryEvaluation && r instanceof OBinaryField) {
-      if (l != null && !(l instanceof OBinaryField)) {
-        final OType type = OType.getTypeByValue(l);
-        if (ORecordSerializerBinary.INSTANCE.getCurrentSerializer().getComparator().isBinaryComparable(type)) {
-          final BytesContainer bytes = new BytesContainer();
-          ORecordSerializerBinary.INSTANCE.getCurrentSerializer().serializeValue(bytes, l, type, null);
-          bytes.offset = 0;
-          final OCollate collate = l instanceof OSQLFilterItemField ? ((OSQLFilterItemField) l).getCollate(iCurrentRecord) : null;
-          l = new OBinaryField(null, type, bytes, collate);
-          if (!(left instanceof OSQLFilterItem || left instanceof OSQLFilterCondition))
-            // FIXED VALUE, REPLACE IT
-            left = l;
-        }
-      } else if (l instanceof OBinaryField)
-        // GET THE COPY OR MT REASONS
-        l = ((OBinaryField) l).copy();
+    Object r = evaluate(iCurrentRecord, iCurrentResult, right, iContext);
+
+    final OCollate collate = getCollate();
+
+    final Object[] convertedValues = checkForConversion(iCurrentRecord, l, r, collate);
+    if (convertedValues != null) {
+      l = convertedValues[0];
+      r = convertedValues[1];
     }
 
-    if (binaryEvaluation)
-      binaryEvaluation = l instanceof OBinaryField && r instanceof OBinaryField;
-
-
-    if (!binaryEvaluation) {
-      // no collate for regular expressions, otherwise quotes will result in no match
-      final OCollate collate = operator instanceof OQueryOperatorMatches ? null : getCollate(iCurrentRecord);
-      final Object[] convertedValues = checkForConversion(iCurrentRecord, l, r, collate);
-      if (convertedValues != null) {
-        l = convertedValues[0];
-        r = convertedValues[1];
+    if (operator == null) {
+      if (l == null)
+      // THE LEFT RETURNED NULL
+      {
+        return Boolean.FALSE;
       }
+
+      // UNITARY OPERATOR: JUST RETURN LEFT RESULT
+      return l;
     }
 
     Object result;
     try {
       result = operator.evaluateRecord(iCurrentRecord, iCurrentResult, this, l, r, iContext);
-    } catch (OCommandExecutionException e) {
-      throw e;
     } catch (Exception e) {
-      if (OLogManager.instance().isDebugEnabled())
-        OLogManager.instance().debug(this, "Error on evaluating expression (%s)", e, toString());
       result = Boolean.FALSE;
     }
 
     return result;
   }
 
-  @Deprecated
   public OCollate getCollate() {
     if (left instanceof OSQLFilterItemField) {
       return ((OSQLFilterItemField) left).getCollate();
     } else if (right instanceof OSQLFilterItemField) {
       return ((OSQLFilterItemField) right).getCollate();
-    }
-    return null;
-  }
-
-  public OCollate getCollate(OIdentifiable doc) {
-    if (left instanceof OSQLFilterItemField) {
-      return ((OSQLFilterItemField) left).getCollate(doc);
-    } else if (right instanceof OSQLFilterItemField) {
-      return ((OSQLFilterItemField) right).getCollate(doc);
     }
     return null;
   }
@@ -304,7 +253,7 @@ public class OSQLFilterCondition {
       return null;
     }
 
-    final OStorageConfiguration config = ODatabaseRecordThreadLocal.instance().get().getStorage().getConfiguration();
+    final OStorageConfiguration config = ODatabaseRecordThreadLocal.INSTANCE.get().getStorage().getConfiguration();
 
     if (value instanceof Long) {
       Calendar calendar = Calendar.getInstance(config.getTimeZone());
@@ -328,7 +277,7 @@ public class OSQLFilterCondition {
 
     SimpleDateFormat formatter = config.getDateFormatInstance();
 
-    if (stringValue.length() > config.getDateFormat().length())
+    if (stringValue.length() > config.dateFormat.length())
     // ASSUMES YOU'RE USING THE DATE-TIME FORMATTE
     {
       formatter = config.getDateTimeFormatInstance();
@@ -336,39 +285,27 @@ public class OSQLFilterCondition {
 
     try {
       return formatter.parse(stringValue);
-    } catch (ParseException ignore) {
+    } catch (ParseException pe) {
       try {
         return new Date(new Double(stringValue).longValue());
       } catch (Exception pe2) {
-        throw OException.wrapException(new OQueryParsingException("Error on conversion of date '" + stringValue
-            + "' using the format: " + formatter.toPattern()), pe2);
+        throw new OQueryParsingException("Error on conversion of date '" + stringValue + "' using the format: "
+            + formatter.toPattern(), pe2);
       }
     }
   }
 
   protected Object evaluate(OIdentifiable iCurrentRecord, final ODocument iCurrentResult, final Object iValue,
-      final OCommandContext iContext, final boolean binaryEvaluation) {
+      final OCommandContext iContext) {
     if (iValue == null)
       return null;
 
-    if (iValue instanceof BytesContainer)
-      return iValue;
-
-    if (iCurrentRecord != null) {
-      iCurrentRecord = iCurrentRecord.getRecord();
-      if (iCurrentRecord != null && ((ORecord) iCurrentRecord).getInternalStatus() == ORecordElement.STATUS.NOT_LOADED) {
-        try {
-          iCurrentRecord = iCurrentRecord.getRecord().load();
-        } catch (ORecordNotFoundException ignore) {
-          return null;
-        }
+    if (iCurrentRecord != null && iCurrentRecord.getRecord().getInternalStatus() == ORecordElement.STATUS.NOT_LOADED) {
+      try {
+        iCurrentRecord = iCurrentRecord.getRecord().load();
+      } catch (ORecordNotFoundException e) {
+        return null;
       }
-    }
-
-    if (binaryEvaluation && iValue instanceof OSQLFilterItemField) {
-      final OBinaryField bField = ((OSQLFilterItemField) iValue).getBinaryField(iCurrentRecord);
-      if (bField != null)
-        return bField;
     }
 
     if (iValue instanceof OSQLFilterItem) {
@@ -386,8 +323,8 @@ public class OSQLFilterCondition {
       return f.execute(iCurrentRecord, iCurrentRecord, iCurrentResult, iContext);
     }
 
-    if (OMultiValue.isMultiValue(iValue) && !Map.class.isAssignableFrom(iValue.getClass())) {
-      final Iterable<?> multiValue = OMultiValue.getMultiValueIterable(iValue, false);
+    if (OMultiValue.isMultiValue(iValue)) {
+      final Iterable<?> multiValue = OMultiValue.getMultiValueIterable(iValue);
 
       // MULTI VALUE: RETURN A COPY
       final ArrayList<Object> result = new ArrayList<Object>(OMultiValue.getSize(iValue));
@@ -479,7 +416,7 @@ public class OSQLFilterCondition {
           result = new Object[] { l, new ORecordId((String) r) };
         }
       }
-    } catch (Exception ignore) {
+    } catch (Exception e) {
       // JUST IGNORE CONVERSION ERRORS
     }
 

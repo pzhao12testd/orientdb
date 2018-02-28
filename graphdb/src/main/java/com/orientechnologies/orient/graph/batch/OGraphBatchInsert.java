@@ -3,8 +3,6 @@ package com.orientechnologies.orient.graph.batch;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.config.OStorageEntryConfiguration;
 import com.orientechnologies.orient.core.db.ODatabase;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
 import com.orientechnologies.orient.core.id.ORecordId;
@@ -76,7 +74,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * batch.createVertex(Long) is needed only if you want to create unconnected vertices
  *
  * @since 2.0 M3
- * @author Luigi Dell'Aquila (l.dellaquila-(at)-orientdb.com) (l.dellaquila-at-orientdb.com)
+ * @author Luigi Dell'Aquila (l.dellaquila-at-orientechnologies.com)
  */
 public class OGraphBatchInsert {
 
@@ -89,7 +87,7 @@ public class OGraphBatchInsert {
   private String              edgeClass                = OrientEdgeType.CLASS_NAME;
   private String              vertexClass              = OrientVertexType.CLASS_NAME;
   private OClass              oVertexClass;
-  private ODatabaseDocument db;
+  private ODatabaseDocumentTx db;
   private int                 averageEdgeNumberPerNode = -1;
   private int                 estimatedEntries         = -1;
   private int                 bonsaiThreshold          = 1000;
@@ -119,8 +117,8 @@ public class OGraphBatchInsert {
 
     @Override
     public void run() {
-      ODatabaseDocument db = new ODatabaseDocumentTx(dbUrl);
       try {
+        ODatabaseDocumentTx db = new ODatabaseDocumentTx(dbUrl);
         db.open(userName, password);
         run(db);
       } finally {
@@ -133,14 +131,14 @@ public class OGraphBatchInsert {
       }
     }
 
-    private void run(ODatabaseDocument db) {
+    private void run(ODatabaseDocumentTx db) {
       db.declareIntent(new OIntentMassiveInsert());
       int clusterId = clusterIds[mod];
 
       final String outField = OrientEdgeType.CLASS_NAME.equals(edgeClass) ? "out_" : ("out_" + edgeClass);
       final String inField = OrientEdgeType.CLASS_NAME.equals(edgeClass) ? "in_" : ("in_" + edgeClass);
 
-      String clusterName = db.getClusterNameById(clusterId);
+      String clusterName = db.getStorage().getClusterById(clusterId).getName();
       // long firstAvailableClusterPosition = lastClusterPositions[mod] + 1;
 
       for (long i = nextVerticesToCreate[mod]; i <= last; i += parallel) {
@@ -149,17 +147,17 @@ public class OGraphBatchInsert {
       db.declareIntent(null);
     }
 
-    public void createVertex(ODatabaseDocument db, long i, Map<String, Object> properties) {
+    public void createVertex(ODatabaseDocumentTx db, long i, Map<String, Object> properties) {
       int clusterId = clusterIds[mod];
 
       final String outField = OrientEdgeType.CLASS_NAME.equals(edgeClass) ? "out_" : ("out_" + edgeClass);
       final String inField = OrientEdgeType.CLASS_NAME.equals(edgeClass) ? "in_" : ("in_" + edgeClass);
-      String clusterName = db.getClusterNameById(clusterId);
+      String clusterName = db.getStorage().getClusterById(clusterId).getName();
 
       createVertex(db, i, inField, outField, clusterName, properties);
     }
 
-    private void createVertex(ODatabaseDocument db, long i, String inField, String outField, String clusterName,
+    private void createVertex(ODatabaseDocumentTx db, long i, String inField, String outField, String clusterName,
         Map<String, Object> properties) {
       final List<Object> outIds = out.get(i);
       final List<Object> inIds = in.get(i);
@@ -283,8 +281,7 @@ public class OGraphBatchInsert {
       int clusterId = clusterIds[i];
       try {
         nextVerticesToCreate[i] = i;
-        //THERE IS NO PUBLIC API FOR RETRIEVE THE LAST CLUSTER POSITION
-        lastClusterPositions[i] = ((ODatabaseDocumentInternal)db).getStorage().getClusterById(clusterId).getLastPosition();
+        lastClusterPositions[i] = db.getStorage().getClusterById(clusterId).getLastPosition();
       } catch (Exception e) {
         throw new RuntimeException(e);
       }

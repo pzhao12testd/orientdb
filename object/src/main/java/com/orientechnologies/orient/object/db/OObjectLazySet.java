@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Molino (molino.luca--at--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -139,7 +139,7 @@ public class OObjectLazySet<TYPE> extends HashSet<TYPE> implements OLazyObjectSe
 
   public boolean retainAll(final Collection<?> c) {
     setDirty();
-    final OObjectDatabaseTx database = getDatabase();
+    final ODatabasePojoAbstract<TYPE> database = getDatabase();
     boolean modified = super.retainAll(c);
     Set<Object> toRetain = new HashSet<Object>();
     Set<Object> toRemove = new HashSet<Object>();
@@ -175,7 +175,7 @@ public class OObjectLazySet<TYPE> extends HashSet<TYPE> implements OLazyObjectSe
 
   public boolean removeAll(final Collection<?> c) {
     setDirty();
-    final OObjectDatabaseTx database = getDatabase();
+    final ODatabasePojoAbstract<TYPE> database = getDatabase();
     boolean modified = super.removeAll(c);
     for (Object o : c) {
       OIdentifiable record = database.getRecordByUserObject(o, false);
@@ -226,8 +226,8 @@ public class OObjectLazySet<TYPE> extends HashSet<TYPE> implements OLazyObjectSe
     convertAll();
   }
 
-  public void detachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached, Map<Object, Object> lazyObjects) {
-    convertAndDetachAll(nonProxiedInstance, alreadyDetached, lazyObjects);
+  public void detachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached) {
+    convertAndDetachAll(nonProxiedInstance, alreadyDetached);
   }
 
   @Override
@@ -248,14 +248,14 @@ public class OObjectLazySet<TYPE> extends HashSet<TYPE> implements OLazyObjectSe
 
     final Set<Object> copy = new HashSet<Object>(underlying);
     super.clear();
-    final OObjectDatabaseTx database = getDatabase();
+    final ODatabasePojoAbstract<TYPE> database = getDatabase();
     for (Object e : copy) {
       if (e != null) {
         if (e instanceof ORID)
-          add((TYPE) database.getUserObjectByRecord(((ODatabaseDocument) getDatabase().getUnderlying()).load((ORID) e, fetchPlan),
+          add(database.getUserObjectByRecord(((ODatabaseDocument) getDatabase().getUnderlying()).load((ORID) e, fetchPlan),
                   fetchPlan));
         else if (e instanceof ODocument)
-          add((TYPE)database.getUserObjectByRecord((ORecord) e, fetchPlan));
+          add(database.getUserObjectByRecord((ORecord) e, fetchPlan));
         else
           add((TYPE) e);
       }
@@ -270,14 +270,14 @@ public class OObjectLazySet<TYPE> extends HashSet<TYPE> implements OLazyObjectSe
 
     final Set<Object> copy = new HashSet<Object>(underlying);
     super.clear();
-    final OObjectDatabaseTx database = getDatabase();
+    final ODatabasePojoAbstract<TYPE> database = getDatabase();
     for (Object e : copy) {
       if (e != null) {
         if (e instanceof ORID)
-          super.add((TYPE)database.getUserObjectByRecord(((ODatabaseDocument) getDatabase().getUnderlying()).load((ORID) e, fetchPlan),
+          super.add(database.getUserObjectByRecord(((ODatabaseDocument) getDatabase().getUnderlying()).load((ORID) e, fetchPlan),
               fetchPlan));
         else if (e instanceof ODocument)
-          super.add((TYPE) database.getUserObjectByRecord((ORecord) e, fetchPlan));
+          super.add(database.getUserObjectByRecord((ORecord) e, fetchPlan));
         else
           super.add((TYPE) e);
       }
@@ -285,22 +285,22 @@ public class OObjectLazySet<TYPE> extends HashSet<TYPE> implements OLazyObjectSe
     converted = true;
   }
 
-  protected void convertAndDetachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached, Map<Object, Object> lazyObjects) {
+  protected void convertAndDetachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached) {
     if (converted || !convertToRecord)
       return;
 
     final Set<Object> copy = new HashSet<Object>(underlying);
     super.clear();
-    final OObjectDatabaseTx database = getDatabase();
+    final ODatabasePojoAbstract<TYPE> database = getDatabase();
     for (Object e : copy) {
       if (e != null) {
         if (e instanceof ORID) {
           e = database.getUserObjectByRecord(((ODatabaseDocument) getDatabase().getUnderlying()).load((ORID) e, fetchPlan),
                   fetchPlan);
-          super.add((TYPE) ((OObjectDatabaseTx) getDatabase()).detachAll(e, nonProxiedInstance, alreadyDetached, lazyObjects));
+          super.add((TYPE) ((OObjectDatabaseTx) getDatabase()).detachAll(e, nonProxiedInstance, alreadyDetached));
         } else if (e instanceof ODocument) {
           e = database.getUserObjectByRecord((ORecord) e, fetchPlan);
-          super.add((TYPE) ((OObjectDatabaseTx) getDatabase()).detachAll(e, nonProxiedInstance, alreadyDetached, lazyObjects));
+          super.add((TYPE) ((OObjectDatabaseTx) getDatabase()).detachAll(e, nonProxiedInstance, alreadyDetached));
         } else
           add((TYPE) e);
       }
@@ -309,7 +309,7 @@ public class OObjectLazySet<TYPE> extends HashSet<TYPE> implements OLazyObjectSe
     converted = true;
   }
 
-  protected OObjectDatabaseTx getDatabase() {
+  protected ODatabasePojoAbstract<TYPE> getDatabase() {
     return OLazyCollectionUtil.getDatabase();
   }
 }

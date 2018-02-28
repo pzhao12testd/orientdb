@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.index;
@@ -36,7 +36,7 @@ import java.util.Set;
  * {@link com.orientechnologies.orient.core.index.OIndex#iterateEntriesBetween(Object, boolean, Object, boolean, boolean)} cursor
  * instance cannot be used at several threads simultaneously.
  * 
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 4/4/14
  */
 public interface OIndexCursor extends Iterator<OIdentifiable> {
@@ -73,7 +73,7 @@ public interface OIndexCursor extends Iterator<OIdentifiable> {
    * Set number of records to fetch for the next call to next() or nextEntry().
    * 
    * @param prefetchSize
-   *          Number of records to prefetch. -1 = prefetch using default settings.
+   *          Number of records to prefetch. -1 = no prefetch
    */
-  void setPrefetchSize(int prefetchSize);
+  public void setPrefetchSize(int prefetchSize);
 }

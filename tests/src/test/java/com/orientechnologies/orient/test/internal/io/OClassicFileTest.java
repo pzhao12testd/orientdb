@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package com.orientechnologies.orient.test.internal.io;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 
 import org.testng.annotations.Test;
 
@@ -25,8 +24,8 @@ import com.orientechnologies.orient.core.storage.fs.OFileClassic;
 
 @Test(enabled = false)
 public class OClassicFileTest extends OFileAbstractTest {
-  @Override
-  protected OFile getFileImpl() throws IOException {
-    return new OFileClassic(Paths.get(FILE_NAME));
-  }
+	@Override
+	protected OFile getFileImpl() throws IOException {
+    return new OFileClassic(FILE_NAME, "rw");
+	}
 }

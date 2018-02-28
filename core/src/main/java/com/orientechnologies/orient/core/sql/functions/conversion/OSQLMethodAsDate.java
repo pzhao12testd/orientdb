@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +16,6 @@
  */
 package com.orientechnologies.orient.core.sql.functions.conversion;
 
-import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
@@ -27,9 +26,9 @@ import java.util.Date;
 
 /**
  * Transforms a value to date. If the conversion is not possible, null is returned.
- *
+ * 
  * @author Johann Sorel (Geomatys)
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodAsDate extends OAbstractSQLMethod {
 
@@ -53,10 +52,9 @@ public class OSQLMethodAsDate extends OAbstractSQLMethod {
         return new Date(((Number) iThis).longValue());
       } else {
         try {
-          return ODatabaseRecordThreadLocal.instance().get().getStorage().getConfiguration().getDateFormatInstance()
-              .parse(iThis.toString());
+          return ODatabaseRecordThreadLocal.INSTANCE.get().getStorage().getConfiguration().getDateFormatInstance().parse(iThis.toString());
         } catch (ParseException e) {
-          OLogManager.instance().error(this, "Error during %s execution", e, NAME);
+          // IGNORE IT: RETURN NULL
         }
       }
     }

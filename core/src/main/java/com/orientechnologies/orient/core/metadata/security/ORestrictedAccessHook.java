@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,12 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.metadata.security;
+
+import java.util.Set;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
@@ -28,23 +30,16 @@ import com.orientechnologies.orient.core.metadata.schema.OImmutableClass;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
 
-import java.util.Set;
-
 /**
  * Checks the access against restricted resources. Restricted resources are those documents of classes that implement ORestricted
  * abstract class.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class ORestrictedAccessHook extends ODocumentHookAbstract {
 
   public ORestrictedAccessHook(ODatabaseDocument database) {
     super(database);
-  }
-
-  @Override
-  public SCOPE[] getScopes() {
-    return new SCOPE[] { SCOPE.CREATE, SCOPE.READ, SCOPE.UPDATE, SCOPE.DELETE };
   }
 
   public DISTRIBUTED_EXECUTION_MODE getDistributedExecutionMode() {
@@ -57,7 +52,7 @@ public class ORestrictedAccessHook extends ODocumentHookAbstract {
     if (cls != null && cls.isRestricted()) {
       String fieldNames = cls.getCustom(OSecurityShared.ONCREATE_FIELD);
       if (fieldNames == null)
-        fieldNames = ORestrictedOperation.ALLOW_ALL.getFieldName();
+        fieldNames = OSecurityShared.ALLOW_ALL_FIELD;
       final String[] fields = fieldNames.split(",");
       String identityType = cls.getCustom(OSecurityShared.ONCREATE_IDENTITY_TYPE);
       if (identityType == null)
@@ -87,30 +82,25 @@ public class ORestrictedAccessHook extends ODocumentHookAbstract {
 
   @Override
   public RESULT onRecordBeforeRead(final ODocument iDocument) {
-    return isAllowed(iDocument, ORestrictedOperation.ALLOW_READ, false) ? RESULT.RECORD_NOT_CHANGED : RESULT.SKIP;
+    return isAllowed(iDocument, OSecurityShared.ALLOW_READ_FIELD, false) ? RESULT.RECORD_NOT_CHANGED : RESULT.SKIP;
   }
 
   @Override
   public RESULT onRecordBeforeUpdate(final ODocument iDocument) {
-    if (!isAllowed(iDocument, ORestrictedOperation.ALLOW_UPDATE, true))
+    if (!isAllowed(iDocument, OSecurityShared.ALLOW_UPDATE_FIELD, true))
       throw new OSecurityException("Cannot update record " + iDocument.getIdentity() + ": the resource has restricted access");
     return RESULT.RECORD_NOT_CHANGED;
   }
 
   @Override
   public RESULT onRecordBeforeDelete(final ODocument iDocument) {
-    if (!isAllowed(iDocument, ORestrictedOperation.ALLOW_DELETE, true))
+    if (!isAllowed(iDocument, OSecurityShared.ALLOW_DELETE_FIELD, true))
       throw new OSecurityException("Cannot delete record " + iDocument.getIdentity() + ": the resource has restricted access");
     return RESULT.RECORD_NOT_CHANGED;
   }
 
   @SuppressWarnings("unchecked")
-  protected boolean isAllowed(final ODocument iDocument, final ORestrictedOperation iAllowOperation, final boolean iReadOriginal) {
-    return isAllowed(database,iDocument,iAllowOperation,iReadOriginal);
-  }
-
-  @SuppressWarnings("unchecked")
-  public static boolean isAllowed(ODatabaseDocument database, final ODocument iDocument, final ORestrictedOperation iAllowOperation, final boolean iReadOriginal) {
+  protected boolean isAllowed(final ODocument iDocument, final String iAllowOperation, final boolean iReadOriginal) {
     final OImmutableClass cls = ODocumentInternal.getImmutableSchemaClass(iDocument);
     if (cls != null && cls.isRestricted()) {
 
@@ -136,8 +126,8 @@ public class ORestrictedAccessHook extends ODocumentHookAbstract {
       return database
           .getMetadata()
           .getSecurity()
-          .isAllowed((Set<OIdentifiable>) doc.field(ORestrictedOperation.ALLOW_ALL.getFieldName()),
-              (Set<OIdentifiable>) doc.field(iAllowOperation.getFieldName()));
+          .isAllowed((Set<OIdentifiable>) doc.field(OSecurityShared.ALLOW_ALL_FIELD),
+              (Set<OIdentifiable>) doc.field(iAllowOperation));
     }
 
     return true;

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -47,7 +47,7 @@ public final class DatabaseConflictStategyTest {
   public void runTest() {
     OrientBaseGraph orientGraph = new OrientGraphNoTx(getDBURL());
     log("Set database CONFLICTSTRATEGY to automerge");
-    orientGraph.command(new OCommandSQL("ALTER database CONFLICTSTRATEGY 'automerge'")).execute();
+    orientGraph.command(new OCommandSQL("ALTER database CONFLICTSTRATEGY automerge")).execute();
     createVertexType(orientGraph, "Test");
     orientGraph.shutdown();
 

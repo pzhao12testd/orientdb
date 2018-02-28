@@ -24,7 +24,7 @@ import com.orientechnologies.orient.core.compression.OCompression;
 
 /**
  * Base class for the compression implementations.
- *
+ * 
  * @author Luca Garulli
  * @since 05.06.13
  */
@@ -37,10 +37,5 @@ public abstract class OAbstractCompression implements OCompression {
   @Override
   public byte[] uncompress(final byte[] content) {
     return uncompress(content, 0, content.length);
-  }
-
-  @Override
-  public OCompression configure(final String iOptions) {
-    return this;
   }
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,26 +14,26 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.config;
 
 public interface OStorageClusterConfiguration {
 
-  enum STATUS {
+  public enum STATUS {
     ONLINE, OFFLINE
   }
 
-  int getId();
+  public int getId();
 
-  String getName();
+  public String getName();
 
-  String getLocation();
+  public String getLocation();
 
-  int getDataSegmentId();
+  public int getDataSegmentId();
 
-  STATUS getStatus();
+  public STATUS getStatus();
 
   void setStatus(STATUS iStatus);
 }

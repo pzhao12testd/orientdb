@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,29 +14,30 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.command;
 
-import com.orientechnologies.common.collection.OMultiValue;
 import com.orientechnologies.common.listener.OProgressListener;
 import com.orientechnologies.common.parser.OBaseParser;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.OExecutionThreadLocal;
-import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.exception.OCommandInterruptedException;
+import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.metadata.security.ORole;
 import com.orientechnologies.orient.core.metadata.security.ORule;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Abstract implementation of Executor Command interface.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 @SuppressWarnings("unchecked")
@@ -47,7 +48,7 @@ public abstract class OCommandExecutorAbstract extends OBaseParser implements OC
   protected OCommandContext     context;
 
   public static ODatabaseDocumentInternal getDatabase() {
-    return ODatabaseRecordThreadLocal.instance().get();
+    return ODatabaseRecordThreadLocal.INSTANCE.get();
   }
 
   public OCommandExecutorAbstract init(final OCommandRequestText iRequest) {
@@ -71,12 +72,8 @@ public abstract class OCommandExecutorAbstract extends OBaseParser implements OC
     return (RET) this;
   }
 
-  public String getUndoCommand() {
-    return null;
-  }
-
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_LONG_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_LONG_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   public int getLimit() {
@@ -127,7 +124,7 @@ public abstract class OCommandExecutorAbstract extends OBaseParser implements OC
 
   public static boolean checkInterruption(final OCommandContext iContext) {
     if (OExecutionThreadLocal.isInterruptCurrentOperation())
-      throw new OCommandInterruptedException("The command has been interrupted");
+      throw new OCommandExecutionException("Operation has been interrupted");
 
     if (iContext != null && !iContext.checkTimeout())
       return false;
@@ -150,58 +147,5 @@ public abstract class OCommandExecutorAbstract extends OBaseParser implements OC
 
   public OCommandDistributedReplicateRequest.DISTRIBUTED_RESULT_MGMT getDistributedResultManagement() {
     return OCommandDistributedReplicateRequest.DISTRIBUTED_RESULT_MGMT.CHECK_FOR_EQUALS;
-  }
-
-  @Override
-  public boolean isLocalExecution() {
-    return false;
-  }
-
-  @Override
-  public boolean isCacheable() {
-    return false;
-  }
-
-  public Object mergeResults(final Map<String, Object> results) throws Exception {
-
-    if (results.isEmpty())
-      return null;
-
-    Object aggregatedResult = null;
-
-    for (Map.Entry<String, Object> entry : results.entrySet()) {
-      final String nodeName = entry.getKey();
-      final Object nodeResult = entry.getValue();
-
-      if (nodeResult instanceof Collection) {
-        if (aggregatedResult == null)
-          aggregatedResult = new ArrayList();
-
-        ((List) aggregatedResult).addAll((Collection<?>) nodeResult);
-
-      } else if (nodeResult instanceof Exception)
-
-        // RECEIVED EXCEPTION
-        throw (Exception) nodeResult;
-
-      else if (nodeResult instanceof OIdentifiable) {
-        if (aggregatedResult == null)
-          aggregatedResult = new ArrayList();
-
-        ((List) aggregatedResult).add(nodeResult);
-
-      } else if (nodeResult instanceof Number) {
-        if (aggregatedResult == null)
-          aggregatedResult = nodeResult;
-        else
-          OMultiValue.add(aggregatedResult, nodeResult);
-      }
-    }
-
-    return aggregatedResult;
-  }
-
-  public boolean isDistributedExecutingOnLocalNodeFirst(){
-    return true;
   }
 }

@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,46 +14,42 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.graph.gremlin;
-
-import com.orientechnologies.orient.core.command.OCommandExecutor;
-import com.orientechnologies.orient.core.command.OCommandExecutorAbstract;
-import com.orientechnologies.orient.core.command.OCommandRequest;
-import com.orientechnologies.orient.core.command.OCommandRequestText;
-import com.orientechnologies.orient.core.command.script.OCommandScriptException;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.metadata.security.ORole;
-import com.orientechnologies.orient.core.metadata.security.ORule;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.orientechnologies.orient.core.command.OCommandExecutor;
+import com.orientechnologies.orient.core.command.OCommandExecutorAbstract;
+import com.orientechnologies.orient.core.command.OCommandRequest;
+import com.orientechnologies.orient.core.command.OCommandRequestText;
+import com.orientechnologies.orient.core.command.script.OCommandScriptException;
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+
 /**
  * Executes a GREMLIN command.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OCommandGremlinExecutor extends OCommandExecutorAbstract {
-  private ODatabaseDocumentInternal db;
+  private ODatabaseDocumentTx db;
 
   @SuppressWarnings("unchecked")
   @Override
   public <RET extends OCommandExecutor> RET parse(OCommandRequest iRequest) {
     parserText = ((OCommandRequestText) iRequest).getText();
-    db = OGremlinHelper.getGraphDatabase(ODatabaseRecordThreadLocal.instance().get());
+    db = OGremlinHelper.getGraphDatabase(ODatabaseRecordThreadLocal.INSTANCE.get());
     return (RET) this;
   }
 
   @Override
   public Object execute(final Map<Object, Object> iArgs) {
-    getDatabase().checkSecurity(ORule.ResourceGeneric.COMMAND_GREMLIN, ORole.PERMISSION_READ);
     parameters = iArgs;
     final List<Object> result = new ArrayList<Object>();
     final Object scriptResult = OGremlinHelper.execute(db, parserText, parameters, new HashMap<Object, Object>(), result, null,

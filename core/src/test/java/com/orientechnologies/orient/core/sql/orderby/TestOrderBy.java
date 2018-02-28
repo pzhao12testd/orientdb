@@ -1,21 +1,21 @@
 package com.orientechnologies.orient.core.sql.orderby;
 
-import com.orientechnologies.orient.core.db.ODatabase.ATTRIBUTES;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.metadata.schema.OClass.INDEX_TYPE;
-import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import org.junit.Ignore;
-import org.junit.Test;
+import static org.testng.AssertJUnit.assertEquals;
 
 import java.util.List;
 import java.util.Locale;
 
-import static org.junit.Assert.assertEquals;
+import org.testng.annotations.Test;
+
+import com.orientechnologies.orient.core.db.ODatabase.ATTRIBUTES;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.metadata.schema.OType;
+import com.orientechnologies.orient.core.metadata.schema.OClass.INDEX_TYPE;
+import com.orientechnologies.orient.core.record.ORecord;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 
 public class TestOrderBy {
 
@@ -44,8 +44,7 @@ public class TestOrderBy {
     }
   }
 
-  @Test
-  @Ignore
+  @Test(enabled = false)
   public void testGermanOrderByIndex() {
     ODatabaseDocument db = new ODatabaseDocumentTx("memory:testGermanOrderBy");
     db.set(ATTRIBUTES.LOCALECOUNTRY, Locale.GERMANY.getCountry());

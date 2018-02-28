@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,39 +14,39 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.storage.impl.local.paginated;
 
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
-import com.orientechnologies.orient.core.storage.index.sbtreebonsai.local.OSBTreeBonsai;
-import com.orientechnologies.orient.core.storage.ridbag.sbtree.Change;
-import com.orientechnologies.orient.core.storage.ridbag.sbtree.OBonsaiCollectionPointer;
-import com.orientechnologies.orient.core.storage.ridbag.sbtree.OSBTreeCollectionManager;
-
 import java.util.Map;
 import java.util.NavigableMap;
 
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.db.record.ridbag.sbtree.OBonsaiCollectionPointer;
+import com.orientechnologies.orient.core.db.record.ridbag.sbtree.OSBTreeCollectionManager;
+import com.orientechnologies.orient.core.db.record.ridbag.sbtree.OSBTreeRidBag;
+import com.orientechnologies.orient.core.index.sbtreebonsai.local.OSBTreeBonsai;
+import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
+
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 11/26/13
  */
 public class ORidBagUpdateSerializationOperation implements ORecordSerializationOperation {
-  private final NavigableMap<OIdentifiable, Change> changedValues;
+  private final NavigableMap<OIdentifiable, OSBTreeRidBag.Change> changedValues;
 
   private final OBonsaiCollectionPointer                          collectionPointer;
 
   private final OSBTreeCollectionManager                          collectionManager;
 
-  public ORidBagUpdateSerializationOperation(final NavigableMap<OIdentifiable, Change> changedValues,
+  public ORidBagUpdateSerializationOperation(final NavigableMap<OIdentifiable, OSBTreeRidBag.Change> changedValues,
       OBonsaiCollectionPointer collectionPointer) {
     this.changedValues = changedValues;
     this.collectionPointer = collectionPointer;
 
-    collectionManager = ODatabaseRecordThreadLocal.instance().get().getSbTreeCollectionManager();
+    collectionManager = ODatabaseRecordThreadLocal.INSTANCE.get().getSbTreeCollectionManager();
   }
 
   @Override
@@ -56,7 +56,7 @@ public class ORidBagUpdateSerializationOperation implements ORecordSerialization
 
     OSBTreeBonsai<OIdentifiable, Integer> tree = loadTree();
     try {
-      for (Map.Entry<OIdentifiable, Change> entry : changedValues.entrySet()) {
+      for (Map.Entry<OIdentifiable, OSBTreeRidBag.Change> entry : changedValues.entrySet()) {
         Integer storedCounter = tree.get(entry.getKey());
 
         storedCounter = entry.getValue().applyTo(storedCounter);

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,16 +14,10 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.db.record;
-
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.Set;
 
 import com.orientechnologies.common.collection.OLazyIterator;
 import com.orientechnologies.orient.core.exception.ORecordNotFoundException;
@@ -31,6 +25,13 @@ import com.orientechnologies.orient.core.record.OIdentityChangeListener;
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.ORecordInternal;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.serialization.serializer.record.OSerializationSetThreadLocal;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Lazy implementation of Set. Can be bound to a source ORecord object to keep track of changes. This avoid to call the makeDirty()
@@ -45,7 +46,7 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
  * 
  * </p>
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public class ORecordLazySet extends ORecordTrackedSet implements Set<OIdentifiable>, ORecordLazyMultiValue, ORecordElement,
@@ -71,6 +72,15 @@ public class ORecordLazySet extends ORecordTrackedSet implements Set<OIdentifiab
   public Iterator<OIdentifiable> iterator() {
     return new OLazyRecordIterator(new OLazyIterator<OIdentifiable>() {
       {
+        ORecordElement cur = null;
+        if (sourceRecord != null)
+          cur = sourceRecord.getOwner();
+        if (!(cur instanceof ODocument))
+          cur = sourceRecord;
+
+        if (OSerializationSetThreadLocal.check((ODocument) cur)) {
+          iter = new HashSet<Entry<OIdentifiable, Object>>(ORecordLazySet.super.map.entrySet()).iterator();
+        } else
           iter = ORecordLazySet.super.map.entrySet().iterator();
       }
       private Iterator<Entry<OIdentifiable, Object>> iter;
@@ -120,11 +130,15 @@ public class ORecordLazySet extends ORecordTrackedSet implements Set<OIdentifiab
       map.put(null, null);
     else if (e instanceof ORecord && e.getIdentity().isNew()) {
       ORecordInternal.addIdentityChangeListener((ORecord) e, this);
-      ORecordInternal.track(sourceRecord, e);
       map.put(e, e);
     } else if (!e.getIdentity().isPersistent()) {
-      ORecordInternal.track(sourceRecord, e);
-      map.put(e, e);
+      // record id is not fixed yet, so we need to be able to watch for id changes, so get the record for this id to be able to do
+      // this.
+      final ORecord record = e.getRecord();
+      if (record == null)
+        throw new IllegalArgumentException("Record with id " + e.getIdentity() + " has not be found");
+      ORecordInternal.addIdentityChangeListener(record, this);
+      map.put(e, record);
     } else
       map.put(e, ENTRY_REMOVAL);
     setDirty();
@@ -141,13 +155,8 @@ public class ORecordLazySet extends ORecordTrackedSet implements Set<OIdentifiab
       Entry<OIdentifiable, Object> entry = all.next();
       if (entry.getValue() == ENTRY_REMOVAL) {
         try {
-          ORecord record = entry.getKey().getRecord();
-          if (record != null) {
-            ORecordInternal.unTrack(sourceRecord, entry.getKey());
-            ORecordInternal.track(sourceRecord, record);
-          }
-          entry.setValue(record);
-        } catch (ORecordNotFoundException ignore) {
+          entry.setValue(entry.getKey().getRecord());
+        } catch (ORecordNotFoundException e) {
           // IGNORE THIS
         }
       }
@@ -181,7 +190,7 @@ public class ORecordLazySet extends ORecordTrackedSet implements Set<OIdentifiab
             all.remove();
             removed = true;
           }
-        } catch (ORecordNotFoundException ignore) {
+        } catch (ORecordNotFoundException e) {
           all.remove();
           removed = true;
         }

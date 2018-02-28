@@ -2,8 +2,6 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import com.orientechnologies.orient.core.sql.operator.OQueryOperatorEquals;
-
 public
 class ONeOperator extends SimpleNode  implements OBinaryCompareOperator{
   public ONeOperator(int id) {
@@ -21,7 +19,7 @@ class ONeOperator extends SimpleNode  implements OBinaryCompareOperator{
   }
 
   @Override public boolean execute(Object left, Object right) {
-    return !OQueryOperatorEquals.equals(left, right);
+    return false;
   }
 
   @Override public String toString() {
@@ -32,16 +30,6 @@ class ONeOperator extends SimpleNode  implements OBinaryCompareOperator{
     return true;
   }
 
-  @Override public ONeOperator copy() {
-    return this;
-  }
 
-  @Override public boolean equals(Object obj) {
-    return obj != null && obj.getClass().equals(this.getClass());
-  }
-
-  @Override public int hashCode() {
-    return getClass().hashCode();
-  }
 }
 /* JavaCC - OriginalChecksum=ac0ae426fb86c930dea83013ddc202ba (do not edit this line) */

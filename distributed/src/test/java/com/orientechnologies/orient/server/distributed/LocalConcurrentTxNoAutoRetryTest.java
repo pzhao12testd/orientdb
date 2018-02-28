@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,41 +14,32 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import org.junit.Test;
 
+import com.orientechnologies.orient.core.config.OGlobalConfiguration;
+
 /**
- * Distributed TX test against "plocal" protocol. <br>
- * This test is ignored because TX are not parallel on distributed yet (exclusive lock on dstorage.commit()).
+ * Distributed TX test against "plocal" protocol.
  */
 public class LocalConcurrentTxNoAutoRetryTest extends AbstractDistributedConcurrentTxTest {
-
-  private static final int SERVERS = 3;
-
   @Test
   public void test() throws Exception {
     expectedConcurrentException = true;
-    writerCount = 8;
 
-    final int oldAutoRetry = OGlobalConfiguration.DISTRIBUTED_CONCURRENT_TX_MAX_AUTORETRY.getValueAsInteger();
     OGlobalConfiguration.DISTRIBUTED_CONCURRENT_TX_MAX_AUTORETRY.setValue(1);
-
-    final int oldLockTimeout = OGlobalConfiguration.DISTRIBUTED_ATOMIC_LOCK_TIMEOUT.getValueAsInteger();
-    OGlobalConfiguration.DISTRIBUTED_ATOMIC_LOCK_TIMEOUT.setValue(1);
-
     try {
 
-      init(SERVERS);
+      init(3);
       prepare(false);
       execute();
+
     } finally {
-      OGlobalConfiguration.DISTRIBUTED_ATOMIC_LOCK_TIMEOUT.setValue(oldLockTimeout);
-      OGlobalConfiguration.DISTRIBUTED_CONCURRENT_TX_MAX_AUTORETRY.setValue(oldAutoRetry);
+      OGlobalConfiguration.DISTRIBUTED_CONCURRENT_TX_MAX_AUTORETRY.setValue(10);
     }
   }
 

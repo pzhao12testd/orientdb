@@ -1,7 +1,12 @@
 package com.tinkerpop.blueprints.impls.orient;
 
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.tinkerpop.blueprints.*;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.GraphQueryTestSuite;
+import com.tinkerpop.blueprints.IndexableGraphTestSuite;
+import com.tinkerpop.blueprints.KeyIndexableGraphTestSuite;
+import com.tinkerpop.blueprints.TestSuite;
+import com.tinkerpop.blueprints.VertexQueryTestSuite;
 import com.tinkerpop.blueprints.impls.GraphTest;
 import com.tinkerpop.blueprints.util.io.gml.GMLReaderTestSuite;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLReaderTestSuite;
@@ -11,8 +16,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -88,14 +91,13 @@ public class OrientGraphNoTxTest extends GraphTest {
       if (graph.isClosed())
         currentGraphs.remove(url);
       else {
-        ODatabaseRecordThreadLocal.instance().set(graph.getRawGraph());
+        ODatabaseRecordThreadLocal.INSTANCE.set(graph.getRawGraph());
         return graph;
       }
     }
 
     graph = new OrientGraphNoTx(url);
     graph.setWarnOnForceClosingTx(false);
-    graph.setStandardExceptions(true);
 
     currentGraphs.put(url, graph);
 
@@ -121,7 +123,7 @@ public class OrientGraphNoTxTest extends GraphTest {
   @Override
   public void dropGraph(String graphDirectoryName) {
     final String graphDirectory = getWorkingDirectory() + "/" + graphDirectoryName;
-    final String url = OrientGraphTest.getStorageType() + ":" + graphDirectory;
+    final String url = OrientGraphTest.getStorageType() +  ":" + graphDirectory;
     try {
       OrientGraphNoTx graph = currentGraphs.remove(url);
       if (graph == null || graph.isClosed())
@@ -134,44 +136,4 @@ public class OrientGraphNoTxTest extends GraphTest {
 
     deleteDirectory(new File(graphDirectory));
   }
-
-  @Test
-  public void testRemoveUnlinked() {
-    Graph graph = generateGraph("graph");
-    try {
-      Vertex x = graph.addVertex(null);
-      Vertex y = graph.addVertex(null);
-
-      graph.addEdge(null, x, y, "connected_to");
-
-      for (Vertex v : graph.getVertices()) {
-        graph.removeVertex(v);
-      }
-
-      for (Edge e : graph.getEdges()) {
-        System.out.println("e: " + e);
-      }
-
-      graph.shutdown();
-    } finally {
-      dropGraph("graph");
-    }
-
-
-    graph = generateGraph("graph");
-
-    try {
-      for (Edge e : graph.getEdges()) {
-        graph.removeEdge(e);
-      }
-
-      graph.shutdown();
-
-    } finally {
-      dropGraph("graph");
-    }
-
-  }
-
-
 }

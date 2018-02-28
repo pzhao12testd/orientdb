@@ -46,11 +46,7 @@
 				<!-- ENCRYPTION ALGORITHM, DEFAULT=HmacSHA256 -->
 			</parameters>
 		</handler>
-		<handler class="com.orientechnologies.orient.server.plugin.livequery.OLiveQueryPlugin">
-			<parameters>
-				<parameter value="true" name="enabled"/>
-			</parameters>
-		</handler>
+
 	</handlers>
 	<network>
 		<sockets>
@@ -124,5 +120,4 @@
 		<entry value="info" name="log.console.level" />
 		<entry value="fine" name="log.file.level" />
 	</properties>
-    <isAfterFirstTime>true</isAfterFirstTime>
 </orient-server>

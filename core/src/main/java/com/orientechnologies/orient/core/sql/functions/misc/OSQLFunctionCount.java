@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.sql.functions.misc;
@@ -28,13 +28,14 @@ import java.util.List;
 /**
  * Count the record that contains a field. Use * to indicate the record instead of the field. Uses the context to save the counter
  * number. When different Number class are used, take the class with most precision.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
+ * 
  */
 public class OSQLFunctionCount extends OSQLFunctionMathAbstract {
-  public static final String NAME = "count";
+  public static final String NAME  = "count";
 
-  private long total = 0;
+  private long               total = 0;
 
   public OSQLFunctionCount() {
     super(NAME, 1, 1);
@@ -42,7 +43,7 @@ public class OSQLFunctionCount extends OSQLFunctionMathAbstract {
 
   public Object execute(Object iThis, OIdentifiable iCurrentRecord, Object iCurrentResult, final Object[] iParams,
       OCommandContext iContext) {
-    if (iParams.length == 0 || iParams[0] != null)
+    if (iParams[0] != null)
       total++;
 
     return total;

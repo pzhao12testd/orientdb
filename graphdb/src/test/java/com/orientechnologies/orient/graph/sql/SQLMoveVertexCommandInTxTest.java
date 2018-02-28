@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
@@ -93,8 +93,6 @@ public class SQLMoveVertexCommandInTxTest extends GraphTxAbstractTest {
     v1.addEdge("knows", v3);
     v2.addEdge("knows", v1);
 
-    graph.commit();
-
     Assert.assertEquals(v1.getIdentity().getClusterId(), customer.getDefaultClusterId());
 
     Iterable<OrientVertex> result = graph.command(
@@ -158,8 +156,6 @@ public class SQLMoveVertexCommandInTxTest extends GraphTxAbstractTest {
     new ODocument("Customer").field("name", "Bill").field("workedOn", "Ms-Dos").save();
     new ODocument("Customer").field("name", "Tim").field("workedOn", "Amiga").save();
 
-    graph.commit();
-
     Iterable<OrientVertex> result = graph.command(
         new OCommandSQL("MOVE VERTEX (select from Customer where workedOn = 'Amiga') TO CLUSTER:Customer_genius")).execute();
 
@@ -193,8 +189,6 @@ public class SQLMoveVertexCommandInTxTest extends GraphTxAbstractTest {
     new ODocument("Customer").field("name", "Marco").field("city", "Rome").save();
     new ODocument("Customer").field("name", "XXX").field("city", "Athens").save();
 
-    graph.commit();
-
     Iterable<OrientVertex> result = graph.command(
         new OCommandSQL("MOVE VERTEX (select from Customer where city = 'Rome') TO CLASS:Provider")).execute();
 
@@ -227,8 +221,6 @@ public class SQLMoveVertexCommandInTxTest extends GraphTxAbstractTest {
     new ODocument("Customer").field("name", "Marco").field("city", "Rome").save();
     new ODocument("Customer").field("name", "XXX").field("city", "Athens").save();
 
-    graph.commit();
-
     Iterable<OrientVertex> result = graph.command(
         new OCommandSQL("MOVE VERTEX (select from Customer where city = 'Rome') TO CLASS:Provider")).execute();
 
@@ -258,8 +250,6 @@ public class SQLMoveVertexCommandInTxTest extends GraphTxAbstractTest {
   public void testMoveBatch() {
     for (int i = 0; i < 100; ++i)
       new ODocument("Customer").field("testMoveBatch", true).save();
-
-    graph.commit();
 
     Iterable<OrientVertex> result = graph.command(
         new OCommandSQL("MOVE VERTEX (select from Customer where testMoveBatch = true) TO CLASS:Provider BATCH 10")).execute();
@@ -291,15 +281,13 @@ public class SQLMoveVertexCommandInTxTest extends GraphTxAbstractTest {
     graph.executeOutsideTx(new OCallable<Object, OrientBaseGraph>() {
       @Override
       public Object call(OrientBaseGraph iArgument) {
-        customer.createProperty("id", OType.LONG).createIndex(OClass.INDEX_TYPE.NOTUNIQUE_HASH_INDEX);
+        customer.createProperty("id", OType.LONG).createIndex(OClass.INDEX_TYPE.UNIQUE_HASH_INDEX);
         return null;
       }
     });
 
     for (int i = 0; i < 100; ++i)
       new ODocument("Customer").field("id", i).save();
-
-    graph.commit();
 
     Iterable<OrientVertex> result = graph.command(
         new OCommandSQL("MOVE VERTEX (select from Customer where id = 0) TO CLUSTER:Customer_genius")).execute();

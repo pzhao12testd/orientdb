@@ -1,25 +1,21 @@
 package com.orientechnologies.orient.core.sql.parser;
 
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.testng.Assert.*;
 
+@Test
 public class OSelectStatementTest {
 
   protected SimpleNode checkRightSyntax(String query) {
     SimpleNode result = checkSyntax(query, true);
-    StringBuilder builder = new StringBuilder();
-    result.toString(null, builder);
-    return checkSyntax(builder.toString(), true);
+    return checkSyntax(result.toString(), true);
   }
 
   protected SimpleNode checkWrongSyntax(String query) {
@@ -31,21 +27,15 @@ public class OSelectStatementTest {
     try {
       SimpleNode result = osql.parse();
       if (!isCorrect) {
-//        System.out.println(query);
-//        if(result!= null ) {
-//          System.out.println("->");
-//          StringBuilder builer = new StringBuilder();
-//          result.toString(null, builer);
-//          System.out.println(builer.toString());
-//          System.out.println("............");
-//        }
         fail();
       }
-
+      System.out.println(query);
+      System.out.println("->");
+      System.out.println(result.toString());
+      System.out.println("............");
       return result;
     } catch (Exception e) {
       if (isCorrect) {
-        System.out.println(query);
         e.printStackTrace();
         fail();
       }
@@ -75,25 +65,6 @@ public class OSelectStatementTest {
     assertTrue(select.getTarget() != null);
     assertTrue(!Boolean.TRUE.equals(select.getLockRecord()));
     assertTrue(select.getWhereClause() == null);
-  }
-
-  @Test
-  public void testComments() {
-    checkRightSyntax("select from Foo");
-
-    checkRightSyntax("select /* aaa bbb ccc*/from Foo");
-    checkRightSyntax("select /* aaa bbb \nccc*/from Foo");
-    checkRightSyntax("select /** aaa bbb ccc**/from Foo");
-    checkRightSyntax("select /** aaa bbb ccc*/from Foo");
-
-    checkRightSyntax("/* aaa bbb ccc*/select from Foo");
-    checkRightSyntax("select from Foo/* aaa bbb ccc*/");
-    checkRightSyntax("/* aaa bbb ccc*/select from Foo/* aaa bbb ccc*/");
-
-    checkWrongSyntax("select /** aaa bbb */ccc*/from Foo");
-
-    checkWrongSyntax("select /**  /*aaa bbb */ccc*/from Foo");
-    checkWrongSyntax("*/ select from Foo");
   }
 
   @Test
@@ -137,9 +108,6 @@ public class OSelectStatementTest {
     checkWrongSyntax("select * from Foo bar where name = 'foo'");
     checkWrongSyntax("select Foo where name = 'foo'");
     checkWrongSyntax("select * Foo where name = 'foo'");
-
-    //issue #5221
-    checkRightSyntax("select from $1");
 
   }
 
@@ -188,8 +156,7 @@ public class OSelectStatementTest {
 
   @Test
   public void testIndex2() {
-    SimpleNode result = checkRightSyntax(
-        "select from index:collateCompositeIndexCS where key between ['VAL', 'VaL'] and ['zz', 'zz']");
+    SimpleNode result = checkRightSyntax("select from index:collateCompositeIndexCS where key between ['VAL', 'VaL'] and ['zz', 'zz']");
     assertTrue(result instanceof OSelectStatement);
     OSelectStatement select = (OSelectStatement) result;
 
@@ -327,10 +294,8 @@ public class OSelectStatementTest {
       OSelectStatement stm = (OSelectStatement) result;
       Map<Object, Object> params = new HashMap<Object, Object>();
       params.put("param1", new HashSet<Object>());
-
-      StringBuilder parsed = new StringBuilder();
-      stm.toString(params, parsed);
-      assertEquals(parsed.toString(), "SELECT FROM bar WHERE name NOT IN []");
+      ((OSelectStatement) result).replaceParameters(params);
+      assertEquals(stm.toString(), "SELECT FROM bar WHERE name NOT IN []");
     } catch (Exception e) {
       fail();
 
@@ -351,16 +316,14 @@ public class OSelectStatementTest {
   @Test
   public void testSpatial() {
 
-    checkRightSyntax(
-        "select *,$distance from Place where [latitude,longitude,$spatial] NEAR [41.893056,12.482778,{\"maxDistance\": 0.5}]");
+    checkRightSyntax("select *,$distance from Place where [latitude,longitude,$spatial] NEAR [41.893056,12.482778,{\"maxDistance\": 0.5}]");
     checkRightSyntax("select * from Place where [latitude,longitude] WITHIN [[51.507222,-0.1275],[55.507222,-0.1275]]");
 
   }
 
   @Test
   public void testSubConditions() {
-    checkRightSyntax(
-        "SELECT @rid as rid, localName FROM Person WHERE ( 'milano' IN out('lives').localName OR 'roma' IN out('lives').localName ) ORDER BY age ASC");
+    checkRightSyntax("SELECT @rid as rid, localName FROM Person WHERE ( 'milano' IN out('lives').localName OR 'roma' IN out('lives').localName ) ORDER BY age ASC");
   }
 
   @Test
@@ -382,8 +345,7 @@ public class OSelectStatementTest {
 
     checkRightSyntax("select from Person where name matches 'a'");
 
-    checkRightSyntax(
-        "select from Person where name matches '(?i)(^\\\\Qname1\\\\E$)|(^\\\\Qname2\\\\E$)|(^\\\\Qname3\\\\E$)' and age=30");
+    checkRightSyntax("select from Person where name matches '(?i)(^\\\\Qname1\\\\E$)|(^\\\\Qname2\\\\E$)|(^\\\\Qname3\\\\E$)' and age=30");
   }
 
   @Test
@@ -428,14 +390,13 @@ public class OSelectStatementTest {
 
   }
 
-  @Test
-  @Ignore
+  @Test(enabled = false)
   public void testSlashInQuery() {
     checkRightSyntax("insert into test content {\"node_id\": \"MFmqvmht//sYYWB8=\"}");
     checkRightSyntax("insert into test content { \"node_id\": \"MFmqvmht\\/\\/GYsYYWB8=\"}");
   }
 
-  @Test
+  @Test()
   public void testClusterList() {
     checkRightSyntax("select from cluster:[foo,bar]");
   }
@@ -457,20 +418,16 @@ public class OSelectStatementTest {
     checkRightSyntax("select from test order by (something asc),(somethingElse desc)");
   }
 
-  @Test
-  @Ignore
+  @Test()
   public void testMultipleLucene() {
     checkRightSyntax("select from Foo where a lucene 'a'");
     checkWrongSyntax("select from Foo where a lucene 'a' and b lucene 'a'");
 
-    checkWrongSyntax(
-        "select union($a, $b) let $a = (select from Foo where a lucene 'a' and b lucene 'b'), $b = (select from Foo where b lucene 'b')");
-    checkRightSyntax(
-        "select union($a, $b) let $a = (select from Foo where a lucene 'a'), $b = (select from Foo where b lucene 'b')");
+    checkWrongSyntax("select union($a, $b) let $a = (select from Foo where a lucene 'a' and b lucene 'b'), $b = (select from Foo where b lucene 'b')");
+    checkRightSyntax("select union($a, $b) let $a = (select from Foo where a lucene 'a'), $b = (select from Foo where b lucene 'b')");
     checkWrongSyntax("select from (select from Foo) where a lucene 'a'");
 
-    checkWrongSyntax(
-        "select from Foo where (a=2 and b=3 and (a = 4 and (b=5 and d lucene 'foo')))) or select from Foo where (a=2 and b=3 and (a = 4 and (b=5 and d lucene 'foo'))))");
+    checkWrongSyntax("select from Foo where (a=2 and b=3 and (a = 4 and (b=5 and d lucene 'foo')))) or select from Foo where (a=2 and b=3 and (a = 4 and (b=5 and d lucene 'foo'))))");
 
     checkWrongSyntax("select from cluster:foo where a lucene 'b'");
     checkRightSyntax("select from index:foo where a lucene 'b'");
@@ -611,52 +568,11 @@ public class OSelectStatementTest {
 
   }
 
-  @Test
-  public void testFlatten() {
-    OSelectStatement stm = (OSelectStatement) checkRightSyntax("select from ouser where name = 'foo'");
-    List<OAndBlock> flattended = stm.whereClause.flatten();
-    assertTrue(((OBinaryCondition) flattended.get(0).subBlocks.get(0)).left.isBaseIdentifier());
-    assertFalse(((OBinaryCondition) flattended.get(0).subBlocks.get(0)).right.isBaseIdentifier());
-    assertFalse(((OBinaryCondition) flattended.get(0).subBlocks.get(0)).left.isEarlyCalculated());
-    assertTrue(((OBinaryCondition) flattended.get(0).subBlocks.get(0)).right.isEarlyCalculated());
-
-  }
 
   @Test
-  public void testParamWithMatches() {
-    //issue #5229
-    checkRightSyntax("select from Person where name matches :param1");
-  }
-
-  @Test
-  public void testInstanceOfE() {
-    //issue #5212
-    checkRightSyntax("select from Friend where @class instanceof 'E'");
-  }
-
-  @Test
-  public void testSelectFromClusterNumber() {
-    checkRightSyntax("select from cluster:12");
-  }
-
-  @Test
-  public void testReservedWordsAsNamedParams() {
-    //issue #5493
-    checkRightSyntax("select from V limit :limit");
-  }
-
-  @Test
-  public void testFetchPlanBracketStar() {
-    //issue #5689
-    checkRightSyntax("SELECT FROM Def fetchplan *:2 [*]in_*:-2");
-    checkRightSyntax("SELECT FROM Def fetchplan *:2 [1]in_*:-2");
-  }
-
-  @Test
-  public void testJsonQuoting() {
-    //issue #5911
-    checkRightSyntax("SELECT '\\/\\/'");
-    checkRightSyntax("SELECT \"\\/\\/\"");
+  public void testDefined() {
+    checkRightSyntax("select from foo where bar is defined");
+    checkRightSyntax("select from foo where bar is not defined");
 
   }
 
@@ -669,107 +585,6 @@ public class OSelectStatementTest {
       e.printStackTrace();
     }
 
-  }
-
-  @Test
-  public void testSkipLimitInQueryWithNoTarget() {
-    //issue #5589
-    checkRightSyntax("SELECT eval('$TotalListsQuery[0].Count') AS TotalLists\n"
-        + "   LET $TotalListsQuery = ( SELECT Count(1) AS Count FROM ContactList WHERE Account=#20:1 AND EntityInfo.State=0)\n"
-        + " LIMIT 1");
-
-    checkRightSyntax("SELECT eval('$TotalListsQuery[0].Count') AS TotalLists\n"
-        + "   LET $TotalListsQuery = ( SELECT Count(1) AS Count FROM ContactList WHERE Account=#20:1 AND EntityInfo.State=0)\n"
-        + " SKIP 10 LIMIT 1");
-  }
-
-  @Test
-  public void testQuotedBacktick() {
-    checkRightSyntax("SELECT \"\" as `bla\\`bla` from foo");
-  }
-
-  @Test
-  public void testParamConcat() {
-    //issue #6049
-    checkRightSyntax("Select * From ACNodeAuthentication where acNodeID like ? ");
-    checkRightSyntax("Select * From ACNodeAuthentication where acNodeID like ? + '%'");
-    checkRightSyntax("Select * From ACNodeAuthentication where acNodeID like \"%\" + ? + '%'");
-  }
-
-  @Test
-  public void testAppendParams() {
-    checkRightSyntax("select from User where Account.Name like :name + '%'");
-
-  }
-
-  @Test
-  public void testLetMatch() {
-    checkRightSyntax("select $a let $a = (MATCH {class:Foo, as:bar, where:(name = 'foo')} return $elements)");
-
-  }
-
-  @Test
-  public void testDistinct() {
-    checkRightSyntax("select distinct(foo) from V");
-    checkRightSyntax("select distinct foo, bar, baz from V");
-  }
-
-  @Test
-  public void testRange() {
-    checkRightSyntax("select foo[1..5] from V");
-    checkRightSyntax("select foo[1...5] from V");
-    checkRightSyntax("select foo[?..?] from V");
-    checkRightSyntax("select foo[?...?] from V");
-    checkRightSyntax("select foo[:a..:b] from V");
-    checkRightSyntax("select foo[:a...:b] from V");
-    checkWrongSyntax("select foo[1....5] from V");
-  }
-
-  @Test
-  public void testRidString() {
-    checkRightSyntax("select \"@rid\" as v from V");
-    SimpleNode stm2 = checkRightSyntax("select {\"@rid\": \"#12:0\"} as v from V");
-    System.out.println(stm2);
-  }
-
-  @Test
-  public void testTranslateLucene() {
-    OSelectStatement stm = (OSelectStatement) checkRightSyntax("select from V where name LUCENE 'foo'");
-    stm.whereClause.getBaseExpression().translateLuceneOperator();
-    Assert.assertTrue(stm.whereClause.toString().contains("search_fields([\"name\"], 'foo') = true"));
-    Assert.assertFalse(stm.whereClause.toString().contains("LUCENE"));
-  }
-
-  @Test
-  public void testFromAsNamedParam() {
-    checkRightSyntax("select from V where fromDate = :from");
-
-  }
-
-  @Test
-  public void testNestedProjections() {
-    checkRightSyntax("select foo:{*} from V");
-    checkRightSyntax("select foo:{name, surname, address:{*}} from V");
-    checkRightSyntax("select foo:{!name} from V");
-    checkRightSyntax("select foo:{!out_*} from V");
-    checkRightSyntax("select foo:{!out_*, !in_*} from V");
-    checkRightSyntax("select foo:{*, !out_*, !in_*} from V");
-  }
-
-  @Test
-  public void testCollectionFilteringByValue() {
-    checkRightSyntax("select foo[= 'foo'] from V");
-    checkRightSyntax("select foo[like '%foo'] from V");
-    checkRightSyntax("select foo[> 2] from V");
-    checkRightSyntax("select foo[> 2][< 5] from V");
-
-    checkRightSyntax("select foo[ IN ['a', 'b']] from V");
-    checkRightSyntax("select bar[IN (select from foo) ] from V");
-    checkRightSyntax("select bar[IN $a ] from V LET $a = (SELECT FROM V)");
-
-    checkRightSyntax("select foo[not IN ['a', 'b']] from V");
-    checkRightSyntax("select bar[not IN (select from foo) ] from V");
-    checkRightSyntax("select bar[not IN $a ] from V LET $a = (SELECT FROM V)");
   }
 
   protected OrientSql getParserFor(String string) {

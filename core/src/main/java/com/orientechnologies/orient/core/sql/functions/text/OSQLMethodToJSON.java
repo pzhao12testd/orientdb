@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +16,8 @@
  */
 package com.orientechnologies.orient.core.sql.functions.text;
 
-import com.orientechnologies.common.collection.OMultiValue;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.method.misc.OAbstractSQLMethod;
 
@@ -29,7 +27,7 @@ import java.util.Map;
  * Converts a document in JSON string.
  * 
  * @author Johann Sorel (Geomatys)
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodToJSON extends OAbstractSQLMethod {
 
@@ -50,28 +48,12 @@ public class OSQLMethodToJSON extends OAbstractSQLMethod {
       return null;
     }
 
-    final String format = iParams.length > 0 ? ((String) iParams[0]).replace("\"", "") : null;
-
-    if (iThis instanceof ORecord) {
-
-      final ORecord record = (ORecord) iThis;
-      return iParams.length == 1 ? record.toJSON(format) : record.toJSON();
-
+    if (iThis instanceof ODocument) {
+      final ODocument doc = (ODocument) iThis;
+      return iParams.length == 1 ? doc.toJSON(((String) iParams[0]).replace("\"", "")) : doc.toJSON();
     } else if (iThis instanceof Map) {
-
       final ODocument doc = new ODocument().fromMap((Map<String, Object>) iThis);
-      return iParams.length == 1 ? doc.toJSON(format) : doc.toJSON();
-
-    } else if (OMultiValue.isMultiValue(iThis)) {
-
-      StringBuilder builder = new StringBuilder();
-      builder.append("[");
-      for (Object o : OMultiValue.getMultiValueIterable(iThis, false)) {
-        builder.append(execute(o, iCurrentRecord, iContext, ioResult, iParams));
-      }
-
-      builder.append("]");
-      return builder.toString();
+      return iParams.length == 1 ? doc.toJSON(((String) iParams[0]).replace("\"", "")) : doc.toJSON();
     }
     return null;
   }

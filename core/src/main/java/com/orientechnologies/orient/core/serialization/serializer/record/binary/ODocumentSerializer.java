@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,35 +14,20 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.core.serialization.serializer.record.binary;
 
-import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
 public interface ODocumentSerializer {
 
-  void serialize(ODocument document, BytesContainer bytes, boolean iClassOnly);
+  public void serialize(ODocument document, BytesContainer bytes, boolean iClassOnly);
 
-  int serializeValue(BytesContainer bytes, Object value, OType type, OType linkedType);
+  public void deserialize(ODocument document, BytesContainer bytes);
 
-  void deserialize(ODocument document, BytesContainer bytes);
+  public void deserializePartial(final ODocument document, final BytesContainer bytes, final String[] iFields);
 
-  void deserializePartial(ODocument document, BytesContainer bytes, String[] iFields);
-
-  Object deserializeValue(BytesContainer bytes, OType type, ODocument ownerDocument);
-
-  OBinaryField deserializeField(BytesContainer bytes, OClass iClass, String iFieldName);
-
-  OBinaryComparator getComparator();
-
-  /**
-   * Returns the array of field names with no values.
-   * @param reference TODO
-   */
-  String[] getFieldNames(ODocument reference, BytesContainer iBytes);
 }

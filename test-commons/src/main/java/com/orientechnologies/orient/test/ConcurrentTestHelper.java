@@ -1,5 +1,8 @@
 package com.orientechnologies.orient.test;
 
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -10,20 +13,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
-
 /**
- * @param <T> see {@link TestFactory}
  * @author Artem Orobets (enisher-at-gmail.com)
+ * @param <T> see {@link TestFactory}
  */
 public class ConcurrentTestHelper<T> {
   private final ExecutorService executor;
   private final List<Future<T>> futures;
-
-  private ConcurrentTestHelper(int threadCount) {
-    this.futures = new ArrayList<Future<T>>(threadCount);
-    this.executor = Executors.newFixedThreadPool(threadCount);
-  }
 
   public static <T> Collection<T> test(int threadCount, TestFactory<T> factory) {
     final List<Callable<T>> callables = prepareWorkers(threadCount, factory);
@@ -53,7 +49,7 @@ public class ConcurrentTestHelper<T> {
   private Collection<T> assertSuccess() {
     try {
       executor.shutdown();
-      assertTrue("Test threads hanged", executor.awaitTermination(30, TimeUnit.MINUTES));
+      assertTrue(executor.awaitTermination(30, TimeUnit.MINUTES), "Test threads hanged");
 
       List<T> results = new ArrayList<T>(futures.size());
       List<Exception> exceptions = new ArrayList<Exception>();
@@ -71,8 +67,7 @@ public class ConcurrentTestHelper<T> {
         throw new CompositeException(exceptions);
       }
     } catch (InterruptedException e) {
-
-      fail("interrupted" + e.getMessage());
+      fail("interrupted", e);
       throw new RuntimeException("unreached exception", e);
     }
   }
@@ -81,6 +76,11 @@ public class ConcurrentTestHelper<T> {
     for (Callable<T> callable : callables) {
       futures.add(executor.submit(callable));
     }
+  }
+
+  private ConcurrentTestHelper(int threadCount) {
+    this.futures = new ArrayList<Future<T>>(threadCount);
+    this.executor = Executors.newFixedThreadPool(threadCount);
   }
 
 }

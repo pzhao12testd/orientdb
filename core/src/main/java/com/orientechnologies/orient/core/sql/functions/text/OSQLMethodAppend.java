@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,16 +16,16 @@
  */
 package com.orientechnologies.orient.core.sql.functions.text;
 
-import com.orientechnologies.common.io.OIOUtils;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
 import com.orientechnologies.orient.core.sql.method.misc.OAbstractSQLMethod;
 
 /**
  * Appends strings. Acts as a concatenation.
  * 
  * @author Johann Sorel (Geomatys)
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodAppend extends OAbstractSQLMethod {
 
@@ -48,7 +48,7 @@ public class OSQLMethodAppend extends OAbstractSQLMethod {
     final StringBuilder buffer = new StringBuilder(iThis.toString());
     for (int i = 0; i < iParams.length; ++i) {
       if (iParams[i] != null) {
-        buffer.append(OIOUtils.getStringContent(iParams[i]));
+        buffer.append(OStringSerializerHelper.getStringContent(iParams[i]));
       }
     }
 

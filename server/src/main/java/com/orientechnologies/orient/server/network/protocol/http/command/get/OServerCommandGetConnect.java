@@ -1,6 +1,6 @@
 /*
     *
-    *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+    *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
     *  *
     *  *  Licensed under the Apache License, Version 2.0 (the "License");
     *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
     *  *  See the License for the specific language governing permissions and
     *  *  limitations under the License.
     *  *
-    *  * For more information: http://orientdb.com
+    *  * For more information: http://www.orientechnologies.com
     *
     */
 package com.orientechnologies.orient.server.network.protocol.http.command.get;
@@ -38,7 +38,7 @@ public class OServerCommandGetConnect extends OServerCommandAuthenticatedDbAbstr
      iRequest.data.commandInfo = "Connect";
      iRequest.data.commandDetail = urlParts[1];
 
-     iResponse.send(OHttpUtils.STATUS_OK_NOCONTENT_CODE, OHttpUtils.STATUS_OK_NOCONTENT_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, null, null);
+     iResponse.send(OHttpUtils.STATUS_OK_NOCONTENT_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, null, null);
      return false;
    }
 

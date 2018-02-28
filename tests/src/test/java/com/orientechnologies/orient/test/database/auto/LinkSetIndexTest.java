@@ -1,19 +1,27 @@
 package com.orientechnologies.orient.test.database.auto;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Optional;
+import org.testng.annotations.Parameters;
+
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import org.testng.Assert;
-import org.testng.annotations.*;
-import org.testng.annotations.Optional;
-
-import java.util.*;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 3/28/14
  */
 public class LinkSetIndexTest extends DocumentDBBaseTest {
@@ -53,10 +61,10 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSet() {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSet = new HashSet<OIdentifiable>();
@@ -82,10 +90,10 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetInTx() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     try {
       database.begin();
@@ -118,13 +126,13 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdate() {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument docThree = new ODocument();
-    docThree.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docThree.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSetOne = new HashSet<OIdentifiable>();
@@ -157,13 +165,13 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdateInTx() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument docThree = new ODocument();
-    docThree.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docThree.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSetOne = new HashSet<OIdentifiable>();
@@ -204,13 +212,13 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdateInTxRollback() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument docThree = new ODocument();
-    docThree.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docThree.save();
 
     final Set<OIdentifiable> linkSetOne = new HashSet<OIdentifiable>();
     linkSetOne.add(docOne);
@@ -246,13 +254,13 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdateAddItem() {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument docThree = new ODocument();
-    docThree.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docThree.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSet = new HashSet<OIdentifiable>();
@@ -281,13 +289,13 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdateAddItemInTx() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument docThree = new ODocument();
-    docThree.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docThree.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSet = new HashSet<OIdentifiable>();
@@ -325,13 +333,13 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdateAddItemInTxRollback() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument docThree = new ODocument();
-    docThree.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docThree.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSet = new HashSet<OIdentifiable>();
@@ -363,10 +371,10 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdateRemoveItemInTx() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSet = new HashSet<OIdentifiable>();
@@ -402,10 +410,10 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdateRemoveItemInTxRollback() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSet = new HashSet<OIdentifiable>();
@@ -436,10 +444,10 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetUpdateRemoveItem() {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSet = new HashSet<OIdentifiable>();
@@ -467,10 +475,10 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetRemove() {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
 
@@ -490,10 +498,10 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetRemoveInTx() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
 
@@ -520,10 +528,10 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetRemoveInTxRollback() throws Exception {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSet = new HashSet<OIdentifiable>();
@@ -553,13 +561,13 @@ public class LinkSetIndexTest extends DocumentDBBaseTest {
 
   public void testIndexLinkSetSQL() {
     final ODocument docOne = new ODocument();
-    docOne.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docOne.save();
 
     final ODocument docTwo = new ODocument();
-    docTwo.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docTwo.save();
 
     final ODocument docThree = new ODocument();
-    docThree.save(database.getClusterNameById(database.getDefaultClusterId()));
+    docThree.save();
 
     ODocument document = new ODocument("LinkSetIndexTestClass");
     final Set<OIdentifiable> linkSetOne = new HashSet<OIdentifiable>();

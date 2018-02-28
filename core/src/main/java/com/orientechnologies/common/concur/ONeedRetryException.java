@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,36 +14,28 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.common.concur;
 
-import com.orientechnologies.common.exception.OErrorCode;
-import com.orientechnologies.orient.core.exception.OCoreException;
+import com.orientechnologies.common.exception.OException;
 
 /**
  * Abstract base exception to extend for all the exception that report to the user it has been thrown but re-executing it could
  * succeed.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
+ * 
  */
-public abstract class ONeedRetryException extends OCoreException {
+public abstract class ONeedRetryException extends OException {
   private static final long serialVersionUID = 1L;
 
-  protected ONeedRetryException(final ONeedRetryException exception) {
-    super(exception, null);
+  public ONeedRetryException() {
+    super();
   }
 
-  protected ONeedRetryException(final ONeedRetryException exception, OErrorCode errorCode) {
-    super(exception, errorCode);
-  }
-
-  protected ONeedRetryException(final String message, OErrorCode errorCode) {
-    super(message, null, errorCode);
-  }
-
-  protected ONeedRetryException(final String message) {
+  public ONeedRetryException(String message) {
     super(message);
   }
 }

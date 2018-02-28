@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.sql;
@@ -25,7 +25,7 @@ import com.orientechnologies.orient.core.metadata.security.ORole;
 /**
  * SQL GRANT command: Grant a privilege to a database role.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public abstract class OCommandExecutorSQLPermissionAbstract extends OCommandExecutorSQLAbstract {
@@ -45,8 +45,6 @@ public abstract class OCommandExecutorSQLPermissionAbstract extends OCommandExec
       privilege = ORole.PERMISSION_UPDATE;
     else if ("DELETE".equals(privilegeName))
       privilege = ORole.PERMISSION_DELETE;
-    else if ("EXECUTE".equals(privilegeName))
-      privilege = ORole.PERMISSION_EXECUTE;
     else if ("ALL".equals(privilegeName))
       privilege = ORole.PERMISSION_ALL;
     else if ("NONE".equals(privilegeName))
@@ -57,7 +55,7 @@ public abstract class OCommandExecutorSQLPermissionAbstract extends OCommandExec
 
   @Override
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_QUICK_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
 }

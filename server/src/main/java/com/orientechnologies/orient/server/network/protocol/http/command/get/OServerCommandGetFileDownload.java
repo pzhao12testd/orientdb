@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2011 Luca Molino (molino.luca--AT--gmail.com*
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,22 +19,21 @@ import java.io.IOException;
 import java.util.Date;
 
 import com.orientechnologies.common.util.OPatternConst;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.schema.OProperty;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.ORecordAbstract;
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
 import com.orientechnologies.orient.server.network.protocol.http.command.OServerCommandAuthenticatedDbAbstract;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class OServerCommandGetFileDownload extends OServerCommandAuthenticatedDbAbstract {
@@ -43,6 +42,7 @@ public class OServerCommandGetFileDownload extends OServerCommandAuthenticatedDb
 
   @Override
   public boolean execute(OHttpRequest iRequest, OHttpResponse iResponse) throws Exception {
+    ODatabaseDocumentTx db = getProfiledDatabaseInstance(iRequest);
     String[] urlParts = checkSyntax(iRequest.url, 3, "Syntax error: fileDownload/<database>/rid/[/<fileName>][/<fileType>].");
 
     final String fileName = urlParts.length > 3 ? encodeResponseText(urlParts[3]) : "unknown";
@@ -56,14 +56,14 @@ public class OServerCommandGetFileDownload extends OServerCommandAuthenticatedDb
     iRequest.data.commandDetail = rid;
 
     final ORecordAbstract response;
-    ODatabaseDocument db = getProfiledDatabaseInstance(iRequest);
+
     try {
 
       response = db.load(new ORecordId(rid));
       if (response != null) {
-        if (response instanceof OBlob) {
+        if (response instanceof ORecordBytes) {
           sendORecordBinaryFileContent(iRequest, iResponse, OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, fileType,
-              (OBlob) response, fileName);
+              (ORecordBytes) response, fileName);
         } else if (response instanceof ODocument) {
           for (OProperty prop : ODocumentInternal.getImmutableSchemaClass(((ODocument) response)).properties()) {
             if (prop.getType().equals(OType.BINARY))
@@ -90,7 +90,7 @@ public class OServerCommandGetFileDownload extends OServerCommandAuthenticatedDb
   }
 
   protected void sendORecordBinaryFileContent(final OHttpRequest iRequest, final OHttpResponse iResponse, final int iCode,
-      final String iReason, final String iContentType, final OBlob record, final String iFileName) throws IOException {
+      final String iReason, final String iContentType, final ORecordBytes record, final String iFileName) throws IOException {
     iResponse.writeStatus(iCode, iReason);
     iResponse.writeHeaders(iContentType);
     iResponse.writeLine("Content-Disposition: attachment; filename=" + iFileName);

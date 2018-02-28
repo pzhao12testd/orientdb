@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,12 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.sql.operator;
+
+import java.util.*;
 
 import com.orientechnologies.common.collection.OMultiValue;
 import com.orientechnologies.orient.core.command.OCommandContext;
@@ -30,17 +32,10 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.filter.OSQLFilterCondition;
 import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemFieldAny;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 /**
  * TRAVERSE operator.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public class OQueryOperatorTraverse extends OQueryOperatorEqualityNotNulls {
@@ -105,7 +100,7 @@ public class OQueryOperatorTraverse extends OQueryOperatorEqualityNotNulls {
       if (target.getInternalStatus() == ORecordElement.STATUS.NOT_LOADED)
         try {
           target.load();
-        } catch (final ORecordNotFoundException ignore) {
+        } catch (final ORecordNotFoundException e) {
           // INVALID RID
           return false;
         }
@@ -148,7 +143,7 @@ public class OQueryOperatorTraverse extends OQueryOperatorEqualityNotNulls {
           return true;
       }
     } else if (OMultiValue.isMultiValue(iTarget)) {
-      final Iterable<Object> collection = OMultiValue.getMultiValueIterable(iTarget, false);
+      final Iterable<Object> collection = OMultiValue.getMultiValueIterable(iTarget);
       for (final Object o : collection) {
         if (traverse(o, iCondition, iLevel + 1, iEvaluatedRecords, iContext) == Boolean.TRUE)
           return true;

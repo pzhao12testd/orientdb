@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 OrientDB LTD (info--at--orientdb.com)
+ * Copyright 2010-2013 Orient Technologies LTD (info--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,15 @@
  */
 package com.orientechnologies.orient.core.storage.impl.local.paginated;
 
-import com.orientechnologies.orient.core.exception.OCoreException;
+import com.orientechnologies.common.exception.OException;
 
 /**
  * Exception when any non idempotent operation is executed against the offline cluster
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * @since 2.0
  */
-public class OOfflineClusterException extends OCoreException {
-
-  public OOfflineClusterException(OOfflineClusterException exception) {
-    super(exception);
-  }
+public class OOfflineClusterException extends OException {
 
   public OOfflineClusterException(final String s) {
     super(s);

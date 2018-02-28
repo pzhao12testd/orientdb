@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,18 +14,19 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.serialization.serializer.record.string;
 
 import com.orientechnologies.common.collection.OMultiCollectionIterator;
 import com.orientechnologies.common.collection.OMultiValue;
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.OUserObject2RecordHandler;
+import com.orientechnologies.orient.core.db.object.ODatabaseObject;
 import com.orientechnologies.orient.core.db.record.ORecordLazyMap;
 import com.orientechnologies.orient.core.db.record.ORecordLazyMultiValue;
 import com.orientechnologies.orient.core.db.record.ORecordLazySet;
@@ -40,16 +41,26 @@ import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
 import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
+import com.orientechnologies.orient.core.type.tree.OMVRBTreeRIDSet;
 
-import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstract {
   public static final String                           NAME             = "ORecordDocument2csv";
   public static final ORecordSerializerSchemaAware2CSV INSTANCE         = new ORecordSerializerSchemaAware2CSV();
   private static final long                            serialVersionUID = 1L;
+
+  @Override
+  public ODocument newObject(String iClassName) {
+    return new ODocument(iClassName);
+  }
 
   @Override
   public String toString() {
@@ -92,12 +103,13 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
     final ODocument record = (ODocument) iRecord;
 
     int pos;
-    final ODatabaseDocumentInternal database = ODatabaseRecordThreadLocal.instance().getIfDefined();
+    final ODatabaseDocumentInternal database = ODatabaseRecordThreadLocal.INSTANCE.getIfDefined();
     final int posFirstValue = iContent.indexOf(OStringSerializerHelper.ENTRY_SEPARATOR);
     pos = iContent.indexOf(OStringSerializerHelper.CLASS_SEPARATOR);
     if (pos > -1 && (pos < posFirstValue || posFirstValue == -1)) {
-      if ((record.getIdentity().getClusterId() < 0 || database == null))
-        ODocumentInternal.fillClassNameIfNeeded(((ODocument) iRecord), iContent.substring(0, pos));
+      if ((record.getIdentity().getClusterId() < 0 || database == null || !database.getStorageVersions()
+          .classesAreDetectedByClusterId()))
+        record.setClassNameIfExists(iContent.substring(0, pos));
       iContent = iContent.substring(pos + 1);
     } else
       record.setClassNameIfExists(null);
@@ -149,9 +161,8 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
           boolean setFieldType = false;
 
           // SEARCH FOR A CONFIGURED PROPERTY
-          prop = ODocumentInternal.getImmutableSchemaClass(record) != null ?
-              ODocumentInternal.getImmutableSchemaClass(record).getProperty(fieldName) :
-              null;
+          prop = ODocumentInternal.getImmutableSchemaClass(record) != null ? ODocumentInternal.getImmutableSchemaClass(record)
+              .getProperty(fieldName) : null;
           if (prop != null && prop.getType() != OType.ANY) {
             // RECOGNIZED PROPERTY
             type = prop.getType();
@@ -237,20 +248,15 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
                 type = getType(fieldValue);
             }
           }
-          final Object value = fieldFromStream(iRecord, type, linkedClass, linkedType, fieldName, fieldValue);
-          if ("@class".equals(fieldName)) {
-            ODocumentInternal.fillClassNameIfNeeded(((ODocument) iRecord), value.toString());
-          } else {
-            record.field(fieldName, value, type);
-          }
+
+          record.field(fieldName, fieldFromStream(iRecord, type, linkedClass, linkedType, fieldName, fieldValue), type);
 
           if (uncertainType)
             record.setFieldType(fieldName, null);
         }
       } catch (Exception e) {
-        throw OException.wrapException(new OSerializationException(
-                "Error on unmarshalling field '" + fieldName + "' in record " + iRecord.getIdentity() + " with value: " + fieldEntry),
-            e);
+        throw new OSerializationException("Error on unmarshalling field '" + fieldName + "' in record " + iRecord.getIdentity()
+            + " with value: " + fieldEntry, e);
       }
     }
 
@@ -272,22 +278,9 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
     return result;
   }
 
-  public byte[] writeClassOnly(ORecord iSource) {
-    final ODocument record = (ODocument) iSource;
-    StringBuilder iOutput = new StringBuilder();
-    if (ODocumentInternal.getImmutableSchemaClass(record) != null) {
-      iOutput.append(ODocumentInternal.getImmutableSchemaClass(record).getStreamableName());
-      iOutput.append(OStringSerializerHelper.CLASS_SEPARATOR);
-    }
-    try {
-      return iOutput.toString().getBytes("UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw OException.wrapException(new OSerializationException("error writing class name"), e);
-    }
-  }
-
   @Override
-  protected StringBuilder toString(ORecord iRecord, final StringBuilder iOutput, final String iFormat, final boolean iOnlyDelta,
+  protected StringBuilder toString(ORecord iRecord, final StringBuilder iOutput, final String iFormat,
+      OUserObject2RecordHandler iObjHandler, final Map<ODocument, Boolean> iMarshalledRecords, final boolean iOnlyDelta,
       final boolean autoDetectCollectionType) {
     if (iRecord == null)
       throw new OSerializationException("Expected a record but was null");
@@ -302,6 +295,12 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
       iOutput.append(OStringSerializerHelper.CLASS_SEPARATOR);
     }
 
+    // CHECK IF THE RECORD IS PENDING TO BE MARSHALLED
+    if (iMarshalledRecords != null)
+      if (iMarshalledRecords.containsKey(record)) {
+        return iOutput;
+      } else
+        iMarshalledRecords.put(record, Boolean.TRUE);
 
     OProperty prop;
     OType type;
@@ -312,6 +311,9 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
 
     final String[] fieldNames = iOnlyDelta && record.isTrackingChanges() ? record.getDirtyFields() : record.fieldNames();
 
+    if (iObjHandler == null && ODatabaseRecordThreadLocal.INSTANCE.isDefined())
+      iObjHandler = ODatabaseRecordThreadLocal.INSTANCE.get();
+
     // MARSHALL ALL THE FIELDS OR DELTA IF TRACKING IS ENABLED
     for (String fieldName : fieldNames) {
       Object fieldValue = record.rawField(fieldName);
@@ -319,9 +321,8 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
         iOutput.append(OStringSerializerHelper.RECORD_SEPARATOR);
 
       // SEARCH FOR A CONFIGURED PROPERTY
-      prop = ODocumentInternal.getImmutableSchemaClass(record) != null ?
-          ODocumentInternal.getImmutableSchemaClass(record).getProperty(fieldName) :
-          null;
+      prop = ODocumentInternal.getImmutableSchemaClass(record) != null ? ODocumentInternal.getImmutableSchemaClass(record)
+          .getProperty(fieldName) : null;
       fieldClassName = getClassName(fieldValue);
 
       type = record.fieldType(fieldName);
@@ -342,7 +343,7 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
         if (type == null) {
           if (fieldValue.getClass() == byte[].class)
             type = OType.BINARY;
-          else if (ODatabaseRecordThreadLocal.instance().isDefined() && fieldValue instanceof ORecord) {
+          else if (ODatabaseRecordThreadLocal.INSTANCE.isDefined() && fieldValue instanceof ORecord) {
             if (type == null)
               // DETERMINE THE FIELD TYPE
               if (fieldValue instanceof ODocument && ((ODocument) fieldValue).hasOwners())
@@ -350,12 +351,19 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
               else
                 type = OType.LINK;
 
-            linkedClass = getLinkInfo(ODatabaseRecordThreadLocal.instance().get(), fieldClassName);
+            linkedClass = getLinkInfo(ODatabaseRecordThreadLocal.INSTANCE.get(), fieldClassName);
           } else if (fieldValue instanceof ORID)
             // DETERMINE THE FIELD TYPE
             type = OType.LINK;
 
-          else if (fieldValue instanceof Date)
+          else if (ODatabaseRecordThreadLocal.INSTANCE.isDefined()
+              && ODatabaseRecordThreadLocal.INSTANCE.get().getDatabaseOwner() instanceof ODatabaseObject
+              && ((ODatabaseObject) ODatabaseRecordThreadLocal.INSTANCE.get().getDatabaseOwner()).getEntityManager()
+                  .getEntityClass(fieldClassName) != null) {
+            // DETERMINE THE FIELD TYPE
+            type = OType.LINK;
+            linkedClass = getLinkInfo(ODatabaseRecordThreadLocal.INSTANCE.get(), fieldClassName);
+          } else if (fieldValue instanceof Date)
             type = OType.DATETIME;
           else if (fieldValue instanceof String)
             type = OType.STRING;
@@ -402,9 +410,11 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
                       type = OType.LINKSET;
                     else
                       type = OType.LINKLIST;
-                  } else if (ODatabaseRecordThreadLocal.instance().isDefined() && (firstValue instanceof ODocument
-                      && !((ODocument) firstValue).isEmbedded()) && (firstValue instanceof ORecord)) {
-                    linkedClass = getLinkInfo(ODatabaseRecordThreadLocal.instance().get(), getClassName(firstValue));
+                  } else if (ODatabaseRecordThreadLocal.INSTANCE.isDefined()
+                      && (firstValue instanceof ODocument && !((ODocument) firstValue).isEmbedded())
+                      && (firstValue instanceof ORecord || (ODatabaseRecordThreadLocal.INSTANCE.get().getDatabaseOwner() instanceof ODatabaseObject && ((ODatabaseObject) ODatabaseRecordThreadLocal.INSTANCE
+                          .get().getDatabaseOwner()).getEntityManager().getEntityClass(getClassName(firstValue)) != null))) {
+                    linkedClass = getLinkInfo(ODatabaseRecordThreadLocal.INSTANCE.get(), getClassName(firstValue));
                     if (type == null) {
                       // LINK: GET THE CLASS
                       linkedType = OType.LINK;
@@ -417,8 +427,8 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
                       linkedType = OType.EMBEDDED;
                   } else {
                     // EMBEDDED COLLECTION
-                    if (firstValue instanceof ODocument && ((((ODocument) firstValue).hasOwners()) || type == OType.EMBEDDEDSET
-                        || type == OType.EMBEDDEDLIST || type == OType.EMBEDDEDMAP))
+                    if (firstValue instanceof ODocument
+                        && ((((ODocument) firstValue).hasOwners()) || type == OType.EMBEDDEDSET || type == OType.EMBEDDEDLIST || type == OType.EMBEDDEDMAP))
                       linkedType = OType.EMBEDDED;
                     else if (firstValue instanceof Enum<?>)
                       linkedType = OType.STRING;
@@ -431,7 +441,7 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
                     }
 
                     if (type == null)
-                      if (fieldValue instanceof ORecordLazySet)
+                      if (fieldValue instanceof OMVRBTreeRIDSet || fieldValue instanceof ORecordLazySet)
                         type = OType.LINKSET;
                       else if (fieldValue instanceof Set<?>)
                         type = OType.EMBEDDEDSET;
@@ -462,9 +472,11 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
               final Object firstValue = OMultiValue.getFirstValue(fieldValue);
 
               if (firstValue != null) {
-                if (ODatabaseRecordThreadLocal.instance().isDefined() && (firstValue instanceof ODocument && !((ODocument) firstValue)
-                    .isEmbedded()) && (firstValue instanceof ORecord)) {
-                  linkedClass = getLinkInfo(ODatabaseRecordThreadLocal.instance().get(), getClassName(firstValue));
+                if (ODatabaseRecordThreadLocal.INSTANCE.isDefined()
+                    && (firstValue instanceof ODocument && !((ODocument) firstValue).isEmbedded())
+                    && (firstValue instanceof ORecord || (ODatabaseRecordThreadLocal.INSTANCE.get().getDatabaseOwner() instanceof ODatabaseObject && ((ODatabaseObject) ODatabaseRecordThreadLocal.INSTANCE
+                        .get().getDatabaseOwner()).getEntityManager().getEntityClass(getClassName(firstValue)) != null))) {
+                  linkedClass = getLinkInfo(ODatabaseRecordThreadLocal.INSTANCE.get(), getClassName(firstValue));
                   // LINK: GET THE CLASS
                   linkedType = OType.LINK;
                   type = OType.LINKMAP;
@@ -491,10 +503,14 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
 
       iOutput.append(fieldName);
       iOutput.append(FIELD_VALUE_SEPARATOR);
-      fieldToStream(record, iOutput, type, linkedClass, linkedType, fieldName, fieldValue, true);
+      fieldToStream(record, iOutput, iObjHandler, type, linkedClass, linkedType, fieldName, fieldValue,
+          iMarshalledRecords, true);
 
       i++;
     }
+
+    if (iMarshalledRecords != null)
+      iMarshalledRecords.remove(record);
 
     // GET THE OVERSIZE IF ANY
     final float overSize;
@@ -544,12 +560,16 @@ public class ORecordSerializerSchemaAware2CSV extends ORecordSerializerCSVAbstra
 
     OClass linkedClass = ((OMetadataInternal) iDatabase.getMetadata()).getImmutableSchemaSnapshot().getClass(iFieldClassName);
 
+    if (iDatabase.getDatabaseOwner() instanceof ODatabaseObject) {
+      ODatabaseObject dbo = (ODatabaseObject) iDatabase.getDatabaseOwner();
+      if (linkedClass == null) {
+        Class<?> entityClass = dbo.getEntityManager().getEntityClass(iFieldClassName);
+        if (entityClass != null)
+          // REGISTER IT
+          linkedClass = iDatabase.getMetadata().getSchema().createClass(iFieldClassName);
+      }
+    }
+
     return linkedClass;
-  }
-
-
-  @Override
-  public String getName() {
-    return NAME;
   }
 }

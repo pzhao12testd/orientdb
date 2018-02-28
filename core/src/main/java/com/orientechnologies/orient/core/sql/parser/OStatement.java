@@ -2,18 +2,11 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import com.orientechnologies.common.exception.OException;
-import com.orientechnologies.common.listener.OProgressListener;
-import com.orientechnologies.orient.core.command.OCommandContext;
-import com.orientechnologies.orient.core.db.ODatabase;
-import com.orientechnologies.orient.core.exception.OCommandExecutionException;
-import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.command.OCommandRequest;
+import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.sql.OCommandExecutorSQLAbstract;
 import com.orientechnologies.orient.core.sql.OCommandSQLParsingException;
-import com.orientechnologies.orient.core.sql.executor.OInternalExecutionPlan;
-import com.orientechnologies.orient.core.sql.executor.OResult;
-import com.orientechnologies.orient.core.sql.executor.OResultInternal;
-import com.orientechnologies.orient.core.sql.executor.OResultSet;
-import com.orientechnologies.orient.core.sql.query.OSQLAsynchQuery;
 
 import java.util.Map;
 
@@ -29,101 +22,25 @@ public class OStatement extends SimpleNode {
     super(p, id);
   }
 
-  /**
-   * Accept the visitor.
-   **/
+  /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
   }
 
-  public void toString(Map<Object, Object> params, StringBuilder builder) {
-    throw new UnsupportedOperationException("missing implementation in " + getClass().getSimpleName());
+  public OCommandExecutorSQLAbstract buildExecutor(final OCommandRequest iRequest) {
+    return null; // TODO make it abstract
   }
 
-  public void validate() throws OCommandSQLParsingException {
+  public static ODatabaseDocumentInternal getDatabase() {
+    return ODatabaseRecordThreadLocal.INSTANCE.get();
+  }
+
+  public void replaceParameters(Map<Object, Object> params) {
 
   }
 
-  @Override
-  public String toString(String prefix) {
-    StringBuilder builder = new StringBuilder();
-    toString(null, builder);
-    return builder.toString();
-  }
+  public void validate(OrientSql.ValidationStats stats) throws OCommandSQLParsingException {
 
-  public Object execute(OSQLAsynchQuery<ODocument> request, OCommandContext context, OProgressListener progressListener) {
-    throw new UnsupportedOperationException("Unsupported command: " + getClass().getSimpleName());
-  }
-
-  public OResultSet execute(ODatabase db, Object[] args) {
-    return execute(db, args, null);
-  }
-
-  public OResultSet execute(ODatabase db, Object[] args, OCommandContext parentContext) {
-    throw new UnsupportedOperationException();
-  }
-
-  public OResultSet execute(ODatabase db, Map args) {
-    return execute(db, args, null);
-  }
-
-  public OResultSet execute(ODatabase db, Map args, OCommandContext parentContext) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * creates an execution plan for current statement, with profiling disabled
-   *
-   * @param ctx the context that will be used to execute the statement
-   *
-   * @return an execution plan
-   */
-  public OInternalExecutionPlan createExecutionPlan(OCommandContext ctx) {
-    return createExecutionPlan(ctx, false);
-  }
-
-  /**
-   * creates an execution plan for current statement
-   *
-   * @param ctx     the context that will be used to execute the statement
-   * @param profile true to enable profiling, false to disable it
-   *
-   * @return an execution plan
-   */
-  public OInternalExecutionPlan createExecutionPlan(OCommandContext ctx, boolean profile) {
-    throw new UnsupportedOperationException();
-  }
-
-  public OStatement copy() {
-    throw new UnsupportedOperationException("IMPLEMENT copy() ON " + getClass().getSimpleName());
-  }
-
-  public boolean refersToParent() {
-    throw new UnsupportedOperationException("Implement " + getClass().getSimpleName() + ".refersToParent()");
-  }
-
-  public boolean isIdempotent() {
-    return false;
-  }
-
-  public static OStatement deserializeFromOResult(OResult doc) {
-    try {
-      OStatement result = (OStatement) Class.forName(doc.getProperty("__class")).getConstructor(Integer.class).newInstance(-1);
-      result.deserialize(doc);
-    } catch (Exception e) {
-      throw OException.wrapException(new OCommandExecutionException(""), e);
-    }
-    return null;
-  }
-
-  public OResult serialize() {
-    OResultInternal result = new OResultInternal();
-    result.setProperty("__class", getClass().getName());
-    return result;
-  }
-
-  public void deserialize(OResult fromResult) {
-    throw new UnsupportedOperationException();
   }
 }
 /* JavaCC - OriginalChecksum=589c4dcc8287f430e46d8eb12b0412c5 (do not edit this line) */

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql.functions.coll;
@@ -27,10 +27,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * This operator can work inline. Returns the DIFFERENCE between the collections received as parameters. Works also with no
- * collection values.
+ * This operator can work inline. Returns
+ * the DIFFERENCE between the collections received as parameters. Works also with no collection values.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  */
 public class OSQLFunctionDifference extends OSQLFunctionMultiValueAbstract<Set<Object>> {
@@ -51,13 +51,13 @@ public class OSQLFunctionDifference extends OSQLFunctionMultiValueAbstract<Set<O
 
     boolean first = true;
     for (Object iParameter : iParams) {
-      if (first) {
+      if(first) {
         if (iParameter instanceof Collection<?>) {
           result.addAll((Collection<Object>) iParameter);
         } else {
           result.add(iParameter);
         }
-      } else {
+      }else{
         if (iParameter instanceof Collection<?>) {
           result.removeAll((Collection<Object>) iParameter);
         } else {
@@ -72,7 +72,17 @@ public class OSQLFunctionDifference extends OSQLFunctionMultiValueAbstract<Set<O
 
   }
 
+  @Override
+  public Set<Object> getResult() {
+    return super.getResult();
+  }
+
   public String getSyntax() {
     return "difference(<field>, <field> [, <field]*)";
   }
+
+  public boolean aggregateResults() {
+    return false;
+  }
+
 }

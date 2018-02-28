@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,22 +14,20 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.core.storage.impl.local.paginated.wal;
 
-import com.orientechnologies.orient.core.storage.impl.local.OCheckpointRequestListener;
-import com.orientechnologies.orient.core.storage.impl.local.OLowDiskSpaceListener;
-import com.orientechnologies.orient.core.storage.impl.local.paginated.atomicoperations.OAtomicOperationMetadata;
+import com.orientechnologies.orient.core.storage.impl.local.OFullCheckpointRequestListener;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 6/25/14
  */
 public class OMemoryWriteAheadLog extends OAbstractWriteAheadLog {
@@ -39,7 +37,7 @@ public class OMemoryWriteAheadLog extends OAbstractWriteAheadLog {
   }
 
   @Override
-  public OLogSequenceNumber end() {
+  public OLogSequenceNumber end() throws IOException {
     throw new UnsupportedOperationException("Operation not supported for in memory storage.");
   }
 
@@ -54,8 +52,8 @@ public class OMemoryWriteAheadLog extends OAbstractWriteAheadLog {
 
   @Override
   public OLogSequenceNumber logAtomicOperationEndRecord(OOperationUnitId operationUnitId, boolean rollback,
-      OLogSequenceNumber startLsn, Map<String, OAtomicOperationMetadata<?>> atomicOperationMetadata) throws IOException {
-    return log(new OAtomicUnitEndRecord(operationUnitId, rollback, atomicOperationMetadata));
+      OLogSequenceNumber startLsn) throws IOException {
+    return log(new OAtomicUnitEndRecord(operationUnitId, rollback, startLsn));
   }
 
   @Override
@@ -95,76 +93,19 @@ public class OMemoryWriteAheadLog extends OAbstractWriteAheadLog {
   }
 
   @Override
-  public OLogSequenceNumber getFlushedLsn() {
+  public OLogSequenceNumber getFlushedLSN() {
     throw new UnsupportedOperationException("Operation not supported for in memory storage.");
   }
 
   @Override
-  public boolean cutTill(OLogSequenceNumber lsn) throws IOException {
-    return false;
+  public void cutTill(OLogSequenceNumber lsn) throws IOException {
   }
 
   @Override
-  public void addFullCheckpointListener(OCheckpointRequestListener listener) {
+  public void addFullCheckpointListener(OFullCheckpointRequestListener listener) {
   }
 
   @Override
-  public void removeFullCheckpointListener(OCheckpointRequestListener listener) {
-  }
-
-  @Override
-  public void moveLsnAfter(OLogSequenceNumber lsn) {
-  }
-
-  @Override
-  public void addCutTillLimit(OLogSequenceNumber lsn) {
-
-  }
-
-  @Override
-  public void removeCutTillLimit(OLogSequenceNumber lsn) {
-
-  }
-
-  @Override
-  public File[] nonActiveSegments(long fromSegment) {
-    return new File[0];
-  }
-
-  @Override
-  public long[] nonActiveSegments() {
-    return new long[0];
-  }
-
-  @Override
-  public long activeSegment() {
-    return 0;
-  }
-
-  @Override
-  public void addLowDiskSpaceListener(OLowDiskSpaceListener listener) {
-  }
-
-  @Override
-  public void removeLowDiskSpaceListener(OLowDiskSpaceListener listener) {
-  }
-
-  @Override
-  public OLogSequenceNumber begin(long segmentId) throws IOException {
-    throw new UnsupportedOperationException("Operation not supported for in memory storage.");
-  }
-
-  @Override
-  public void cutAllSegmentsSmallerThan(long segmentId) throws IOException {
-  }
-
-  @Override
-  public void addEventAt(OLogSequenceNumber lsn, Runnable event) {
-    event.run();
-  }
-
-  @Override
-  public boolean appendNewSegment() {
-    return false;
+  public void removeFullCheckpointListener(OFullCheckpointRequestListener listener) {
   }
 }

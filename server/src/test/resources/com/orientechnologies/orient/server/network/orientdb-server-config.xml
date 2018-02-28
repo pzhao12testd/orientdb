@@ -9,17 +9,11 @@
         </handler>
         <handler class="com.orientechnologies.orient.server.handler.OAutomaticBackup">
             <parameters>
-                <!-- CAN BE: FULL_BACKUP, INCREMENTAL_BACKUP, EXPORT -->
-                <parameter name="mode" value="FULL_BACKUP"/>
-                <!-- OPTION FOR EXPORT -->
-                <parameter name="exportOptions" value=""/>
                 <parameter value="false" name="enabled"/>
                 <parameter value="4h" name="delay"/>
                 <parameter value="backup" name="target.directory"/>
                 <parameter value="${DBNAME}-${DATE:yyyyMMddHHmmss}.zip" name="target.fileName"/>
-                <!-- DEFAULT: NO ONE, THAT MEANS ALL DATABASES. USE COMMA TO SEPARATE MULTIPLE DATABASE NAMES -->
                 <parameter value="" name="db.include"/>
-                <!-- DEFAULT: NO ONE, THAT MEANS ALL DATABASES. USE COMMA TO SEPARATE MULTIPLE DATABASE NAMES -->
                 <parameter value="" name="db.exclude"/>
             </parameters>
         </handler>
@@ -61,13 +55,12 @@
     <storages>
     </storages>
     <users>
-        <user resources="*" password="root" name="root"/>
+        <user resources="*" password="D2AFD02F20640EC8B7A5140F34FCA49D2289DB1F0D0598BB9DE8AAA75A0792F3" name="root"/>
         <user resources="connect,server.listDatabases" password="guest" name="guest"/>
     </users>
     <properties>
+        <entry name="cache.level1.enabled" value="true"/>
         <entry name="log.console.level" value="info"/>
         <entry name="log.file.level" value="fine"/>
-        <entry name="server.database.path" value="./target/server"/>
     </properties>
-    <isAfterFirstTime>true</isAfterFirstTime>
 </orient-server>

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,17 +14,17 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.common.serialization.types;
 
-import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChanges;
-
-import java.nio.ByteBuffer;
 import java.util.Calendar;
 import java.util.Date;
+
+import com.orientechnologies.common.directmemory.ODirectMemoryPointer;
+import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChangesTree;
 
 /**
  * Serializer for {@link Date} type, it serializes it without time part.
@@ -35,7 +35,7 @@ import java.util.Date;
 public class ODateSerializer implements OBinarySerializer<Date> {
 
   public static final byte      ID       = 4;
-  public static final ODateSerializer INSTANCE = new ODateSerializer();
+  public static ODateSerializer INSTANCE = new ODateSerializer();
 
   public int getObjectSize(Date object, Object... hints) {
     return OLongSerializer.LONG_SIZE;
@@ -85,6 +85,41 @@ public class ODateSerializer implements OBinarySerializer<Date> {
     return dateTimeSerializer.deserializeNativeObject(stream, startPosition);
   }
 
+  @Override
+  public void serializeInDirectMemoryObject(final Date object, final ODirectMemoryPointer pointer, final long offset,
+      final Object... hints) {
+    final Calendar calendar = Calendar.getInstance();
+    calendar.setTime(object);
+    calendar.set(Calendar.HOUR_OF_DAY, 0);
+    calendar.set(Calendar.MINUTE, 0);
+    calendar.set(Calendar.SECOND, 0);
+    calendar.set(Calendar.MILLISECOND, 0);
+    final ODateTimeSerializer dateTimeSerializer = ODateTimeSerializer.INSTANCE;
+    dateTimeSerializer.serializeInDirectMemoryObject(calendar.getTime(), pointer, offset);
+  }
+
+  @Override
+  public Date deserializeFromDirectMemoryObject(final ODirectMemoryPointer pointer, final long offset) {
+    final ODateTimeSerializer dateTimeSerializer = ODateTimeSerializer.INSTANCE;
+    return dateTimeSerializer.deserializeFromDirectMemoryObject(pointer, offset);
+  }
+
+  @Override
+  public Date deserializeFromDirectMemoryObject(OWALChangesTree.PointerWrapper wrapper, long offset) {
+    final ODateTimeSerializer dateTimeSerializer = ODateTimeSerializer.INSTANCE;
+    return dateTimeSerializer.deserializeFromDirectMemoryObject(wrapper, offset);
+  }
+
+  @Override
+  public int getObjectSizeInDirectMemory(final ODirectMemoryPointer pointer, final long offset) {
+    return OLongSerializer.LONG_SIZE;
+  }
+
+  @Override
+  public int getObjectSizeInDirectMemory(OWALChangesTree.PointerWrapper wrapper, long offset) {
+    return OLongSerializer.LONG_SIZE;
+  }
+
   public boolean isFixedLength() {
     return true;
   }
@@ -95,9 +130,6 @@ public class ODateSerializer implements OBinarySerializer<Date> {
 
   @Override
   public Date preprocess(Date value, Object... hints) {
-    if(value==null){
-      return null;
-    }
     final Calendar calendar = Calendar.getInstance();
     calendar.setTime(value);
     calendar.set(Calendar.HOUR_OF_DAY, 0);
@@ -106,54 +138,5 @@ public class ODateSerializer implements OBinarySerializer<Date> {
     calendar.set(Calendar.MILLISECOND, 0);
 
     return calendar.getTime();
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void serializeInByteBufferObject(Date object, ByteBuffer buffer, Object... hints) {
-    final Calendar calendar = Calendar.getInstance();
-    calendar.setTime(object);
-    calendar.set(Calendar.HOUR_OF_DAY, 0);
-    calendar.set(Calendar.MINUTE, 0);
-    calendar.set(Calendar.SECOND, 0);
-    calendar.set(Calendar.MILLISECOND, 0);
-    final ODateTimeSerializer dateTimeSerializer = ODateTimeSerializer.INSTANCE;
-    dateTimeSerializer.serializeInByteBufferObject(calendar.getTime(), buffer);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public Date deserializeFromByteBufferObject(ByteBuffer buffer) {
-    final ODateTimeSerializer dateTimeSerializer = ODateTimeSerializer.INSTANCE;
-    return dateTimeSerializer.deserializeFromByteBufferObject(buffer);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getObjectSizeInByteBuffer(ByteBuffer buffer) {
-    return OLongSerializer.LONG_SIZE;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public Date deserializeFromByteBufferObject(ByteBuffer buffer, OWALChanges walChanges, int offset) {
-    final ODateTimeSerializer dateTimeSerializer = ODateTimeSerializer.INSTANCE;
-    return dateTimeSerializer.deserializeFromByteBufferObject(buffer, walChanges, offset);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getObjectSizeInByteBuffer(ByteBuffer buffer, OWALChanges walChanges, int offset) {
-    return OLongSerializer.LONG_SIZE;
   }
 }

@@ -4,9 +4,10 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OMultiValueChangeEvent;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 import java.util.*;
 
@@ -14,19 +15,21 @@ import java.util.*;
  * @author LomakiA <a href="mailto:a.lomakin@orientechnologies.com">Andrey Lomakin</a>
  * @since 20.12.11
  */
+@Test
 public class OPropertyMapIndexDefinitionTest {
-  private final Map<String, Integer> mapToTest = new HashMap<String, Integer>();
   private OPropertyMapIndexDefinition propertyIndexByKey;
   private OPropertyMapIndexDefinition propertyIndexByValue;
   private OPropertyMapIndexDefinition propertyIndexByIntegerKey;
 
-  @Before
+  private final Map<String, Integer>  mapToTest = new HashMap<String, Integer>();
+
+  @BeforeClass
   public void beforeClass() {
     mapToTest.put("st1", 1);
     mapToTest.put("st2", 2);
   }
 
-  @Before
+  @BeforeMethod
   public void beforeMethod() {
     propertyIndexByKey = new OPropertyMapIndexDefinition("testClass", "fOne", OType.STRING,
         OPropertyMapIndexDefinition.INDEX_BY.KEY);
@@ -36,7 +39,6 @@ public class OPropertyMapIndexDefinitionTest {
         OPropertyMapIndexDefinition.INDEX_BY.VALUE);
   }
 
-  @Test
   public void testCreateValueByKeySingleParameter() {
     final Object result = propertyIndexByKey.createValue(Collections.singletonList(mapToTest));
     Assert.assertTrue(result instanceof Collection);
@@ -48,7 +50,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains("st2"));
   }
 
-  @Test
   public void testCreateValueByValueSingleParameter() {
     final Object result = propertyIndexByValue.createValue(Collections.singletonList(mapToTest));
     Assert.assertTrue(result instanceof Collection);
@@ -60,7 +61,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(2));
   }
 
-  @Test
   public void testCreateValueByKeyTwoParameters() {
     final Object result = propertyIndexByKey.createValue(Arrays.asList(mapToTest, "25"));
 
@@ -73,7 +73,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains("st2"));
   }
 
-  @Test
   public void testCreateValueByValueTwoParameters() {
     final Object result = propertyIndexByValue.createValue(Arrays.asList(mapToTest, "25"));
 
@@ -86,13 +85,11 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(2));
   }
 
-  @Test
   public void testCreateValueWrongParameter() {
     final Object result = propertyIndexByKey.createValue(Collections.singletonList("tt"));
     Assert.assertNull(result);
   }
 
-  @Test
   public void testCreateValueByKeySingleParameterArrayParams() {
     final Object result = propertyIndexByKey.createValue(mapToTest);
     Assert.assertTrue(result instanceof Collection);
@@ -104,7 +101,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains("st2"));
   }
 
-  @Test
   public void testCreateValueByValueSingleParameterArrayParams() {
     final Object result = propertyIndexByValue.createValue(mapToTest);
     Assert.assertTrue(result instanceof Collection);
@@ -116,7 +112,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(2));
   }
 
-  @Test
   public void testCreateValueByKeyTwoParametersArrayParams() {
     final Object result = propertyIndexByKey.createValue(mapToTest, "25");
 
@@ -129,7 +124,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains("st2"));
   }
 
-  @Test
   public void testCreateValueByValueTwoParametersArrayParams() {
     final Object result = propertyIndexByValue.createValue(mapToTest, "25");
 
@@ -142,13 +136,11 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(2));
   }
 
-  @Test
   public void testCreateValueWrongParameterArrayParams() {
     final Object result = propertyIndexByKey.createValue("tt");
     Assert.assertNull(result);
   }
 
-  @Test
   public void testGetDocumentValueByKeyToIndex() {
     final ODocument document = new ODocument();
 
@@ -165,7 +157,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains("st2"));
   }
 
-  @Test
   public void testGetDocumentValueByValueToIndex() {
     final ODocument document = new ODocument();
 
@@ -182,21 +173,18 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(2));
   }
 
-  @Test
   public void testGetFields() {
     final List<String> result = propertyIndexByKey.getFields();
     Assert.assertEquals(result.size(), 1);
     Assert.assertEquals(result.get(0), "fOne");
   }
 
-  @Test
   public void testGetTypes() {
     final OType[] result = propertyIndexByKey.getTypes();
     Assert.assertEquals(result.length, 1);
     Assert.assertEquals(result[0], OType.STRING);
   }
 
-  @Test
   public void testEmptyIndexByKeyReload() {
     final ODatabaseDocumentTx database = new ODatabaseDocumentTx("memory:propertytest");
     database.create();
@@ -205,7 +193,7 @@ public class OPropertyMapIndexDefinitionTest {
         OPropertyMapIndexDefinition.INDEX_BY.KEY);
 
     final ODocument docToStore = propertyIndexByKey.toStream();
-    database.save(docToStore, database.getClusterNameById(database.getDefaultClusterId()));
+    database.save(docToStore);
 
     final ODocument docToLoad = database.load(docToStore.getIdentity());
 
@@ -216,7 +204,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(result, propertyIndexByKey);
   }
 
-  @Test
   public void testEmptyIndexByValueReload() {
     final ODatabaseDocumentTx database = new ODatabaseDocumentTx("memory:propertytest");
     database.create();
@@ -225,7 +212,7 @@ public class OPropertyMapIndexDefinitionTest {
         OPropertyMapIndexDefinition.INDEX_BY.VALUE);
 
     final ODocument docToStore = propertyIndexByValue.toStream();
-    database.save(docToStore, database.getClusterNameById(database.getDefaultClusterId()));
+    database.save(docToStore);
 
     final ODocument docToLoad = database.load(docToStore.getIdentity());
 
@@ -236,41 +223,36 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(result, propertyIndexByValue);
   }
 
-  @Test
   public void testCreateSingleValueByKey() {
     final Object result = propertyIndexByKey.createSingleValue("tt");
     Assert.assertEquals(result, "tt");
   }
 
-  @Test
   public void testCreateSingleValueByValue() {
     final Object result = propertyIndexByValue.createSingleValue("12");
     Assert.assertEquals(result, 12);
   }
 
-  @Test(expected = NumberFormatException.class)
+  @Test(expectedExceptions = NumberFormatException.class)
   public void testCreateWrongSingleValueByValue() {
     propertyIndexByValue.createSingleValue("tt");
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expectedExceptions = NullPointerException.class)
   public void testIndexByIsRequired() {
     new OPropertyMapIndexDefinition("testClass", "testField", OType.STRING, null);
   }
 
-  @Test
   public void testCreateDDLByKey() {
-    final String ddl = propertyIndexByKey.toCreateIndexDDL("testIndex", "unique", null).toLowerCase(Locale.ENGLISH);
-    Assert.assertEquals(ddl, "create index `testindex` on `testclass` ( `fone` by key ) unique");
+    final String ddl = propertyIndexByKey.toCreateIndexDDL("testIndex", "unique",null).toLowerCase();
+    Assert.assertEquals(ddl, "create index testindex on testclass ( fone by key ) unique");
   }
 
-  @Test
   public void testCreateDDLByValue() {
-    final String ddl = propertyIndexByValue.toCreateIndexDDL("testIndex", "unique", null).toLowerCase(Locale.ENGLISH);
-    Assert.assertEquals(ddl, "create index `testindex` on `testclass` ( `fone` by value ) unique");
+    final String ddl = propertyIndexByValue.toCreateIndexDDL("testIndex", "unique",null).toLowerCase();
+    Assert.assertEquals(ddl, "create index testindex on testclass ( fone by value ) unique");
   }
 
-  @Test
   public void testProcessChangeEventAddKey() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -288,7 +270,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddKeyWithConversion() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -306,7 +287,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddValue() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -324,7 +304,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddValueWithConversion() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -342,7 +321,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventRemoveKey() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -359,7 +337,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventRemoveKeyWithConversion() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -377,7 +354,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventRemoveValue() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -394,7 +370,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventRemoveValueWithConversion() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -411,7 +386,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventUpdateKey() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -423,7 +397,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertTrue(keysToRemove.isEmpty());
   }
 
-  @Test
   public void testProcessChangeEventUpdateValue() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -442,7 +415,6 @@ public class OPropertyMapIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventUpdateValueWithConversion() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();

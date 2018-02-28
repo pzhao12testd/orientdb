@@ -4,17 +4,21 @@ import com.orientechnologies.orient.core.command.script.OCommandScript;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
-import org.junit.Assert;import org.junit.Before; import org.junit.After;import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
 import java.util.Collection;
 
 /**
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class TestTypeGuessingWorkingWithSQLAndMultiValues {
 
   private ODatabaseDocumentTx db;
 
-  @Before
+  @BeforeMethod
   public void create() {
     db = new ODatabaseDocumentTx("memory:" + TestTypeGuessingWorkingWithSQLAndMultiValues.class.getSimpleName());
     db.create();
@@ -59,7 +63,7 @@ public class TestTypeGuessingWorkingWithSQLAndMultiValues {
       Assert.assertTrue(a.getClassName().equals("Address"));
   }
 
-  @After
+  @AfterMethod
   public void after() {
     db.drop();
   }

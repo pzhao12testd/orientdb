@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,14 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import com.orientechnologies.common.comparator.OCaseInsentiveComparator;
 import com.orientechnologies.common.util.OCollections;
@@ -30,78 +34,56 @@ import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.metadata.schema.OClassImpl;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 /**
  * SQL CREATE PROPERTY command: Creates a new property in the target class.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 @SuppressWarnings("unchecked")
 public class OCommandExecutorSQLDropProperty extends OCommandExecutorSQLAbstract implements OCommandDistributedReplicateRequest {
   public static final String KEYWORD_DROP     = "DROP";
   public static final String KEYWORD_PROPERTY = "PROPERTY";
 
-  private String className;
-  private String fieldName;
-  private boolean ifExists;
-  private boolean force = false;
+  private String             className;
+  private String             fieldName;
+  private boolean            force            = false;
 
   public OCommandExecutorSQLDropProperty parse(final OCommandRequest iRequest) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iRequest;
+    init((OCommandRequestText) iRequest);
 
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
-    try {
-      queryText = preParse(queryText, iRequest);
-      textRequest.setText(queryText);
+    final StringBuilder word = new StringBuilder();
 
-      init((OCommandRequestText) iRequest);
+    int oldPos = 0;
+    int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_DROP))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_DROP + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      final StringBuilder word = new StringBuilder();
+    pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_PROPERTY))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_PROPERTY + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      int oldPos = 0;
-      int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_DROP))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_DROP + " not found. Use " + getSyntax(), parserText, oldPos);
+    pos = nextWord(parserText, parserTextUpperCase, pos, word, false);
+    if (pos == -1)
+      throw new OCommandSQLParsingException("Expected <class>.<property>. Use " + getSyntax(), parserText, pos);
 
-      pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_PROPERTY))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_PROPERTY + " not found. Use " + getSyntax(), parserText, oldPos);
+    String[] parts = word.toString().split("\\.");
+    if (parts.length != 2)
+      throw new OCommandSQLParsingException("Expected <class>.<property>. Use " + getSyntax(), parserText, pos);
 
-      pos = nextWord(parserText, parserTextUpperCase, pos, word, false);
-      if (pos == -1)
-        throw new OCommandSQLParsingException("Expected <class>.<property>. Use " + getSyntax(), parserText, pos);
+    className = parts[0];
+    if (className == null)
+      throw new OCommandSQLParsingException("Class not found", parserText, pos);
+    fieldName = parts[1];
 
-      String[] parts = word.toString().split("\\.");
-      if (parts.length != 2)
-        throw new OCommandSQLParsingException("Expected <class>.<property>. Use " + getSyntax(), parserText, pos);
-
-      className = decodeClassName(parts[0]);
-      if (className == null)
-        throw new OCommandSQLParsingException("Class not found", parserText, pos);
-      fieldName = decodeClassName(parts[1]);
-
-      pos = nextWord(parserText, parserTextUpperCase, pos, word, false);
-      if (pos != -1) {
-        final String forceParameter = word.toString();
-        if ("FORCE".equals(forceParameter)) {
-          force = true;
-        } else if ("IF".equals(word.toString())) {
-          pos = nextWord(parserText, parserTextUpperCase, pos, word, false);
-          if ("EXISTS".equals(word.toString())) {
-            this.ifExists = true;
-          }else{
-            throw new OCommandSQLParsingException("Wrong query parameter, expecting EXISTS after IF", parserText, pos);
-          }
-        } else {
-          throw new OCommandSQLParsingException("Wrong query parameter", parserText, pos);
-        }
+    pos = nextWord(parserText, parserTextUpperCase, pos, word, false);
+    if (pos != -1) {
+      final String forceParameter = word.toString();
+      if ("FORCE".equals(forceParameter)) {
+        force = true;
+      } else {
+        throw new OCommandSQLParsingException("Wrong query parameter", parserText, pos);
       }
-    } finally {
-      textRequest.setText(originalQuery);
     }
 
     return this;
@@ -118,10 +100,6 @@ public class OCommandExecutorSQLDropProperty extends OCommandExecutorSQLAbstract
     final OClassImpl sourceClass = (OClassImpl) database.getMetadata().getSchema().getClass(className);
     if (sourceClass == null)
       throw new OCommandExecutionException("Source class '" + className + "' not found");
-
-    if(ifExists && !sourceClass.existsProperty(fieldName)){
-      return null;
-    }
 
     final List<OIndex<?>> indexes = relatedIndexes(fieldName);
     if (!indexes.isEmpty()) {
@@ -153,7 +131,7 @@ public class OCommandExecutorSQLDropProperty extends OCommandExecutorSQLAbstract
 
   @Override
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   @Override
@@ -164,7 +142,7 @@ public class OCommandExecutorSQLDropProperty extends OCommandExecutorSQLAbstract
   private void dropRelatedIndexes(final List<OIndex<?>> indexes) {
     final ODatabaseDocument database = getDatabase();
     for (final OIndex<?> index : indexes) {
-      database.command("DROP INDEX " + index.getName());
+      database.command(new OCommandSQL("DROP INDEX " + index.getName())).execute();
     }
   }
 
@@ -183,6 +161,6 @@ public class OCommandExecutorSQLDropProperty extends OCommandExecutorSQLAbstract
 
   @Override
   public String getSyntax() {
-    return "DROP PROPERTY <class>.<property> [ IF EXISTS ] [FORCE]";
+    return "DROP PROPERTY <class>.<property>";
   }
 }

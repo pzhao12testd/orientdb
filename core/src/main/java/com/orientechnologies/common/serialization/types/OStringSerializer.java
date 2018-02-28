@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,15 +14,14 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.common.serialization.types;
 
-import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChanges;
-
-import java.nio.ByteBuffer;
+import com.orientechnologies.common.directmemory.ODirectMemoryPointer;
+import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChangesTree;
 
 /**
  * Serializer for {@link String} type.
@@ -115,26 +114,12 @@ public class OStringSerializer implements OBinarySerializer<String> {
     return new String(buffer);
   }
 
-  public boolean isFixedLength() {
-    return false;
-  }
-
-  public int getFixedLength() {
-    throw new UnsupportedOperationException("Length of serialized string is not fixed.");
-  }
-
   @Override
-  public String preprocess(String value, Object... hints) {
-    return value;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void serializeInByteBufferObject(String object, ByteBuffer buffer, Object... hints) {
+  public void serializeInDirectMemoryObject(String object, ODirectMemoryPointer pointer, long offset, Object... hints) {
     int length = object.length();
-    buffer.putInt(length);
+    pointer.setInt(offset, length);
+
+    offset += OIntegerSerializer.INT_SIZE;
 
     byte[] binaryData = new byte[length * 2];
     char[] stringContent = new char[length];
@@ -150,57 +135,59 @@ public class OStringSerializer implements OBinarySerializer<String> {
       counter++;
     }
 
-    buffer.put(binaryData);
+    pointer.set(offset, binaryData, 0, binaryData.length);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
-  public String deserializeFromByteBufferObject(ByteBuffer buffer) {
-    int len = buffer.getInt();
+  public String deserializeFromDirectMemoryObject(ODirectMemoryPointer pointer, long offset) {
+    int len = pointer.getInt(offset);
 
-    final char[] chars = new char[len];
-    final byte[] binaryData = new byte[2 * len];
-    buffer.get(binaryData);
-
-    for (int i = 0; i < len; i++)
-      chars[i] = (char) ((0xFF & binaryData[i << 1]) | ((0xFF & binaryData[(i << 1) + 1]) << 8));
-
-    return new String(chars);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getObjectSizeInByteBuffer(ByteBuffer buffer) {
-    return buffer.getInt() * 2 + OIntegerSerializer.INT_SIZE;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public String deserializeFromByteBufferObject(ByteBuffer buffer, OWALChanges walChanges, int offset) {
-    int len = walChanges.getIntValue(buffer, offset);
-
-    final char[] chars = new char[len];
+    final char[] buffer = new char[len];
     offset += OIntegerSerializer.INT_SIZE;
 
-    byte[] binaryData = walChanges.getBinaryValue(buffer, offset, 2 * len);
+    byte[] binaryData = pointer.get(offset, buffer.length * 2);
 
     for (int i = 0; i < len; i++)
-      chars[i] = (char) ((0xFF & binaryData[i << 1]) | ((0xFF & binaryData[(i << 1) + 1]) << 8));
+      buffer[i] = (char) ((0xFF & binaryData[i << 1]) | ((0xFF & binaryData[(i << 1) + 1]) << 8));
 
-    return new String(chars);
+    return new String(buffer);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
-  public int getObjectSizeInByteBuffer(ByteBuffer buffer, OWALChanges walChanges, int offset) {
-    return walChanges.getIntValue(buffer, offset) * 2 + OIntegerSerializer.INT_SIZE;
+  public String deserializeFromDirectMemoryObject(OWALChangesTree.PointerWrapper wrapper, long offset) {
+    int len = wrapper.getInt(offset);
+
+    final char[] buffer = new char[len];
+    offset += OIntegerSerializer.INT_SIZE;
+
+    byte[] binaryData = wrapper.get(offset, buffer.length * 2);
+
+    for (int i = 0; i < len; i++)
+      buffer[i] = (char) ((0xFF & binaryData[i << 1]) | ((0xFF & binaryData[(i << 1) + 1]) << 8));
+
+    return new String(buffer);
+  }
+
+  @Override
+  public int getObjectSizeInDirectMemory(ODirectMemoryPointer pointer, long offset) {
+    return pointer.getInt(offset) * 2 + OIntegerSerializer.INT_SIZE;
+  }
+
+  @Override
+  public int getObjectSizeInDirectMemory(OWALChangesTree.PointerWrapper wrapper, long offset) {
+    return wrapper.getInt(offset) * 2 + OIntegerSerializer.INT_SIZE;
+  }
+
+  public boolean isFixedLength() {
+    return false;
+  }
+
+  public int getFixedLength() {
+    throw new UnsupportedOperationException("Length of serialized string is not fixed.");
+  }
+
+  @Override
+  public String preprocess(String value, Object... hints) {
+    return value;
   }
 }

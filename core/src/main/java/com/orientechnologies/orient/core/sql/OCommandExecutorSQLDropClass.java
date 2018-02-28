@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
@@ -27,7 +27,6 @@ import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.sql.parser.ODropClassStatement;
 
 import java.util.Map;
 
@@ -45,33 +44,9 @@ public class OCommandExecutorSQLDropClass extends OCommandExecutorSQLAbstract im
 
   private String             className;
   private boolean            unsafe;
-  private boolean            ifExists       = false;
 
   public OCommandExecutorSQLDropClass parse(final OCommandRequest iRequest) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iRequest;
-
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
-    try {
-      queryText = preParse(queryText, iRequest);
-      textRequest.setText(queryText);
-      final boolean strict = getDatabase().getStorage().getConfiguration().isStrictSql();
-      if (strict) {
-        this.className = ((ODropClassStatement) this.preParsedStatement).name.getStringValue();
-        this.unsafe = ((ODropClassStatement) this.preParsedStatement).unsafe;
-        this.ifExists = ((ODropClassStatement) this.preParsedStatement).ifExists;
-      } else {
-        oldParsing((OCommandRequestText) iRequest);
-      }
-    } finally {
-      textRequest.setText(originalQuery);
-    }
-
-    return this;
-  }
-
-  private void oldParsing(OCommandRequestText iRequest) {
-    init(iRequest);
+    init((OCommandRequestText) iRequest);
 
     final StringBuilder word = new StringBuilder();
 
@@ -97,6 +72,8 @@ public class OCommandExecutorSQLDropClass extends OCommandExecutorSQLAbstract im
     if (pos > -1 && KEYWORD_UNSAFE.equalsIgnoreCase(word.toString())) {
       unsafe = true;
     }
+
+    return this;
   }
 
   @Override
@@ -106,11 +83,7 @@ public class OCommandExecutorSQLDropClass extends OCommandExecutorSQLAbstract im
 
   @Override
   public long getDistributedTimeout() {
-    final OClass cls = getDatabase().getMetadata().getSchema().getClass(className);
-    if (className != null && cls != null)
-      return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_QUICK_TASK_SYNCH_TIMEOUT) + (2 * cls.count());
-
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_QUICK_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   /**
@@ -122,9 +95,6 @@ public class OCommandExecutorSQLDropClass extends OCommandExecutorSQLAbstract im
     }
 
     final ODatabaseDocument database = getDatabase();
-    if (ifExists && !database.getMetadata().getSchema().existsClass(className)) {
-      return true;
-    }
     final OClass cls = database.getMetadata().getSchema().getClass(className);
     if (cls == null) {
       return null;
@@ -136,12 +106,16 @@ public class OCommandExecutorSQLDropClass extends OCommandExecutorSQLAbstract im
       // NOT EMPTY, CHECK IF CLASS IS OF VERTEX OR EDGES
       if (cls.isSubClassOf("V")) {
         // FOUND VERTEX CLASS
-        throw new OCommandExecutionException("'DROP CLASS' command cannot drop class '" + className
-            + "' because it contains Vertices. Use 'DELETE VERTEX' command first to avoid broken edges in a database, or apply the 'UNSAFE' keyword to force it");
+        throw new OCommandExecutionException(
+            "'DROP CLASS' command cannot drop class '"
+                + className
+                + "' because it contains Vertices. Use 'DELETE VERTEX' command first to avoid broken edges in a database, or apply the 'UNSAFE' keyword to force it");
       } else if (cls.isSubClassOf("E")) {
         // FOUND EDGE CLASS
-        throw new OCommandExecutionException("'DROP CLASS' command cannot drop class '" + className
-            + "' because it contains Edges. Use 'DELETE EDGE' command first to avoid broken vertices in a database, or apply the 'UNSAFE' keyword to force it");
+        throw new OCommandExecutionException(
+            "'DROP CLASS' command cannot drop class '"
+                + className
+                + "' because it contains Edges. Use 'DELETE EDGE' command first to avoid broken vertices in a database, or apply the 'UNSAFE' keyword to force it");
       }
     }
 
@@ -167,7 +141,7 @@ public class OCommandExecutorSQLDropClass extends OCommandExecutorSQLAbstract im
 
   @Override
   public String getSyntax() {
-    return "DROP CLASS <class> [IF EXISTS] [UNSAFE]";
+    return "DROP CLASS <class> [UNSAFE]";
   }
 
   @Override

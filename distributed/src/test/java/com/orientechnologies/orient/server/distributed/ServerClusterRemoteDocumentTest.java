@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
@@ -28,13 +28,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Start 3 servers and wait for external commands.
+ * Start 3 servers and wait for external commands
  */
 public class ServerClusterRemoteDocumentTest extends AbstractServerClusterTest {
   final static int SERVERS = 3;
 
   public String getDatabaseName() {
-    return "distributed-remote-docs3";
+    return "distributed-remote-docs";
   }
 
   @Test
@@ -48,8 +48,6 @@ public class ServerClusterRemoteDocumentTest extends AbstractServerClusterTest {
   protected void executeTest() throws Exception {
     String id = String.valueOf(Math.random());
     ODatabaseDocumentTx db = new ODatabaseDocumentTx("remote:localhost/" + getDatabaseName()).open("admin", "admin");
-    db.createClass("Client");
-    db.createClass("Matter");
     db.begin();
     try {
       ODocument client = new ODocument("Client");
@@ -79,7 +77,7 @@ public class ServerClusterRemoteDocumentTest extends AbstractServerClusterTest {
       if (matter == null) {
         throw new Exception("Matter not found with id" + id);
       }
-      matter.field("client", new ODocument().save(db2.getClusterNameById(db2.getDefaultClusterId())));
+      matter.field("client", new ODocument());
       matter.save();
       db2.commit();
     } finally {

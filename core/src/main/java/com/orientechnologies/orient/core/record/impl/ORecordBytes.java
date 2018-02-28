@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.record.impl;
@@ -31,6 +31,8 @@ import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.ORecordAbstract;
 import com.orientechnologies.orient.core.serialization.OMemoryStream;
+import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializerFactory;
+import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializerRaw;
 
 /**
  * The rawest representation of a record. It's schema less. Use this if you need to store Strings or byte[] without matter about the
@@ -38,9 +40,10 @@ import com.orientechnologies.orient.core.serialization.OMemoryStream;
  * using the reset() at every re-use.
  */
 @SuppressWarnings({ "unchecked" })
-public class ORecordBytes extends ORecordAbstract implements OBlob {
+public class ORecordBytes extends ORecordAbstract {
   private static final long   serialVersionUID = 1L;
 
+  public static final byte    RECORD_TYPE      = 'b';
   private static final byte[] EMPTY_SOURCE     = new byte[] {};
 
   public ORecordBytes() {
@@ -49,12 +52,12 @@ public class ORecordBytes extends ORecordAbstract implements OBlob {
 
   public ORecordBytes(final ODatabaseDocumentInternal iDatabase) {
     setup();
-    ODatabaseRecordThreadLocal.instance().set(iDatabase);
+    ODatabaseRecordThreadLocal.INSTANCE.set(iDatabase);
   }
 
   public ORecordBytes(final ODatabaseDocumentInternal iDatabase, final byte[] iSource) {
     this(iSource);
-    ODatabaseRecordThreadLocal.instance().set(iDatabase);
+    ODatabaseRecordThreadLocal.INSTANCE.set(iDatabase);
   }
 
   public ORecordBytes(final byte[] iSource) {
@@ -87,12 +90,6 @@ public class ORecordBytes extends ORecordAbstract implements OBlob {
   }
 
   @Override
-  public ORecordAbstract clear() {
-    clearSource();
-    return super.clear();
-  }
-
-  @Override
   public byte[] toStream() {
     return _source;
   }
@@ -104,12 +101,13 @@ public class ORecordBytes extends ORecordAbstract implements OBlob {
   @Override
   protected void setup() {
     super.setup();
+    _recordFormat = ORecordSerializerFactory.instance().getFormat(ORecordSerializerRaw.NAME);
   }
 
   /**
    * Reads the input stream in memory. This is less efficient than {@link #fromInputStream(InputStream, int)} because allocation is
    * made multiple times. If you already know the input size use {@link #fromInputStream(InputStream, int)}.
-   *
+   * 
    * @param in
    *          Input Stream, use buffered input stream wrapper to speed up reading
    * @return Buffer read from the stream. It's also the internal buffer size in bytes
@@ -139,7 +137,7 @@ public class ORecordBytes extends ORecordAbstract implements OBlob {
   /**
    * Reads the input stream in memory specifying the maximum bytes to read. This is more efficient than
    * {@link #fromInputStream(InputStream)} because allocation is made only once.
-   *
+   * 
    * @param in
    *          Input Stream, use buffered input stream wrapper to speed up reading
    * @param maxSize

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -110,7 +110,7 @@ public class SQLFindReferencesTest extends DocumentDBBaseTest {
   }
 
   @BeforeClass
-  public void createTestEnvironment() {
+  public void createTestEnviroment() {
     createSchema();
     populateDatabase();
   }
@@ -190,7 +190,7 @@ public class SQLFindReferencesTest extends DocumentDBBaseTest {
   }
 
   @AfterClass
-  public void deleteTestEnvironment() {
+  public void deleteTestEnviroment() {
 		database.open("admin", "admin");
 
     carID.reset();

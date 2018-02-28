@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,15 +14,13 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.graph.sql.functions;
 
 import com.orientechnologies.orient.core.command.OCommandContext;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
@@ -46,7 +44,7 @@ import java.util.Map;
 /**
  * Executes a GREMLIN expression as function of SQL engine.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public class OSQLFunctionGremlin extends OSQLFunctionAbstract {
@@ -59,7 +57,11 @@ public class OSQLFunctionGremlin extends OSQLFunctionAbstract {
 
   public Object execute(Object iThis, final OIdentifiable iCurrentRecord, Object iCurrentResult, final Object[] iParams,
       final OCommandContext iContext) {
-    final ODatabaseDocumentInternal db = OGremlinHelper.getGraphDatabase(ODatabaseRecordThreadLocal.instance().get());
+    if (!(iCurrentRecord instanceof ODocument))
+      // NOT DOCUMENT OR GRAPHDB? IGNORE IT
+      return null;
+
+    final ODatabaseDocumentTx db = OGremlinHelper.getGraphDatabase(ODatabaseRecordThreadLocal.INSTANCE.get());
 
     result = new ArrayList<Object>();
 
@@ -67,11 +69,7 @@ public class OSQLFunctionGremlin extends OSQLFunctionAbstract {
         new OGremlinHelper.OGremlinCallback() {
 
           @Override
-          public boolean call(final ScriptEngine iEngine, final OrientBaseGraph iGraph) {
-            if( iCurrentRecord == null )
-              // IGNORE PRE-PROCESSING
-              return true;
-
+          public boolean call(ScriptEngine iEngine, OrientBaseGraph iGraph) {
             final ODocument document = (ODocument) iCurrentRecord;
             OClass clazz =ODocumentInternal.getImmutableSchemaClass(document);
             if (clazz != null && clazz.isSubClassOf(OrientEdgeType.CLASS_NAME)) {

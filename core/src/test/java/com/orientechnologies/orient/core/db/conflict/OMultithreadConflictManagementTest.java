@@ -1,13 +1,6 @@
 package com.orientechnologies.orient.core.db.conflict;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
-import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.id.ORecordId;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import org.junit.Test;
+import static org.testng.AssertJUnit.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,7 +10,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.assertTrue;
+import org.testng.annotations.Test;
+
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
+import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.id.ORecordId;
+import com.orientechnologies.orient.core.record.impl.ODocument;
 
 public class OMultithreadConflictManagementTest {
 
@@ -33,7 +34,7 @@ public class OMultithreadConflictManagementTest {
       bag.add(new ORecordId(30, 20));
       ODocument doc = new ODocument();
       doc.field("bag", bag);
-      doc = db.save(doc, db.getClusterNameById(db.getDefaultClusterId()));
+      doc = db.save(doc);
       db.commit();
       final ORID id;
       id = doc.getIdentity();
@@ -71,8 +72,8 @@ public class OMultithreadConflictManagementTest {
 
       ORidBag bag2 = doc.field("bag");
       bag2.setAutoConvertToRecord(false);
-      List<ORecordId> ids = new ArrayList<ORecordId>(
-          Arrays.asList(new ORecordId(30, 20), new ORecordId(30, 31), new ORecordId(30, 32)));
+      List<ORecordId> ids = new ArrayList<ORecordId>(Arrays.asList(new ORecordId(30, 20), new ORecordId(30, 31), new ORecordId(30,
+          32)));
       for (OIdentifiable ide : bag2) {
         assertTrue(ids.remove(ide));
       }

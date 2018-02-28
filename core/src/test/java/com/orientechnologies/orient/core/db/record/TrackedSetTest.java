@@ -1,13 +1,5 @@
 package com.orientechnologies.orient.core.db.record;
 
-import com.orientechnologies.common.types.ORef;
-import com.orientechnologies.orient.core.record.ORecordInternal;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.serialization.OMemoryInputStream;
-import com.orientechnologies.orient.core.serialization.OMemoryStream;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.ObjectInputStream;
@@ -17,8 +9,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.orientechnologies.common.types.ORef;
+import com.orientechnologies.orient.core.record.ORecordInternal;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.serialization.OMemoryInputStream;
+import com.orientechnologies.orient.core.serialization.OMemoryStream;
+
+@Test
 public class TrackedSetTest {
-  @Test
   public void testAddOne() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -43,7 +44,6 @@ public class TrackedSetTest {
     Assert.assertTrue(doc.isDirty());
   }
 
-  @Test
   public void testAddTwo() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -54,7 +54,6 @@ public class TrackedSetTest {
     Assert.assertTrue(doc.isDirty());
   }
 
-  @Test
   public void testAddThree() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -77,7 +76,6 @@ public class TrackedSetTest {
     Assert.assertFalse(doc.isDirty());
   }
 
-  @Test
   public void testAddFour() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -103,7 +101,6 @@ public class TrackedSetTest {
     Assert.assertFalse(doc.isDirty());
   }
 
-  @Test
   public void testRemoveNotificationOne() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -135,7 +132,6 @@ public class TrackedSetTest {
     Assert.assertTrue(doc.isDirty());
   }
 
-  @Test
   public void testRemoveNotificationTwo() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -153,7 +149,6 @@ public class TrackedSetTest {
     Assert.assertTrue(doc.isDirty());
   }
 
-  @Test
   public void testRemoveNotificationThree() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -181,7 +176,6 @@ public class TrackedSetTest {
     Assert.assertFalse(doc.isDirty());
   }
 
-  @Test
   public void testRemoveNotificationFour() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -208,7 +202,6 @@ public class TrackedSetTest {
     Assert.assertFalse(doc.isDirty());
   }
 
-  @Test
   public void testClearOne() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -248,7 +241,6 @@ public class TrackedSetTest {
     Assert.assertTrue(doc.isDirty());
   }
 
-  @Test
   public void testClearTwo() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -276,7 +268,6 @@ public class TrackedSetTest {
     Assert.assertFalse(doc.isDirty());
   }
 
-  @Test
   public void testClearThree() {
     final ODocument doc = new ODocument();
     ORecordInternal.unsetDirty(doc);
@@ -295,7 +286,6 @@ public class TrackedSetTest {
     Assert.assertTrue(doc.isDirty());
   }
 
-  @Test
   public void testReturnOriginalState() {
     final ODocument doc = new ODocument();
 
@@ -327,11 +317,9 @@ public class TrackedSetTest {
     Assert.assertEquals(original, trackedSet.returnOriginalState(firedEvents));
   }
 
-
   /**
    * Test that {@link OTrackedSet} is serialised correctly.
    */
-
   @Test
   public void testSetSerialization() throws Exception {
 
@@ -356,7 +344,7 @@ public class TrackedSetTest {
     @SuppressWarnings("unchecked")
     final Set<String> afterSerialization = (Set<String>) input.readObject();
 
-    Assert.assertEquals(afterSerialization.size(), beforeSerialization.size());
+    Assert.assertEquals(afterSerialization.size(), beforeSerialization.size(), "Set size");
     Assert.assertTrue(beforeSerialization.containsAll(afterSerialization));
   }
 }

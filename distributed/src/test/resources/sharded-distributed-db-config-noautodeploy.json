@@ -1,21 +1,23 @@
 {
     "autoDeploy": false,
+    "hotAlignment": false,
+    "offlineMsgQueueSize" : 0,
     "readQuorum": 1,
-    "writeQuorum": "majority",
+    "writeQuorum": 2,
+    "failureAvailableNodesLessQuorum": false,
     "readYourWrites": true,
     "clusters": {
         "internal": {
         },
-        "client-type": {
-            "owner" : "europe",
+        "index": {
+        },
+        "client": {
             "servers" : [ "europe", "usa" ]
         },
-        "client-type_usa": {
-            "owner" : "usa",
+        "client_usa": {
             "servers" : [ "usa" ]
         },
-        "client-type_asia": {
-            "owner" : "asia",
+        "client_asia": {
             "servers" : [ "asia", "europe", "usa" ]
         },
         "*": {

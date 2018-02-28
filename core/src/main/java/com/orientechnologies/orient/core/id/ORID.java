@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.id;
@@ -25,45 +25,34 @@ import com.orientechnologies.orient.core.serialization.OSerializableStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-/**
- * RecordID interface that represents a recordid in database. RecordID are made of 2 numbers: cluster id (cluster number) and
- * cluster position (absolute position inside the cluster). Loading a record by its RecordID allows O(1) performance, no matter the
- * database size.
- * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
- */
 public interface ORID extends OIdentifiable, OSerializableStream {
-  char PREFIX              = '#';
-  char SEPARATOR           = ':';
-  int  CLUSTER_MAX         = 32767;
-  int  CLUSTER_ID_INVALID  = -1;
-  long CLUSTER_POS_INVALID = -1;
+  public static final char PREFIX              = '#';
+  public static final char SEPARATOR           = ':';
+  public static final int  CLUSTER_MAX         = 32767;
+  public static final int  CLUSTER_ID_INVALID  = -1;
+  public static final long CLUSTER_POS_INVALID = -1;
 
-  int getClusterId();
+  public int getClusterId();
 
-  long getClusterPosition();
+  public long getClusterPosition();
 
-  void reset();
+  public void reset();
 
-  boolean isPersistent();
+  public boolean isPersistent();
 
-  boolean isValid();
+  public boolean isValid();
 
-  boolean isNew();
+  public boolean isNew();
 
-  boolean isTemporary();
+  public boolean isTemporary();
 
-  ORID copy();
+  public ORID copy();
 
-  String next();
+  public String next();
 
-  /**
-   * Deprecated since v2.2
-   */
-  @Deprecated
-  ORID nextRid();
+  public ORID nextRid();
 
-  int toStream(OutputStream iStream) throws IOException;
+  public int toStream(OutputStream iStream) throws IOException;
 
-  StringBuilder toString(StringBuilder iBuffer);
+  public StringBuilder toString(StringBuilder iBuffer);
 }

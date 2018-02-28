@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,14 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.sql.operator.math;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Date;
 
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
@@ -27,13 +31,10 @@ import com.orientechnologies.orient.core.sql.filter.OSQLFilterCondition;
 import com.orientechnologies.orient.core.sql.operator.OIndexReuseType;
 import com.orientechnologies.orient.core.sql.operator.OQueryOperator;
 
-import java.math.BigDecimal;
-import java.util.Date;
-
 /**
  * DIVIDE "/" operator.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public class OQueryOperatorDivide extends OQueryOperator {
@@ -56,19 +57,29 @@ public class OQueryOperatorDivide extends OQueryOperator {
     if (iLeft instanceof Number && iRight instanceof Number) {
       final Number l = (Number) iLeft;
       final Number r = (Number) iRight;
-      Class maxPrecisionClass = OQueryOperatorMultiply.getMaxPrecisionClass(l, r);
-      if (Integer.class.equals(maxPrecisionClass))
+      if (l instanceof Integer)
         return l.intValue() / r.intValue();
-      else if (Long.class.equals(maxPrecisionClass))
+      else if (l instanceof Long)
         return l.longValue() / r.longValue();
-      else if (Short.class.equals(maxPrecisionClass))
+      else if (l instanceof Short)
         return l.shortValue() / r.shortValue();
-      else if (Float.class.equals(maxPrecisionClass))
+      else if (l instanceof Float)
         return l.floatValue() / r.floatValue();
-      else if (Double.class.equals(maxPrecisionClass))
+      else if (l instanceof Double)
         return l.doubleValue() / r.doubleValue();
-      else if (BigDecimal.class.equals(maxPrecisionClass)) {
-        return (OQueryOperatorMultiply.toBigDecimal(l)).divide(OQueryOperatorMultiply.toBigDecimal(r));
+      else if (l instanceof BigDecimal) {
+        if (r instanceof BigDecimal)
+          return ((BigDecimal) l).divide((BigDecimal) r, RoundingMode.HALF_UP);
+        else if (r instanceof Float)
+          return ((BigDecimal) l).divide(new BigDecimal(r.floatValue()), RoundingMode.HALF_UP);
+        else if (r instanceof Double)
+          return ((BigDecimal) l).divide(new BigDecimal(r.doubleValue()), RoundingMode.HALF_UP);
+        else if (r instanceof Long)
+          return ((BigDecimal) l).divide(new BigDecimal(r.longValue()), RoundingMode.HALF_UP);
+        else if (r instanceof Integer)
+          return ((BigDecimal) l).divide(new BigDecimal(r.intValue()), RoundingMode.HALF_UP);
+        else if (r instanceof Short)
+          return ((BigDecimal) l).divide(new BigDecimal(r.shortValue()), RoundingMode.HALF_UP);
       }
     }
 

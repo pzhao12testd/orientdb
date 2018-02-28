@@ -2,10 +2,12 @@ package com.orientechnologies.orient.server.distributed.asynch;
 
 import com.orientechnologies.common.io.OFileUtils;
 import com.orientechnologies.common.log.OLogManager;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.metadata.schema.OSchema;
+import com.orientechnologies.common.util.OCallable;
 import com.orientechnologies.orient.server.OServer;
+import com.orientechnologies.orient.server.OServerMain;
 import com.orientechnologies.orient.server.hazelcast.OHazelcastPlugin;
+import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 
 import java.io.File;
 
@@ -15,32 +17,29 @@ public class BareBonesServer {
 
   public void createDB(String orientUrl) {
     OLogManager.instance().info(this, "creating the database:" + orientUrl);
-    ODatabaseDocumentTx graph = new ODatabaseDocumentTx(orientUrl);
-    if(!graph.exists()){
-      graph.create();
-    }else {
-      graph.open("admin", "admin");
-    }
+    OrientGraphFactory factory = new OrientGraphFactory(orientUrl);
+    OrientBaseGraph graph = factory.getTx();
+    graph.executeOutsideTx(new OCallable<Object, OrientBaseGraph>() {
+      @Override
+      public Object call(OrientBaseGraph g) {
+        g.createEdgeType("edgetype");
+        g.createVertexType("vertextype");
+        return null;
+      }
+    });
 
-    OSchema schema = graph.getMetadata().getSchema();
-    if(!schema.existsClass("edgetype")){
-      schema.createClass("edgetype", schema.getClass("E"));
-    }
-    if(!schema.existsClass("vertextype")){
-      schema.createClass("vertextype", schema.getClass("V"));
-    }
-
-    graph.close();
+    graph.shutdown();
+    factory.close();
   }
 
   public void start(String configFileDir, String configFileName) {
     OLogManager.instance().info(this, "starting the database based on: " + configFileName);
     try {
-      server = new OServer(false);
+      server = OServerMain.create();
       server.startup(new File(configFileDir, configFileName));
       server.activate();
       if (server.getPluginByClass(OHazelcastPlugin.class) != null)
-        server.getPluginByClass(OHazelcastPlugin.class).waitUntilNodeOnline();
+        server.getPluginByClass(OHazelcastPlugin.class).waitUntilOnline();
     } catch (Exception e) {
       OLogManager.instance().error(this, "start", e);
     }

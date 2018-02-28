@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,10 @@ package com.orientechnologies.orient.core.fetch;
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OFetchException;
-import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public interface OFetchContext {
@@ -55,9 +54,9 @@ public interface OFetchContext {
   public void onAfterDocument(final ODocument iRootRecord, final ODocument iDocument, final String iFieldName,
       final Object iUserObject) throws OFetchException;
 
-  public void onBeforeStandardField(final Object iFieldValue, final String iFieldName, final Object iUserObject, OType fieldType);
+  public void onBeforeStandardField(final Object iFieldValue, final String iFieldName, final Object iUserObject);
 
-  public void onAfterStandardField(final Object iFieldValue, final String iFieldName, final Object iUserObject, OType fieldType);
+  public void onAfterStandardField(final Object iFieldValue, final String iFieldName, final Object iUserObject);
 
   public boolean fetchEmbeddedDocuments();
 }

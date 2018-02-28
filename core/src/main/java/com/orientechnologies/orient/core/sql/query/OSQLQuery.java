@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql.query;
+
+import java.util.*;
+import java.util.Map.Entry;
 
 import com.orientechnologies.common.util.OCommonConst;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
@@ -33,21 +36,12 @@ import com.orientechnologies.orient.core.query.OQueryAbstract;
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.serialization.OMemoryStream;
-import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializer;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
+import com.orientechnologies.orient.core.serialization.OSerializableStream;
 
 /**
  * SQL query implementation.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  * @param <T>
  *          Record type to return.
@@ -68,7 +62,7 @@ public abstract class OSQLQuery<T> extends OQueryAbstract<T> implements OCommand
    */
   @SuppressWarnings("unchecked")
   public List<T> run(final Object... iArgs) {
-    final ODatabaseDocumentInternal database = ODatabaseRecordThreadLocal.instance().get();
+    final ODatabaseDocumentInternal database = ODatabaseRecordThreadLocal.INSTANCE.get();
     if (database == null)
       throw new OQueryParsingException("No database configured");
 
@@ -105,10 +99,10 @@ public abstract class OSQLQuery<T> extends OQueryAbstract<T> implements OCommand
     return "sql." + text;
   }
 
-  public OCommandRequestText fromStream(final byte[] iStream, ORecordSerializer serializer) throws OSerializationException {
+  public OSerializableStream fromStream(final byte[] iStream) throws OSerializationException {
     final OMemoryStream buffer = new OMemoryStream(iStream);
 
-    queryFromStream(buffer,serializer);
+    queryFromStream(buffer);
 
     return this;
   }
@@ -122,30 +116,30 @@ public abstract class OSQLQuery<T> extends OQueryAbstract<T> implements OCommand
 
     buffer.setUtf8(text); // TEXT AS STRING
     buffer.set(limit); // LIMIT AS INTEGER
-    buffer.setUtf8(fetchPlan != null ? fetchPlan : "");
+    buffer.setUtf8(fetchPlan != null ? fetchPlan : ""); // FETCH PLAN IN FORM OF STRING (to know more goto:
+    // http://code.google.com/p/orient/wiki/FetchingStrategies)
 
     buffer.set(serializeQueryParameters(parameters));
 
     return buffer;
   }
 
-  protected void queryFromStream(final OMemoryStream buffer, ORecordSerializer serializer) {
+  protected void queryFromStream(final OMemoryStream buffer) {
     text = buffer.getAsString();
     limit = buffer.getAsInteger();
 
     setFetchPlan(buffer.getAsString());
 
     final byte[] paramBuffer = buffer.getAsByteArray();
-    parameters = deserializeQueryParameters(paramBuffer,serializer);
+    parameters = deserializeQueryParameters(paramBuffer);
   }
 
-  protected Map<Object, Object> deserializeQueryParameters(final byte[] paramBuffer, ORecordSerializer serializer) {
+  protected Map<Object, Object> deserializeQueryParameters(final byte[] paramBuffer) {
     if (paramBuffer == null || paramBuffer.length == 0)
       return Collections.emptyMap();
 
     final ODocument param = new ODocument();
-
-    serializer.fromStream(paramBuffer,param,null);
+    param.fromStream(paramBuffer);
     param.setFieldType("params", OType.EMBEDDEDMAP);
     final Map<String, Object> params = param.rawField("params");
 

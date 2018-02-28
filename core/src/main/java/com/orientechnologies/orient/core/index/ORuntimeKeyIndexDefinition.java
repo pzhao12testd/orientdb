@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.index;
@@ -26,7 +26,6 @@ import com.orientechnologies.orient.core.exception.OConfigurationException;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.serialization.serializer.binary.OBinarySerializerFactory;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,13 +34,12 @@ import java.util.List;
 /**
  * Index definition that use the serializer specified at run-time not based on type. This is useful to have custom type keys for
  * indexes.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
+ * 
  */
-@SuppressFBWarnings(value = "SE_TRANSIENT_FIELD_NOT_RESTORED")
 public class ORuntimeKeyIndexDefinition<T> extends OAbstractIndexDefinition {
-  private static final long              serialVersionUID = -8855918974071833818L;
-  private transient OBinarySerializer<T> serializer;
+  private OBinarySerializer<T> serializer;
 
   @SuppressWarnings("unchecked")
   public ORuntimeKeyIndexDefinition(final byte iId, int version) {
@@ -81,7 +79,7 @@ public class ORuntimeKeyIndexDefinition<T> extends OAbstractIndexDefinition {
   }
 
   public OType[] getTypes() {
-    return new OType[0];
+    return null;
   }
 
   @Override
@@ -155,13 +153,13 @@ public class ORuntimeKeyIndexDefinition<T> extends OAbstractIndexDefinition {
 
   /**
    * {@inheritDoc}
-   *
+   * 
    * @param indexName
    * @param indexType
    */
-  public String toCreateIndexDDL(final String indexName, final String indexType, String engine) {
-    final StringBuilder ddl = new StringBuilder("create index `");
-    ddl.append(indexName).append("` ").append(indexType).append(' ');
+  public String toCreateIndexDDL(final String indexName, final String indexType,String engine) {
+    final StringBuilder ddl = new StringBuilder("create index ");
+    ddl.append(indexName).append(' ').append(indexType).append(' ');
     ddl.append("runtime ").append(serializer.getId());
     return ddl.toString();
   }

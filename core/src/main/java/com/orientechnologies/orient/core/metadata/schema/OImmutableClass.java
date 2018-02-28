@@ -1,66 +1,42 @@
-/*
-  *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
-  *  *
-  *  *  Licensed under the Apache License, Version 2.0 (the "License");
-  *  *  you may not use this file except in compliance with the License.
-  *  *  You may obtain a copy of the License at
-  *  *
-  *  *       http://www.apache.org/licenses/LICENSE-2.0
-  *  *
-  *  *  Unless required by applicable law or agreed to in writing, software
-  *  *  distributed under the License is distributed on an "AS IS" BASIS,
-  *  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  *  *  See the License for the specific language governing permissions and
-  *  *  limitations under the License.
-  *  *
-  *  * For more information: http://orientdb.com
-  *
-  */
 package com.orientechnologies.orient.core.metadata.schema;
 
 import com.orientechnologies.common.listener.OProgressListener;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.orientechnologies.orient.core.db.record.OClassTrigger;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.index.OIndexManager;
-import com.orientechnologies.orient.core.metadata.function.OFunctionTrigger;
 import com.orientechnologies.orient.core.metadata.schema.clusterselection.OClusterSelectionStrategy;
-import com.orientechnologies.orient.core.metadata.security.ORole;
 import com.orientechnologies.orient.core.metadata.security.OSecurityShared;
-import com.orientechnologies.orient.core.metadata.security.OUser;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.schedule.OScheduledEvent;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 10/21/14
  */
 public class OImmutableClass implements OClass {
-  /**
-   * use OClass.EDGE_CLASS_NAME instead
-   */
-  @Deprecated
-  public static final String              EDGE_CLASS_NAME   = OClass.EDGE_CLASS_NAME;
-  /**
-   * use OClass.EDGE_CLASS_NAME instead
-   */
-  @Deprecated
-  public static final String              VERTEX_CLASS_NAME = OClass.VERTEX_CLASS_NAME;
-
-
+  public static final String              EDGE_CLASS_NAME   = "E";
+  public static final String              VERTEX_CLASS_NAME = "V";
   private boolean                         inited            = false;
   private final boolean                   isAbstract;
   private final boolean                   strictMode;
+
   private final String                    name;
   private final String                    streamAbleName;
   private final Map<String, OProperty>    properties;
   private Map<String, OProperty>          allPropertiesMap;
   private Collection<OProperty>           allProperties;
+  private final Class<?>                  javaClass;
   private final OClusterSelectionStrategy clusterSelection;
   private final int                       defaultClusterId;
   private final int[]                     clusterIds;
@@ -71,7 +47,6 @@ public class OImmutableClass implements OClass {
   private final float                     classOverSize;
   private final String                    shortName;
   private final Map<String, String>       customFields;
-  private final String                    description;
 
   private final OImmutableSchema          schema;
   // do not do it volatile it is already SAFE TO USE IT in MT mode.
@@ -81,20 +56,14 @@ public class OImmutableClass implements OClass {
   private boolean                         restricted;
   private boolean                         isVertexType;
   private boolean                         isEdgeType;
-  private boolean                         triggered;
-  private boolean                         function;
-  private boolean                         scheduler;
-  private boolean                         ouser;
-  private boolean                         orole;
-  private OIndex<?>                       autoShardingIndex;
 
-  public OImmutableClass(final OClass oClass, final OImmutableSchema schema) {
+  public OImmutableClass(OClass oClass, OImmutableSchema schema) {
     isAbstract = oClass.isAbstract();
     strictMode = oClass.isStrictMode();
     this.schema = schema;
 
     superClassesNames = oClass.getSuperClassesNames();
-    superClasses = new ArrayList<OImmutableClass>(superClassesNames.size());
+    superClasses = new ArrayList<OImmutableClass>();
 
     name = oClass.getName();
     streamAbleName = oClass.getStreamableName();
@@ -110,17 +79,17 @@ public class OImmutableClass implements OClass {
     overSize = oClass.getOverSize();
     classOverSize = oClass.getClassOverSize();
     shortName = oClass.getShortName();
+    javaClass = oClass.getJavaClass();
 
     properties = new HashMap<String, OProperty>();
     for (OProperty p : oClass.declaredProperties())
-      properties.put(p.getName(), new OImmutableProperty(p, this));
+      properties.put(p.getName().toLowerCase(), new OImmutableProperty(p, this));
 
     Map<String, String> customFields = new HashMap<String, String>();
     for (String key : oClass.getCustomKeys())
       customFields.put(key, oClass.getCustom(key));
 
     this.customFields = Collections.unmodifiableMap(customFields);
-    this.description = oClass.getDescription();
   }
 
   public void init() {
@@ -144,20 +113,15 @@ public class OImmutableClass implements OClass {
       this.allProperties = Collections.unmodifiableCollection(allProperties);
       this.allPropertiesMap = Collections.unmodifiableMap(allPropsMap);
       this.restricted = isSubClassOf(OSecurityShared.RESTRICTED_CLASSNAME);
-      this.isVertexType = isSubClassOf(OClass.VERTEX_CLASS_NAME);
-      this.isEdgeType = isSubClassOf(OClass.EDGE_CLASS_NAME);
-      this.triggered = isSubClassOf(OClassTrigger.CLASSNAME);
-      this.function = isSubClassOf(OFunctionTrigger.CLASSNAME);
-      this.scheduler = isSubClassOf(OScheduledEvent.CLASS_NAME);
-      this.ouser = isSubClassOf(OUser.CLASS_NAME);
-      this.orole = isSubClassOf(ORole.CLASS_NAME);
-
-      final ODatabaseDocumentInternal db = getDatabase();
-      this.autoShardingIndex = db != null && db.getMetadata() != null && db.getMetadata().getIndexManager() != null
-          ? db.getMetadata().getIndexManager().getClassAutoShardingIndex(name) : null;
+      this.isVertexType = isSubClassOf(VERTEX_CLASS_NAME);
+      this.isEdgeType = isSubClassOf(EDGE_CLASS_NAME);
+      inited = true;
     }
+  }
 
-    inited = true;
+  @Override
+  public <T> T newInstance() throws InstantiationException, IllegalAccessException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -181,7 +145,6 @@ public class OImmutableClass implements OClass {
   }
 
   @Override
-  @Deprecated
   public OClass getSuperClass() {
     initSuperClasses();
 
@@ -189,7 +152,6 @@ public class OImmutableClass implements OClass {
   }
 
   @Override
-  @Deprecated
   public OClass setSuperClass(OClass iSuperClass) {
     throw new UnsupportedOperationException();
   }
@@ -275,6 +237,8 @@ public class OImmutableClass implements OClass {
   public OProperty getProperty(String propertyName) {
     initSuperClasses();
 
+    propertyName = propertyName.toLowerCase();
+
     OProperty p = properties.get(propertyName);
     if (p != null)
       return p;
@@ -295,17 +259,7 @@ public class OImmutableClass implements OClass {
   }
 
   @Override
-  public OProperty createProperty(String iPropertyName, OType iType, OClass iLinkedClass, boolean unsafe) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public OProperty createProperty(String iPropertyName, OType iType, OType iLinkedType) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public OProperty createProperty(String iPropertyName, OType iType, OType iLinkedType, boolean unsafe) {
     throw new UnsupportedOperationException();
   }
 
@@ -316,6 +270,7 @@ public class OImmutableClass implements OClass {
 
   @Override
   public boolean existsProperty(String propertyName) {
+    propertyName = propertyName.toLowerCase();
     boolean result = properties.containsKey(propertyName);
     if (result)
       return true;
@@ -325,6 +280,11 @@ public class OImmutableClass implements OClass {
         return true;
     }
     return false;
+  }
+
+  @Override
+  public Class<?> getJavaClass() {
+    return javaClass;
   }
 
   @Override
@@ -373,18 +333,13 @@ public class OImmutableClass implements OClass {
   }
 
   @Override
-  public OClass truncateCluster(String clusterName) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public OClass removeClusterId(int iId) {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public int[] getPolymorphicClusterIds() {
-    return Arrays.copyOf(polymorphicClusterIds, polymorphicClusterIds.length);
+    return polymorphicClusterIds;
   }
 
   public OImmutableSchema getSchema() {
@@ -416,13 +371,11 @@ public class OImmutableClass implements OClass {
   }
 
   @Override
-  @Deprecated
   public Collection<OClass> getBaseClasses() {
     return getSubclasses();
   }
 
   @Override
-  @Deprecated
   public Collection<OClass> getAllBaseClasses() {
     return getAllSubclasses();
   }
@@ -531,16 +484,6 @@ public class OImmutableClass implements OClass {
   }
 
   @Override
-  public String getDescription() {
-    return description;
-  }
-
-  @Override
-  public OClass setDescription(String iDescription) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public Object get(ATTRIBUTES iAttribute) {
     if (iAttribute == null)
       throw new IllegalArgumentException("attribute is null");
@@ -564,8 +507,6 @@ public class OImmutableClass implements OClass {
       return getClusterSelection();
     case CUSTOM:
       return getCustomInternal();
-    case DESCRIPTION:
-      return getDescription();
     }
 
     throw new IllegalArgumentException("Cannot find attribute '" + iAttribute + "'");
@@ -655,7 +596,7 @@ public class OImmutableClass implements OClass {
 
   @Override
   public OIndex<?> getClassIndex(String iName) {
-    return getDatabase().getMetadata().getIndexManager().getClassIndex(this.name, iName);
+    return getDatabase().getMetadata().getIndexManager().getClassIndex(this.name, name);
   }
 
   @Override
@@ -664,12 +605,12 @@ public class OImmutableClass implements OClass {
   }
 
   @Override
-  public void getClassIndexes(final Collection<OIndex<?>> indexes) {
+  public void getClassIndexes(Collection<OIndex<?>> indexes) {
     getDatabase().getMetadata().getIndexManager().getClassIndexes(name, indexes);
   }
 
   @Override
-  public void getIndexes(final Collection<OIndex<?>> indexes) {
+  public void getIndexes(Collection<OIndex<?>> indexes) {
     initSuperClasses();
 
     getClassIndexes(indexes);
@@ -680,14 +621,9 @@ public class OImmutableClass implements OClass {
 
   @Override
   public Set<OIndex<?>> getIndexes() {
-    final Set<OIndex<?>> indexes = new HashSet<OIndex<?>>();
+    Set<OIndex<?>> indexes = new HashSet<OIndex<?>>();
     getIndexes(indexes);
     return indexes;
-  }
-
-  @Override
-  public OIndex<?> getAutoShardingIndex() {
-    return autoShardingIndex;
   }
 
   @Override
@@ -761,7 +697,7 @@ public class OImmutableClass implements OClass {
   }
 
   private ODatabaseDocumentInternal getDatabase() {
-    return ODatabaseRecordThreadLocal.instance().get();
+    return ODatabaseRecordThreadLocal.INSTANCE.get();
   }
 
   private Map<String, String> getCustomInternal() {
@@ -799,26 +735,6 @@ public class OImmutableClass implements OClass {
 
   public boolean isVertexType() {
     return isVertexType;
-  }
-
-  public boolean isTriggered() {
-    return triggered;
-  }
-
-  public boolean isFunction() {
-    return function;
-  }
-
-  public boolean isScheduler() {
-    return scheduler;
-  }
-
-  public boolean isOuser() {
-    return ouser;
-  }
-
-  public boolean isOrole() {
-    return orole;
   }
 
 }

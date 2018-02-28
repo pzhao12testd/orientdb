@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.db;
@@ -22,23 +22,15 @@ package com.orientechnologies.orient.core.db;
 import com.orientechnologies.common.thread.OSoftThread;
 import com.orientechnologies.orient.core.OOrientListenerAbstract;
 import com.orientechnologies.orient.core.Orient;
-import com.orientechnologies.orient.core.replication.OAsyncReplicationError;
-import com.orientechnologies.orient.core.replication.OAsyncReplicationOk;
 
 /**
  * Thread Local to store execution setting.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
  */
 public class OExecutionThreadLocal extends ThreadLocal<OExecutionThreadLocal.OExecutionThreadData> {
-  public class OExecutionThreadData {
-    volatile public OAsyncReplicationOk    onAsyncReplicationOk;
-    volatile public OAsyncReplicationError onAsyncReplicationError;
-  }
 
-  @Override
-  protected OExecutionThreadData initialValue() {
-    return new OExecutionThreadData();
+  class OExecutionThreadData {
   }
 
   public static volatile OExecutionThreadLocal INSTANCE = new OExecutionThreadLocal();
@@ -52,13 +44,13 @@ public class OExecutionThreadLocal extends ThreadLocal<OExecutionThreadLocal.OEx
 
   public void setInterruptCurrentOperation(final Thread t) {
     if (t instanceof OSoftThread)
-      ((OSoftThread) t).softShutdown();
+      ((OSoftThread) t).interruptCurrentOperation();
   }
 
   public static void setInterruptCurrentOperation() {
     final Thread t = Thread.currentThread();
     if (t instanceof OSoftThread)
-      ((OSoftThread) t).softShutdown();
+      ((OSoftThread) t).interruptCurrentOperation();
   }
 
   static {

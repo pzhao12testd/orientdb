@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,24 +15,22 @@
  */
 package com.orientechnologies.orient.test.database.speed;
 
-import com.orientechnologies.orient.core.Orient;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.intent.OIntentMassiveInsert;
-import com.orientechnologies.orient.core.record.impl.OBlob;
-import com.orientechnologies.orient.core.record.impl.ORecordBytes;
-import com.orientechnologies.orient.core.storage.OStorage;
-import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
-import com.orientechnologies.orient.core.storage.impl.local.statistic.OSessionStoragePerformanceStatistic;
-import com.orientechnologies.orient.core.tx.OTransaction.TXTYPE;
-import com.orientechnologies.orient.test.database.base.OrientMonoThreadTest;
 import org.testng.annotations.Test;
 
-@Test
+import com.orientechnologies.orient.core.Orient;
+import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.intent.OIntentMassiveInsert;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
+import com.orientechnologies.orient.core.tx.OTransaction.TXTYPE;
+import com.orientechnologies.orient.test.database.base.OrientMonoThreadTest;
+
+@Test(enabled = false)
 public class LocalCreateBinaryDocumentSpeedTest extends OrientMonoThreadTest {
-  private static final int PAYLOAD_SIZE = 2000;
+  private static final int          PAYLOAD_SIZE = 2000;
   private ODatabaseDocumentInternal database;
-  private OBlob                     record;
+  private ORecordBytes              record;
   private byte[]                    payload;
 
   public static void main(String[] iArgs) throws InstantiationException, IllegalAccessException {
@@ -41,7 +39,7 @@ public class LocalCreateBinaryDocumentSpeedTest extends OrientMonoThreadTest {
   }
 
   public LocalCreateBinaryDocumentSpeedTest() throws InstantiationException, IllegalAccessException {
-    super(1);
+    super(50000);
     payload = new byte[PAYLOAD_SIZE];
     for (int i = 0; i < PAYLOAD_SIZE; ++i) {
       payload[i] = (byte) i;
@@ -49,7 +47,6 @@ public class LocalCreateBinaryDocumentSpeedTest extends OrientMonoThreadTest {
   }
 
   @Override
-  @Test(enabled = false)
   public void init() {
     Orient.instance().getProfiler().startRecording();
 
@@ -66,28 +63,18 @@ public class LocalCreateBinaryDocumentSpeedTest extends OrientMonoThreadTest {
   }
 
   @Override
-  @Test(enabled = false)
   public void cycle() {
-    final OStorage storage = database.getStorage();
-    ((OAbstractPaginatedStorage) storage).startGatheringPerformanceStatisticForCurrentThread();
     record = new ORecordBytes(database, payload);
     record.save();
 
     if (data.getCyclesDone() == data.getCycles() - 1)
       database.commit();
-
-    OSessionStoragePerformanceStatistic sessionStoragePerformanceStatistic = ((OAbstractPaginatedStorage) storage)
-        .completeGatheringPerformanceStatisticForCurrentThread();
-    System.out.println(sessionStoragePerformanceStatistic.toDocument().toJSON("prettyPrint"));
   }
 
   @Override
-  @Test(enabled = false)
   public void deinit() {
-
     if (database != null)
       database.close();
-
     super.deinit();
   }
 }

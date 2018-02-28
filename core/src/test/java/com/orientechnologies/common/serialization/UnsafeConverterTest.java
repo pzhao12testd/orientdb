@@ -1,13 +1,16 @@
 package com.orientechnologies.common.serialization;
 
-import org.junit.Before; import org.junit.Test;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 21.05.13
  */
 
+@Test
 public class UnsafeConverterTest extends AbstractConverterTest {
-  @Before
+  @BeforeClass
   public void beforeClass() {
     converter = new OUnsafeBinaryConverter();
   }

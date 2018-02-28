@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,17 +14,19 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.index;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.db.record.OMultiValueChangeEvent;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Index implementation bound to one schema class property that presents
@@ -33,9 +35,7 @@ import java.util.*;
  * {@link com.orientechnologies.orient.core.metadata.schema.OType#LINKSET} or
  * {@link com.orientechnologies.orient.core.metadata.schema.OType#EMBEDDEDSET} properties.
  */
-public class OPropertyListIndexDefinition extends OAbstractIndexDefinitionMultiValue {
-
-  private static final long serialVersionUID = -6499782365051906190L;
+public class OPropertyListIndexDefinition extends OAbstractIndexDefinitionMultiValue implements OIndexDefinitionMultiValue {
 
   public OPropertyListIndexDefinition(final String iClassName, final String iField, final OType iType) {
     super(iClassName, iField, iType);
@@ -46,13 +46,13 @@ public class OPropertyListIndexDefinition extends OAbstractIndexDefinitionMultiV
 
   @Override
   public Object getDocumentValueToIndex(ODocument iDocument) {
-    return createValue(iDocument.<Object>field(field));
+    return createValue(iDocument.field(field));
   }
 
   @Override
-  public Object createValue(List<?> params) {
+  public Object createValue(final List<?> params) {
     if (!(params.get(0) instanceof Collection))
-      params = (List) Collections.singletonList(params);
+      return null;
 
     final Collection<?> multiValueCollection = (Collection<?>) params.get(0);
     final List<Object> values = new ArrayList<Object>(multiValueCollection.size());
@@ -77,13 +77,7 @@ public class OPropertyListIndexDefinition extends OAbstractIndexDefinitionMultiV
   }
 
   public Object createSingleValue(final Object... param) {
-    try {
-      return OType.convert(param[0], keyType.getDefaultJavaType());
-    } catch (Exception e) {
-      OException ex = OException
-          .wrapException(new OIndexException("Invalid key for index: " + param[0] + " cannot be converted to " + keyType), e);
-      throw ex;
-    }
+    return OType.convert(param[0], keyType.getDefaultJavaType());
   }
 
   public void processChangeEvent(final OMultiValueChangeEvent<?, ?> changeEvent, final Map<Object, Integer> keysToAdd,
@@ -108,7 +102,7 @@ public class OPropertyListIndexDefinition extends OAbstractIndexDefinitionMultiV
   }
 
   @Override
-  public String toCreateIndexDDL(String indexName, String indexType, String engine) {
-    return createIndexDDLWithoutFieldType(indexName, indexType, engine).toString();
+  public String toCreateIndexDDL(String indexName, String indexType,String engine) {
+    return createIndexDDLWithoutFieldType(indexName, indexType,engine).toString();
   }
 }

@@ -1,10 +1,10 @@
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
-import org.junit.Assert;
+import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
+import junit.framework.Assert;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -25,7 +25,7 @@ public class DistributedAggregateCollectionTest extends AbstractServerClusterTes
   }
 
   @Override
-  protected void onAfterDatabaseCreation(ODatabaseDocument db) {
+  protected void onAfterDatabaseCreation(OrientBaseGraph db) {
     db.command(new OCommandSQL("CREATE CLASS Item extends V")).execute();
     db.command(new OCommandSQL("CREATE PROPERTY Item.name STRING")).execute();
     db.command(new OCommandSQL("CREATE PROPERTY Item.map EMBEDDEDMAP")).execute();

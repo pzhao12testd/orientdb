@@ -1,47 +1,51 @@
 /*
- *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
- *  *
- *  *  Licensed under the Apache License, Version 2.0 (the "License");
- *  *  you may not use this file except in compliance with the License.
- *  *  You may obtain a copy of the License at
- *  *
- *  *       http://www.apache.org/licenses/LICENSE-2.0
- *  *
- *  *  Unless required by applicable law or agreed to in writing, software
- *  *  distributed under the License is distributed on an "AS IS" BASIS,
- *  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  *  See the License for the specific language governing permissions and
- *  *  limitations under the License.
- *  *
- *  * For more information: http://orientdb.com
- *
- */
+  *
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
+  *  *
+  *  *  Licensed under the Apache License, Version 2.0 (the "License");
+  *  *  you may not use this file except in compliance with the License.
+  *  *  You may obtain a copy of the License at
+  *  *
+  *  *       http://www.apache.org/licenses/LICENSE-2.0
+  *  *
+  *  *  Unless required by applicable law or agreed to in writing, software
+  *  *  distributed under the License is distributed on an "AS IS" BASIS,
+  *  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *  *  See the License for the specific language governing permissions and
+  *  *  limitations under the License.
+  *  *
+  *  * For more information: http://www.orientechnologies.com
+  *
+  */
 package com.orientechnologies.orient.core.sql.operator;
-
-import com.orientechnologies.common.exception.OException;
-import com.orientechnologies.orient.core.command.OCommandContext;
-import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.db.record.ORecordElement;
-import com.orientechnologies.orient.core.exception.ODatabaseException;
-import com.orientechnologies.orient.core.exception.ORecordNotFoundException;
-import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.index.*;
-import com.orientechnologies.orient.core.metadata.schema.OProperty;
-import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.filter.OSQLFilterCondition;
-import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemField;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import com.orientechnologies.common.exception.OException;
+import com.orientechnologies.orient.core.command.OCommandContext;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.db.record.ORecordElement;
+import com.orientechnologies.orient.core.exception.ORecordNotFoundException;
+import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.index.OCompositeIndexDefinition;
+import com.orientechnologies.orient.core.index.OIndex;
+import com.orientechnologies.orient.core.index.OIndexCursor;
+import com.orientechnologies.orient.core.index.OIndexCursorCollectionValue;
+import com.orientechnologies.orient.core.index.OIndexCursorSingleValue;
+import com.orientechnologies.orient.core.index.OIndexDefinition;
+import com.orientechnologies.orient.core.index.OIndexDefinitionMultiValue;
+import com.orientechnologies.orient.core.index.OIndexInternal;
+import com.orientechnologies.orient.core.index.OPropertyMapIndexDefinition;
+import com.orientechnologies.orient.core.record.ORecord;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.filter.OSQLFilterCondition;
+
 /**
  * CONTAINS KEY operator.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
  * 
  */
 public class OQueryOperatorContainsValue extends OQueryOperatorEqualityNotNulls {
@@ -68,8 +72,8 @@ public class OQueryOperatorContainsValue extends OQueryOperatorEqualityNotNulls 
       return null;
 
     if (indexDefinition.getParamCount() == 1) {
-      if (!((indexDefinition instanceof OPropertyMapIndexDefinition)
-          && ((OPropertyMapIndexDefinition) indexDefinition).getIndexBy() == OPropertyMapIndexDefinition.INDEX_BY.VALUE))
+      if (!((indexDefinition instanceof OPropertyMapIndexDefinition) && ((OPropertyMapIndexDefinition) indexDefinition)
+          .getIndexBy() == OPropertyMapIndexDefinition.INDEX_BY.VALUE))
         return null;
 
       final Object key = ((OIndexDefinitionMultiValue) indexDefinition).createSingleValue(keyParams.get(0));
@@ -81,15 +85,14 @@ public class OQueryOperatorContainsValue extends OQueryOperatorEqualityNotNulls 
       if (indexResult == null || indexResult instanceof OIdentifiable)
         cursor = new OIndexCursorSingleValue((OIdentifiable) indexResult, key);
       else
-        cursor = new OIndexCursorCollectionValue((Collection<OIdentifiable>) indexResult, key);
+        cursor = new OIndexCursorCollectionValue(((Collection<OIdentifiable>) indexResult).iterator(), key);
     } else {
       // in case of composite keys several items can be returned in case of we perform search
       // using part of composite key stored in index.
       final OCompositeIndexDefinition compositeIndexDefinition = (OCompositeIndexDefinition) indexDefinition;
 
-      if (!((compositeIndexDefinition.getMultiValueDefinition() instanceof OPropertyMapIndexDefinition)
-          && ((OPropertyMapIndexDefinition) compositeIndexDefinition.getMultiValueDefinition()).getIndexBy()
-          == OPropertyMapIndexDefinition.INDEX_BY.VALUE))
+      if (!((compositeIndexDefinition.getMultiValueDefinition() instanceof OPropertyMapIndexDefinition) && ((OPropertyMapIndexDefinition) compositeIndexDefinition
+          .getMultiValueDefinition()).getIndexBy() == OPropertyMapIndexDefinition.INDEX_BY.VALUE))
         return null;
 
       final Object keyOne = compositeIndexDefinition.createSingleValue(keyParams);
@@ -107,7 +110,7 @@ public class OQueryOperatorContainsValue extends OQueryOperatorEqualityNotNulls 
           if (indexResult == null || indexResult instanceof OIdentifiable)
             cursor = new OIndexCursorSingleValue((OIdentifiable) indexResult, keyOne);
           else
-            cursor = new OIndexCursorCollectionValue((Collection<OIdentifiable>) indexResult, keyOne);
+            cursor = new OIndexCursorCollectionValue(((Collection<OIdentifiable>) indexResult).iterator(), keyOne);
         } else
           return null;
       }
@@ -140,26 +143,6 @@ public class OQueryOperatorContainsValue extends OQueryOperatorEqualityNotNulls 
     else
       condition = null;
 
-    OType type = null;
-    if (iCondition.getLeft() instanceof OSQLFilterItemField && ((OSQLFilterItemField) iCondition.getLeft()).isFieldChain()
-        && ((OSQLFilterItemField) iCondition.getLeft()).getFieldChain().getItemCount() == 1) {
-      String fieldName = ((OSQLFilterItemField) iCondition.getLeft()).getFieldChain().getItemName(0);
-      if (fieldName != null) {
-        Object record = iRecord.getRecord();
-        if (record instanceof ODocument) {
-          OProperty property = ((ODocument) record).getSchemaClass().getProperty(fieldName);
-          if (property != null && property.getType().isMultiValue()) {
-            type = property.getLinkedType();
-          }
-        }
-      }
-    }
-
-    Object right = iRight;
-    if (type != null) {
-      right = OType.convert(iRight, type.getDefaultJavaType());
-    }
-
     if (iLeft instanceof Map<?, ?>) {
       final Map<String, ?> map = (Map<String, ?>) iLeft;
 
@@ -170,21 +153,8 @@ public class OQueryOperatorContainsValue extends OQueryOperatorEqualityNotNulls 
           if ((Boolean) condition.evaluate((ODocument) o, null, iContext))
             return true;
         }
-      } else {
-        for (Object val : map.values()) {
-          Object convertedRight = iRight;
-          if(val instanceof ODocument && iRight instanceof Map){
-            val = ((ODocument) val).toMap();
-          }
-          if(val instanceof Map && iRight instanceof ODocument){
-            convertedRight = ((ODocument) iRight).toMap();
-          }
-          if (OQueryOperatorEquals.equals(val, convertedRight)) {
-            return true;
-          }
-        }
-        return false;
-      }
+      } else
+        return map.containsValue(iRight);
 
     } else if (iRight instanceof Map<?, ?>) {
       final Map<String, ?> map = (Map<String, ?>) iRight;
@@ -207,9 +177,9 @@ public class OQueryOperatorContainsValue extends OQueryOperatorEqualityNotNulls 
     final ORecord record = (ORecord) o;
     if (record.getRecord().getInternalStatus() == ORecordElement.STATUS.NOT_LOADED) {
       try {
-        o = record.<ORecord>load();
+        o = record.<ORecord> load();
       } catch (ORecordNotFoundException e) {
-        throw OException.wrapException(new ODatabaseException("Error during loading record with id : " + record.getIdentity()), e);
+        throw new OException("Error during loading record with id : " + record.getIdentity(), e);
       }
     }
     return o;

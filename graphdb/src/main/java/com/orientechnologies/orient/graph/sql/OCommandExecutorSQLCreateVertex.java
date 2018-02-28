@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.graph.sql;
@@ -27,6 +27,7 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.metadata.OMetadataInternal;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandExecutorSQLSetAware;
 import com.orientechnologies.orient.core.sql.OCommandParameters;
 import com.orientechnologies.orient.core.sql.OCommandSQLParsingException;
@@ -36,12 +37,17 @@ import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * SQL CREATE VERTEX command.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OCommandExecutorSQLCreateVertex extends OCommandExecutorSQLSetAware implements OCommandDistributedReplicateRequest {
   public static final String          NAME = "CREATE VERTEX";
@@ -82,32 +88,23 @@ public class OCommandExecutorSQLCreateVertex extends OCommandExecutorSQLSetAware
         } else if (temp.equals(KEYWORD_CONTENT)) {
           parseContent();
 
-        } else if (className == null && temp.length() > 0) {
+        } else if (className == null && temp.length() > 0)
           className = temp;
-          if (className == null)
-            // ASSIGN DEFAULT CLASS
-            className = OrientVertexType.CLASS_NAME;
-
-          // GET/CHECK CLASS NAME
-          clazz = ((OMetadataInternal) database.getMetadata()).getImmutableSchemaSnapshot().getClass(className);
-          if (clazz == null)
-            throw new OCommandSQLParsingException("Class '" + className + "' was not found");
-        }
 
         temp = parserOptionalWord(true);
         if (parserIsEnded())
           break;
       }
 
-      if (className == null) {
+      if (className == null)
         // ASSIGN DEFAULT CLASS
         className = OrientVertexType.CLASS_NAME;
 
-        // GET/CHECK CLASS NAME
-        clazz = ((OMetadataInternal) database.getMetadata()).getImmutableSchemaSnapshot().getClass(className);
-        if (clazz == null)
-          throw new OCommandSQLParsingException("Class '" + className + "' was not found");
-      }
+      // GET/CHECK CLASS NAME
+      clazz = ((OMetadataInternal) database.getMetadata()).getImmutableSchemaSnapshot().getClass(className);
+      if (clazz == null)
+        throw new OCommandSQLParsingException("Class '" + className + "' was not found");
+
     } finally {
       textRequest.setText(originalQuery);
     }
@@ -121,10 +118,9 @@ public class OCommandExecutorSQLCreateVertex extends OCommandExecutorSQLSetAware
     if (clazz == null)
       throw new OCommandExecutionException("Cannot execute the command because it has not been parsed yet");
 
-    // CREATE VERTEX DOES NOT HAVE TO BE IN TX
-    return OGraphCommandExecutorSQLFactory.runWithAnyGraph(new OGraphCommandExecutorSQLFactory.GraphCallBack<Object>() {
+    return OGraphCommandExecutorSQLFactory.runInTx(new OGraphCommandExecutorSQLFactory.GraphCallBack<ODocument>() {
       @Override
-      public Object call(final OrientBaseGraph graph) {
+      public ODocument call(OrientBaseGraph graph) {
         final OrientVertex vertex = graph.addTemporaryVertex(clazz.getName());
 
         if (fields != null)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ public class DbDeleteTest extends DocumentDBBaseTest {
       db.drop();
       Assert.fail("Should have thrown ODatabaseException because trying to delete a not opened");
     } catch (ODatabaseException e) {
-      Assert.assertTrue(e.getMessage().contains("Database '" + url + "' is closed"));
+      Assert.assertTrue(e.getMessage().equals("Database '" + url + "' is closed"));
     } catch (OStorageException e) {
       Assert.assertTrue(e.getMessage().startsWith("Cannot delete the remote storage:"));
     }

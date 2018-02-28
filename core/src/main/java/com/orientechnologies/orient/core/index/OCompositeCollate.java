@@ -1,40 +1,20 @@
-/*
-  *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
-  *  *
-  *  *  Licensed under the Apache License, Version 2.0 (the "License");
-  *  *  you may not use this file except in compliance with the License.
-  *  *  You may obtain a copy of the License at
-  *  *
-  *  *       http://www.apache.org/licenses/LICENSE-2.0
-  *  *
-  *  *  Unless required by applicable law or agreed to in writing, software
-  *  *  distributed under the License is distributed on an "AS IS" BASIS,
-  *  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  *  *  See the License for the specific language governing permissions and
-  *  *  limitations under the License.
-  *  *
-  *  * For more information: http://orientdb.com
-  *
-  */
 package com.orientechnologies.orient.core.index;
-
-import com.orientechnologies.orient.core.collate.OCollate;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Collate implementation used on composite indexes.
- */
+import com.orientechnologies.orient.core.collate.OCollate;
+
 public class OCompositeCollate implements OCollate {
-  private static final long              serialVersionUID = 8683726773893639905L;
+  /**
+   * 
+   */
   private final OAbstractIndexDefinition oCompositeIndexDefinition;
 
   /**
    * @param oCompositeIndexDefinition
    */
-  public OCompositeCollate(final OAbstractIndexDefinition oCompositeIndexDefinition) {
+  public OCompositeCollate(OAbstractIndexDefinition oCompositeIndexDefinition) {
     this.oCompositeIndexDefinition = oCompositeIndexDefinition;
   }
 
@@ -51,8 +31,8 @@ public class OCompositeCollate implements OCollate {
 
   @SuppressWarnings("unchecked")
   @Override
-  public Object transform(final Object obj) {
-    final List<Object> keys;
+  public Object transform(Object obj) {
+    List<Object> keys = null;
     if (obj instanceof OCompositeKey) {
       final OCompositeKey compositeKey = (OCompositeKey) obj;
       keys = compositeKey.getKeys();
@@ -62,7 +42,7 @@ public class OCompositeCollate implements OCollate {
       throw new OIndexException("Impossible add as key of a CompositeIndex a value of type " + obj.getClass());
     }
 
-    final OCompositeKey transformedKey = new OCompositeKey();
+    OCompositeKey transformedKey = new OCompositeKey();
 
     final int size = Math.min(keys.size(), collates.size());
     for (int i = 0; i < size; i++) {
@@ -79,13 +59,13 @@ public class OCompositeCollate implements OCollate {
   }
 
   @Override
-  public boolean equals(final Object o) {
+  public boolean equals(Object o) {
     if (this == o)
       return true;
     if (o == null || getClass() != o.getClass())
       return false;
 
-    final OCompositeCollate that = (OCompositeCollate) o;
+    OCompositeCollate that = (OCompositeCollate) o;
 
     if (!collates.equals(that.collates))
       return false;

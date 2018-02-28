@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.graph.script;
@@ -22,8 +22,6 @@ package com.orientechnologies.orient.graph.script;
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.command.script.OCommandScript;
 import com.orientechnologies.orient.core.command.traverse.OTraverse;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
@@ -50,7 +48,7 @@ import java.util.Set;
 /**
  * Blueprints Graph wrapper class to use from scripts.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public class OScriptGraphWrapper implements TransactionalGraph {
@@ -216,7 +214,7 @@ public class OScriptGraphWrapper implements TransactionalGraph {
     graph.removeEdge(edge);
   }
 
-  public OrientBaseGraph reuse(final ODatabaseDocumentInternal iDatabase) {
+  public OrientBaseGraph reuse(final ODatabaseDocumentTx iDatabase) {
     return graph.reuse(iDatabase);
   }
 
@@ -232,7 +230,7 @@ public class OScriptGraphWrapper implements TransactionalGraph {
     return graph.toString();
   }
 
-  public ODatabaseDocument getRawGraph() {
+  public ODatabaseDocumentTx getRawGraph() {
     return graph.getRawGraph();
   }
 

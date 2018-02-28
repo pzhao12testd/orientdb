@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,20 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.db.record;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.ORecordInternal;
@@ -30,17 +37,18 @@ import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
 /**
  * Implementation of LinkedHashMap bound to a source ORecord object to keep track of changes. This avoid to call the makeDirty() by
  * hand when the map is changed.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
- *
+ * 
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
+ * 
  */
 @SuppressWarnings("serial")
 public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordElement, OTrackedMultiValue<Object, T>, Serializable {
-  final protected ORecord                            sourceRecord;
-  private STATUS                                     status          = STATUS.NOT_LOADED;
-  private List<OMultiValueChangeListener<Object, T>> changeListeners = null;
-  protected Class<?>                                 genericClass;
-  private final boolean                              embeddedCollection;
+  final protected ORecord                           sourceRecord;
+  private STATUS                                    status          = STATUS.NOT_LOADED;
+  private Set<OMultiValueChangeListener<Object, T>> changeListeners = Collections
+                                                                        .newSetFromMap(new WeakHashMap<OMultiValueChangeListener<Object, T>, Boolean>());
+  protected Class<?>                                genericClass;
+  private final boolean                             embeddedCollection;
 
   public OTrackedMap(final ORecord iRecord, final Map<Object, T> iOrigin, final Class<?> cls) {
     this(iRecord);
@@ -61,8 +69,6 @@ public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordE
 
   @Override
   public T put(final Object key, final T value) {
-    if (key == null)
-      throw new IllegalArgumentException("null key not supported by embedded map");
     boolean containsKey = containsKey(key);
 
     T oldValue = super.put(key, value);
@@ -80,22 +86,13 @@ public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordE
           oldValue));
     else
       fireCollectionChangedEvent(new OMultiValueChangeEvent<Object, T>(OMultiValueChangeEvent.OChangeType.ADD, key, value));
-    addNested(value);
-    return oldValue;
-  }
 
-  private void addNested(T element) {
-    if (element instanceof OTrackedMultiValue) {
-      ((OTrackedMultiValue) element)
-          .addChangeListener(new ONestedValueChangeListener((ODocument) sourceRecord, this, (OTrackedMultiValue) element));
-    }
+    return oldValue;
   }
 
   private void addOwnerToEmbeddedDoc(T e) {
     if (embeddedCollection && e instanceof ODocument && !((ODocument) e).getIdentity().isValid())
       ODocumentInternal.addOwner((ODocument) e, this);
-    if (e instanceof ODocument)
-      ORecordInternal.track(sourceRecord, (ODocument) e);
   }
 
   @Override
@@ -106,13 +103,9 @@ public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordE
     if (oldValue instanceof ODocument)
       ODocumentInternal.removeOwner((ODocument) oldValue, this);
 
-    if (containsKey) {
-      fireCollectionChangedEvent(
-          new OMultiValueChangeEvent<Object, T>(OMultiValueChangeEvent.OChangeType.REMOVE, iKey, null, oldValue));
-      removeNested(oldValue);
-    }
-
-
+    if (containsKey)
+      fireCollectionChangedEvent(new OMultiValueChangeEvent<Object, T>(OMultiValueChangeEvent.OChangeType.REMOVE, iKey, null,
+          oldValue));
 
     return oldValue;
   }
@@ -120,13 +113,13 @@ public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordE
   @Override
   public void clear() {
     final Map<Object, T> origValues;
-    if (changeListeners == null)
+    if (changeListeners.isEmpty())
       origValues = null;
     else
       origValues = new HashMap<Object, T>(this);
 
     if (origValues == null) {
-      for (T value : super.values())
+      for (T value : values())
         if (value instanceof ODocument) {
           ODocumentInternal.removeOwner((ODocument) value, this);
         }
@@ -141,16 +134,9 @@ public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordE
         }
         fireCollectionChangedEvent(new OMultiValueChangeEvent<Object, T>(OMultiValueChangeEvent.OChangeType.REMOVE, entry.getKey(),
             null, entry.getValue()));
-        removeNested(entry.getValue());
       }
     } else
       setDirty();
-  }
-
-  private void removeNested(Object element){
-    if(element instanceof OTrackedMultiValue){
-      //      ((OTrackedMultiValue) element).removeRecordChangeListener(null);
-    }
   }
 
   @Override
@@ -183,14 +169,11 @@ public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordE
   }
 
   public void addChangeListener(OMultiValueChangeListener<Object, T> changeListener) {
-    if(changeListeners == null)
-      changeListeners = new LinkedList<OMultiValueChangeListener<Object, T>>();
     changeListeners.add(changeListener);
   }
 
   public void removeRecordChangeListener(OMultiValueChangeListener<Object, T> changeListener) {
-    if (changeListeners != null)
-      changeListeners.remove(changeListener);
+    changeListeners.remove(changeListener);
   }
 
   public Map<Object, T> returnOriginalState(final List<OMultiValueChangeEvent<Object, T>> multiValueChangeEvents) {
@@ -219,16 +202,14 @@ public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordE
     return reverted;
   }
 
-  public void fireCollectionChangedEvent(final OMultiValueChangeEvent<Object, T> event) {
+  protected void fireCollectionChangedEvent(final OMultiValueChangeEvent<Object, T> event) {
     if (status == STATUS.UNMARSHALLING)
       return;
 
     setDirty();
-    if (changeListeners != null) {
-      for (final OMultiValueChangeListener<Object, T> changeListener : changeListeners) {
-        if (changeListener != null)
-          changeListener.onAfterRecordChanged(event);
-      }
+    for (final OMultiValueChangeListener<Object, T> changeListener : changeListeners) {
+      if (changeListener != null)
+        changeListener.onAfterRecordChanged(event);
     }
   }
 
@@ -242,11 +223,5 @@ public class OTrackedMap<T> extends LinkedHashMap<Object, T> implements ORecordE
 
   private Object writeReplace() {
     return new LinkedHashMap<Object, T>(this);
-  }
-
-  @Override
-  public void replace(OMultiValueChangeEvent<Object, Object> event, Object newValue) {
-    super.put(event.getKey(), (T) newValue);
-    addNested((T) newValue);
   }
 }

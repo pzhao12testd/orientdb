@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.server.plugin;
@@ -27,29 +27,29 @@ import com.orientechnologies.orient.server.config.OServerParameterConfiguration;
 /**
  * Server handler interface. Used when configured in the server configuration.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public interface OServerPlugin extends OService {
   /**
    * Callback invoked when a client connection begins.
    */
-  void onClientConnection(OClientConnection iConnection);
+  public void onClientConnection(OClientConnection iConnection);
 
   /**
    * Callback invoked when a client connection ends.
    */
-  void onClientDisconnection(OClientConnection iConnection);
+  public void onClientDisconnection(OClientConnection iConnection);
 
   /**
    * Callback invoked before a client request is processed.
    */
-  void onBeforeClientRequest(OClientConnection iConnection, byte iRequestType);
+  public void onBeforeClientRequest(OClientConnection iConnection, byte iRequestType);
 
   /**
    * Callback invoked after a client request is processed.
    */
-  void onAfterClientRequest(OClientConnection iConnection, byte iRequestType);
+  public void onAfterClientRequest(OClientConnection iConnection, byte iRequestType);
 
   /**
    * Callback invoked when a client connection has errors.
@@ -57,14 +57,14 @@ public interface OServerPlugin extends OService {
    * @param iThrowable
    *          Throwable instance received
    */
-  void onClientError(OClientConnection iConnection, Throwable iThrowable);
+  public void onClientError(OClientConnection iConnection, Throwable iThrowable);
 
   /**
    * Configures the handler. Called at startup.
    */
-  void config(OServer oServer, OServerParameterConfiguration[] iParams);
+  public void config(OServer oServer, OServerParameterConfiguration[] iParams);
 
-  void sendShutdown();
+  public void sendShutdown();
 
-  Object getContent(final String iURL);
+  public Object getContent(final String iURL);
 }

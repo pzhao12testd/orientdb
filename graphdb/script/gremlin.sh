@@ -1,26 +1,16 @@
-#!/bin/sh
+#!/bin/bash
 
 #set current working directory
-# resolve links - $0 may be a softlink
-PRG="$0"
-
-while [ -h "$PRG" ]; do
-  ls=`ls -ld "$PRG"`
-  link=`expr "$ls" : '.*-> \(.*\)$'`
-  if expr "$link" : '/.*' > /dev/null; then
-    PRG="$link"
-  else
-    PRG=`dirname "$PRG"`/"$link"
-  fi
-done
+cd `dirname $0`
 
 case `uname` in
   CYGWIN*)
-    CP=$( echo `dirname $PRG`/../lib/*.jar . | sed 's/ /;/g')
+    CP=$( echo `dirname $0`/../lib/*.jar . | sed 's/ /;/g')
     ;;
   *)
-    CP=$( echo `dirname $PRG`/../lib/*.jar . | sed 's/ /:/g')
+    CP=$( echo `dirname $0`/../lib/*.jar . | sed 's/ /:/g')
 esac
+#echo $CP
 
 # Find Java
 if [ "$JAVA_HOME" = "" ] ; then
@@ -38,26 +28,21 @@ fi
 if [ "$1" = "-e" ]; then
   k=$2
   if [ $# -gt 2 ]; then
-    i=0 ;
-    while [ "$i" -lt $# +1 ]
+    for (( i=3 ; i -lt $# + 1 ; i++ ))
     do
-        eval a=\$$i
-        k="$k \"$a\""
-        i=$(($i+1))
+      eval a=\$$i
+      k="$k \"$a\""
     done
   fi
-    eval "$JAVA" $JAVA_OPTIONS -cp $CP:../plugins/*.jar com.tinkerpop.gremlin.groovy.jsr223.ScriptExecutor $k
+
+  eval "$JAVA" $JAVA_OPTIONS -cp $CP:$CLASSPATH com.tinkerpop.gremlin.groovy.jsr223.ScriptExecutor $k
 else
   if [ "$1" = "-v" ]; then
-    "$JAVA" -server $JAVA_OPTIONS -cp $CP:../plugins/*.jar com.tinkerpop.gremlin.Version
+    "$JAVA" -server $JAVA_OPTIONS -cp $CP:$CLASSPATH com.tinkerpop.gremlin.Version
   else
-    "$JAVA" -server $JAVA_OPTIONS -cp $CP:../plugins/*.jar com.tinkerpop.gremlin.groovy.console.Console
+    "$JAVA" -server $JAVA_OPTIONS -cp $CP:$CLASSPATH com.tinkerpop.gremlin.groovy.console.Console
   fi
 fi
-
-
-
-
 
 # Return the program's exit code
 exit $?

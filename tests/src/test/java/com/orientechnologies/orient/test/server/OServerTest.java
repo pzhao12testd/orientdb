@@ -27,7 +27,7 @@ public class OServerTest {
     // loop for start & stop server
     for (int i = 0; i < 5; i++) {
       OLogManager.instance().info(this, "Iteration " + i);
-      OServer server = new OServer(false).activate();
+      OServer server = OServerMain.create().startup().activate();
       // create database if does not exist
       OObjectDatabaseTx database = new OObjectDatabaseTx("plocal:" + System.getProperty("ORIENTDB_HOME") + "/test-db");
       if (!database.exists())

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,11 +14,12 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.graph.sql;
 
+import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.util.OPair;
 import com.orientechnologies.orient.core.command.OCommandDistributedReplicateRequest;
 import com.orientechnologies.orient.core.command.OCommandRequest;
@@ -26,34 +27,39 @@ import com.orientechnologies.orient.core.command.OCommandRequestText;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
+import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.metadata.OMetadataInternal;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.sql.*;
-import com.orientechnologies.orient.core.sql.filter.OSQLFilterItem;
+import com.orientechnologies.orient.core.sql.OCommandExecutorSQLRetryAbstract;
+import com.orientechnologies.orient.core.sql.OCommandParameters;
+import com.orientechnologies.orient.core.sql.OCommandSQLParsingException;
+import com.orientechnologies.orient.core.sql.OSQLEngine;
+import com.orientechnologies.orient.core.sql.OSQLHelper;
 import com.orientechnologies.orient.core.sql.functions.OSQLFunctionRuntime;
 import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientEdgeType;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * SQL CREATE EDGE command.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
-public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLSetAware implements OCommandDistributedReplicateRequest {
-  public static final String  NAME          = "CREATE EDGE";
-  private static final String KEYWORD_BATCH = "BATCH";
+public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLRetryAbstract implements OCommandDistributedReplicateRequest {
+  public static final String          NAME = "CREATE EDGE";
 
   private String                      from;
   private String                      to;
   private OClass                      clazz;
-  private String                      edgeLabel;
   private String                      clusterName;
   private List<OPair<String, Object>> fields;
-  private int                         batch = 100;
 
   @SuppressWarnings("unchecked")
   public OCommandExecutorSQLCreateEdge parse(final OCommandRequest iRequest) {
@@ -64,7 +70,7 @@ public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLSetAware i
     try {
       // System.out.println("NEW PARSER FROM: " + queryText);
       queryText = preParse(queryText, iRequest);
-      // System.out.println("NEW PARSER TO: " + queryText);
+      // System.out.println("NEW PARSER   TO: " + queryText);
       textRequest.setText(queryText);
 
       final ODatabaseDocument database = getDatabase();
@@ -76,8 +82,7 @@ public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLSetAware i
 
       String className = null;
 
-      String tempLower = parseOptionalWord(false);
-      String temp = tempLower == null ? null : tempLower.toUpperCase(Locale.ENGLISH);
+      String temp = parseOptionalWord(true);
 
       while (temp != null) {
         if (temp.equals("CLUSTER")) {
@@ -96,19 +101,12 @@ public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLSetAware i
         } else if (temp.equals(KEYWORD_CONTENT)) {
           parseContent();
 
-        } else if (temp.equals(KEYWORD_BATCH)) {
-          temp = parserNextWord(true);
-          if (temp != null)
-            batch = Integer.parseInt(temp);
+        } else if (temp.equals(KEYWORD_RETRY)) {
+          parseRetry();
 
         } else if (className == null && temp.length() > 0) {
-          className = tempLower;
-          OrientBaseGraph graph = OrientBaseGraph.getActiveGraph();
-          if (graph != null && graph.isUseClassForEdgeLabel()) {
-            clazz = ((OMetadataInternal) database.getMetadata()).getImmutableSchemaSnapshot().getClass(temp);
-          } else {
-            clazz = ((OMetadataInternal) database.getMetadata()).getImmutableSchemaSnapshot().getClass("E");
-          }
+          className = temp;
+          clazz = ((OMetadataInternal) database.getMetadata()).getImmutableSchemaSnapshot().getClass(className);
         }
 
         temp = parseOptionalWord(true);
@@ -126,7 +124,6 @@ public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLSetAware i
       if (clazz == null)
         throw new OCommandSQLParsingException("Class '" + className + "' was not found");
 
-      edgeLabel = className;
     } finally {
       textRequest.setText(originalQuery);
     }
@@ -140,10 +137,9 @@ public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLSetAware i
     if (clazz == null)
       throw new OCommandExecutionException("Cannot execute the command because it has not been parsed yet");
 
-    return OGraphCommandExecutorSQLFactory.runInConfiguredTxMode(new OGraphCommandExecutorSQLFactory.GraphCallBack<List<Object>>() {
+    return OGraphCommandExecutorSQLFactory.runInTx(new OGraphCommandExecutorSQLFactory.GraphCallBack<List<Object>>() {
       @Override
       public List<Object> call(OrientBaseGraph graph) {
-
         final Set<OIdentifiable> fromIds = OSQLEngine.getInstance().parseRIDTarget(graph.getRawGraph(), from, context, iArgs);
         final Set<OIdentifiable> toIds = OSQLEngine.getInstance().parseRIDTarget(graph.getRawGraph(), to, context, iArgs);
 
@@ -162,43 +158,60 @@ public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLSetAware i
               toVertex = graph.getVertex(to);
             }
 
+            final String clsName = clazz.getName();
+
             if (fields != null)
               // EVALUATE FIELDS
               for (final OPair<String, Object> f : fields) {
-                if (f.getValue() instanceof OSQLFunctionRuntime) {
+                if (f.getValue() instanceof OSQLFunctionRuntime)
                   f.setValue(((OSQLFunctionRuntime) f.getValue()).getValue(to, null, context));
-                }else if(f.getValue() instanceof OSQLFilterItem){
-                  f.setValue(((OSQLFilterItem) f.getValue()).getValue(to, null, context));
-                }
               }
 
             OrientEdge edge = null;
+            for (int r = 0; r < retry; ++r) {
+              try {
+                if (content != null) {
+                  if (fields != null)
+                    // MERGE CONTENT WITH FIELDS
+                    fields.addAll(OPair.convertFromMap(content.toMap()));
+                  else
+                    fields = OPair.convertFromMap(content.toMap());
+                }
 
-            if (content != null) {
-              if (fields != null)
-                // MERGE CONTENT WITH FIELDS
-                fields.addAll(OPair.convertFromMap(content.toMap()));
-              else
-                fields = OPair.convertFromMap(content.toMap());
+                edge = fromVertex.addEdge(null, toVertex, clsName, clusterName, fields);
+
+                if (fields != null && !fields.isEmpty()) {
+                  if (edge.isLightweight())
+                    edge.convertToDocument();
+
+                  OSQLHelper.bindParameters(edge.getRecord(), fields, new OCommandParameters(iArgs), context);
+                }
+
+                edge.save(clusterName);
+
+                // OK
+                break;
+
+              } catch (OConcurrentModificationException e) {
+                if (r + 1 >= retry)
+                  // NO RETRY; PROPAGATE THE EXCEPTION
+                  throw e;
+
+                // RETRY?
+                if (wait > 0)
+                  try {
+                    Thread.sleep(wait);
+                  } catch (InterruptedException e1) {
+                    OLogManager.instance().error(this, "Wait was interrupted.");
+                  }
+
+                // RELOAD LAST VERSION
+                fromVertex.getRecord().reload(null, true);
+                toVertex.getRecord().reload(null, true);
+              }
             }
-
-            edge = fromVertex.addEdge(null, toVertex, edgeLabel, clusterName, fields);
-
-            if (fields != null && !fields.isEmpty()) {
-              if (edge.isLightweight())
-                edge.convertToDocument();
-
-              OSQLHelper.bindParameters(edge.getRecord(), fields, new OCommandParameters(iArgs), context);
-            }
-
-            edge.save(clusterName);
 
             edges.add(edge);
-
-            if (batch > 0 && edges.size() % batch == 0) {
-              graph.commit();
-              graph.begin();
-            }
           }
         }
 
@@ -237,6 +250,6 @@ public class OCommandExecutorSQLCreateEdge extends OCommandExecutorSQLSetAware i
 
   @Override
   public String getSyntax() {
-    return "CREATE EDGE [<class>] [CLUSTER <cluster>] FROM <rid>|(<query>|[<rid>]*) TO <rid>|(<query>|[<rid>]*) [SET <field> = <expression>[,]*]|CONTENT {<JSON>} [RETRY <retry> [WAIT <pauseBetweenRetriesInMs]] [BATCH <batch-size>]";
+    return "CREATE EDGE [<class>] [CLUSTER <cluster>] FROM <rid>|(<query>|[<rid>]*) TO <rid>|(<query>|[<rid>]*) [SET <field> = <expression>[,]*]|CONTENT {<JSON>} [RETRY <retry> [WAIT <pauseBetweenRetriesInMs]]";
   }
 }

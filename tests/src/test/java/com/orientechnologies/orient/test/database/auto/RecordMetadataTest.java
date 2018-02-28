@@ -1,13 +1,14 @@
 package com.orientechnologies.orient.test.database.auto;
 
-import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.storage.ORecordMetadata;
+import static org.testng.Assert.assertEquals;
+
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.assertEquals;
+import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.storage.ORecordMetadata;
 
 /**
  * @author edegtyarenko
@@ -32,11 +33,11 @@ public class RecordMetadataTest extends DocumentDBBaseTest {
 
     for (int i = 0; i < 5; i++) {
       doc.field("field", i);
-      database.save(doc, database.getClusterNameById(database.getDefaultClusterId()));
+      database.save(doc);
 
       final ORecordMetadata metadata = database.getRecordMetadata(doc.getIdentity());
       assetORIDEquals(doc.getIdentity(), metadata.getRecordId());
-      assertEquals(doc.getVersion(), metadata.getVersion());
+      assertEquals(doc.getRecordVersion().getCounter(), metadata.getRecordVersion().getCounter());
     }
   }
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.graph.server.command;
@@ -27,8 +27,8 @@ import java.util.List;
 import java.util.Set;
 
 import com.orientechnologies.common.types.OModifiableBoolean;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.serialization.serializer.OJSONWriter;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.orientechnologies.orient.graph.gremlin.OGremlinHelper;
@@ -40,9 +40,8 @@ import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
 import com.orientechnologies.orient.server.network.protocol.http.command.OServerCommandAuthenticatedDbAbstract;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
-import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import com.tinkerpop.blueprints.impls.orient.OrientElement;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 
 public class OServerCommandGetGephi extends OServerCommandAuthenticatedDbAbstract {
@@ -56,7 +55,9 @@ public class OServerCommandGetGephi extends OServerCommandAuthenticatedDbAbstrac
 
   @Override
   public boolean execute(final OHttpRequest iRequest, OHttpResponse iResponse) throws Exception {
-    String[] urlParts = checkSyntax(iRequest.url, 4,
+    String[] urlParts = checkSyntax(
+        iRequest.url,
+        4,
         "Syntax error: gephi/<database>/<language>/<query-text>[/<limit>][/<fetchPlan>].<br>Limit is optional and is setted to 20 by default. Set expressely to 0 to have no limits.");
 
     final String language = urlParts[2];
@@ -67,23 +68,23 @@ public class OServerCommandGetGephi extends OServerCommandAuthenticatedDbAbstrac
     iRequest.data.commandInfo = "Gephi";
     iRequest.data.commandDetail = text;
 
-    final ODatabaseDocument db = getProfiledDatabaseInstance(iRequest);
+    final ODatabaseDocumentTx db = getProfiledDatabaseInstance(iRequest);
 
     final OModifiableBoolean shutdownFlag = new OModifiableBoolean();
-    final OrientBaseGraph graph = OGraphCommandExecutorSQLFactory.getAnyGraph(shutdownFlag);
+    final OrientGraph graph = OGraphCommandExecutorSQLFactory.getGraph(false, shutdownFlag);
     try {
 
-      final Iterable<OrientElement> vertices;
+      final Iterable<OrientVertex> vertices;
       if (language.equals("sql"))
         vertices = graph.command(new OSQLSynchQuery<OrientVertex>(text, limit).setFetchPlan(fetchPlan)).execute();
       else if (language.equals("gremlin")) {
         List<Object> result = new ArrayList<Object>();
         OGremlinHelper.execute(graph, text, null, null, result, null, null);
 
-        vertices = new ArrayList<OrientElement>(result.size());
+        vertices = new ArrayList<OrientVertex>(result.size());
 
         for (Object o : result) {
-          ((ArrayList<OrientElement>) vertices).add(graph.getVertex(o));
+          ((ArrayList<OrientVertex>) vertices).add(graph.getVertex(o));
         }
       } else
         throw new IllegalArgumentException("Language '" + language + "' is not supported. Use 'sql' or 'gremlin'");
@@ -92,7 +93,7 @@ public class OServerCommandGetGephi extends OServerCommandAuthenticatedDbAbstrac
 
     } finally {
       if (graph != null && shutdownFlag.getValue())
-        graph.shutdown(false, false);
+        graph.shutdown();
 
       if (db != null)
         db.close();
@@ -101,7 +102,7 @@ public class OServerCommandGetGephi extends OServerCommandAuthenticatedDbAbstrac
     return false;
   }
 
-  protected void sendRecordsContent(final OHttpRequest iRequest, final OHttpResponse iResponse, Iterable<OrientElement> iRecords,
+  protected void sendRecordsContent(final OHttpRequest iRequest, final OHttpResponse iResponse, Iterable<OrientVertex> iRecords,
       String iFetchPlan) throws IOException {
     final StringWriter buffer = new StringWriter();
     final OJSONWriter json = new OJSONWriter(buffer, OHttpResponse.JSON_FORMAT);
@@ -112,19 +113,16 @@ public class OServerCommandGetGephi extends OServerCommandAuthenticatedDbAbstrac
     iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_JSON, buffer.toString(), null);
   }
 
-  protected void generateGraphDbOutput(final Iterable<OrientElement> iVertices, final OJSONWriter json) throws IOException {
+  protected void generateGraphDbOutput(final Iterable<OrientVertex> iVertices, final OJSONWriter json) throws IOException {
     if (iVertices == null)
       return;
 
     // CREATE A SET TO SPEED UP SEARCHES ON VERTICES
     final Set<OrientVertex> vertexes = new HashSet<OrientVertex>();
-    final Set<OrientEdge> edges = new HashSet<OrientEdge>();
+    for (OrientVertex id : iVertices)
+      vertexes.add(id);
 
-    for (OrientElement id : iVertices)
-      if (id instanceof OrientVertex)
-        vertexes.add((OrientVertex) id);
-      else
-        edges.add((OrientEdge) id);
+    final Set<OrientEdge> edges = new HashSet<OrientEdge>();
 
     for (OrientVertex vertex : vertexes) {
       json.resetAttributes();

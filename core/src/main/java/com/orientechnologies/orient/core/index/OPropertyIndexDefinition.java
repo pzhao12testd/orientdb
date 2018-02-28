@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.index;
@@ -34,7 +34,6 @@ import java.util.List;
  * 
  */
 public class OPropertyIndexDefinition extends OAbstractIndexDefinition {
-  private static final long serialVersionUID = 7395728581151922197L;
   protected String className;
   protected String field;
   protected OType  keyType;
@@ -75,7 +74,7 @@ public class OPropertyIndexDefinition extends OAbstractIndexDefinition {
       else
         return null;
     }
-    return createValue(iDocument.<Object>field(field));
+    return createValue(iDocument.field(field));
   }
 
   @Override
@@ -192,15 +191,20 @@ public class OPropertyIndexDefinition extends OAbstractIndexDefinition {
   }
 
   protected StringBuilder createIndexDDLWithoutFieldType(final String indexName, final String indexType,final String engine) {
-    final StringBuilder ddl = new StringBuilder("create index `");
+    final StringBuilder ddl = new StringBuilder("create index ");
 
-    ddl.append(indexName).append("` on `");
-    ddl.append(className).append("` ( `").append(field).append("`");
+    final String shortName = className + "." + field;
+    if (indexName.equalsIgnoreCase(shortName)) {
+      ddl.append(shortName).append(" ");
+    } else {
+      ddl.append(indexName).append(" on ");
+      ddl.append(className).append(" ( ").append(field);
 
-    if (!collate.getName().equals(ODefaultCollate.NAME))
-      ddl.append(" collate ").append(collate.getName());
+      if (!collate.getName().equals(ODefaultCollate.NAME))
+        ddl.append(" collate ").append(collate.getName());
 
-    ddl.append(" ) ");
+      ddl.append(" ) ");
+    }
     ddl.append(indexType);
 
     if (engine != null)

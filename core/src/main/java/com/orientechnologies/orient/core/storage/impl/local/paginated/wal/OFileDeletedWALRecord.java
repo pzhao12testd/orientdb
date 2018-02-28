@@ -8,8 +8,8 @@ public class OFileDeletedWALRecord extends OOperationUnitBodyRecord {
   public OFileDeletedWALRecord() {
   }
 
-  public OFileDeletedWALRecord(OOperationUnitId operationUnitId, long fileId) {
-    super(operationUnitId);
+  public OFileDeletedWALRecord(OOperationUnitId operationUnitId, OLogSequenceNumber startLsn, long fileId) {
+    super(operationUnitId, startLsn);
     this.fileId = fileId;
   }
 

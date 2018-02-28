@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,12 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.command.script;
 
 import com.orientechnologies.common.concur.resource.OPartitionedObjectPool;
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.util.OCommonConst;
 import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.command.OCommandContext;
@@ -28,6 +27,7 @@ import com.orientechnologies.orient.core.command.OCommandExecutorAbstract;
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.function.OFunction;
 import com.orientechnologies.orient.core.metadata.security.ORole;
 import com.orientechnologies.orient.core.metadata.security.ORule;
@@ -40,7 +40,7 @@ import java.util.Map.Entry;
  * Executes Script Commands.
  * 
  * @see OCommandScript
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public class OCommandExecutorFunction extends OCommandExecutorAbstract {
@@ -63,7 +63,7 @@ public class OCommandExecutorFunction extends OCommandExecutorAbstract {
 
     parserText = request.getText();
 
-    ODatabaseDocumentInternal db = ODatabaseRecordThreadLocal.instance().get();
+    ODatabaseDocumentInternal db = ODatabaseRecordThreadLocal.INSTANCE.get();
     final OFunction f = db.getMetadata().getFunctionLibrary().getFunction(parserText);
 
     db.checkSecurity(ORule.ResourceGeneric.FUNCTION, ORole.PERMISSION_READ, f.getName());
@@ -73,7 +73,8 @@ public class OCommandExecutorFunction extends OCommandExecutorAbstract {
     final OPartitionedObjectPool.PoolEntry<ScriptEngine> entry = scriptManager.acquireDatabaseEngine(db.getName(), f.getLanguage());
     final ScriptEngine scriptEngine = entry.object;
     try {
-      final Bindings binding = scriptManager.bind(scriptEngine,scriptEngine.getBindings(ScriptContext.ENGINE_SCOPE), db, iContext, iArgs);
+      final Bindings binding = scriptManager.bind(scriptEngine.getBindings(ScriptContext.ENGINE_SCOPE), (ODatabaseDocumentTx) db,
+          iContext, iArgs);
 
       try {
         final Object result;
@@ -88,7 +89,7 @@ public class OCommandExecutorFunction extends OCommandExecutorAbstract {
             for (Entry<Object, Object> arg : iArgs.entrySet())
               args[i++] = arg.getValue();
           } else {
-            args = OCommonConst.EMPTY_OBJECT_ARRAY;
+        	  args = OCommonConst.EMPTY_OBJECT_ARRAY;
           }
           result = invocableEngine.invokeFunction(parserText, args);
 
@@ -97,19 +98,19 @@ public class OCommandExecutorFunction extends OCommandExecutorAbstract {
           final Object[] args = iArgs == null ? null : iArgs.values().toArray();
           result = scriptEngine.eval(scriptManager.getFunctionInvoke(f, args), binding);
         }
-        return OCommandExecutorUtility.transformResult(scriptManager.handleResult(f.getLanguage(),result,scriptEngine,binding,db));
+
+        return OCommandExecutorUtility.transformResult(result);
 
       } catch (ScriptException e) {
-        throw OException.wrapException(
-            new OCommandScriptException("Error on execution of the script", request.getText(), e.getColumnNumber()), e);
+        throw new OCommandScriptException("Error on execution of the script", request.getText(), e.getColumnNumber(), e);
       } catch (NoSuchMethodException e) {
-        throw OException.wrapException(new OCommandScriptException("Error on execution of the script", request.getText(), 0), e);
+        throw new OCommandScriptException("Error on execution of the script", request.getText(), 0, e);
       } catch (OCommandScriptException e) {
         // PASS THROUGH
         throw e;
 
       } finally {
-        scriptManager.unbind(scriptEngine,binding, iContext, iArgs);
+        scriptManager.unbind(binding, iContext, iArgs);
       }
     } finally {
       scriptManager.releaseDatabaseEngine(f.getLanguage(), db.getName(), entry);

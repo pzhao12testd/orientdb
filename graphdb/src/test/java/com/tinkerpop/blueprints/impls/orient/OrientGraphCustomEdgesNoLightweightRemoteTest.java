@@ -8,7 +8,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 2/6/14
  */
 @RunWith(JUnit4.class)
@@ -21,6 +21,7 @@ public class OrientGraphCustomEdgesNoLightweightRemoteTest extends OrientGraphRe
 
 	public Graph generateGraph(final String graphDirectoryName) {
 		final OrientGraph graph = (OrientGraph) super.generateGraph(graphDirectoryName);
+		graph.setUseClassForEdgeLabel(true);
 		graph.setUseLightweightEdges(false);
 
 		if (graph.getEdgeType("friend") == null)

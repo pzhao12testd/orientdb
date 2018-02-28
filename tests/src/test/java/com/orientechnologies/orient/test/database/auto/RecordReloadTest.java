@@ -9,6 +9,7 @@ import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -26,7 +27,7 @@ public class RecordReloadTest extends DocumentDBBaseTest {
     final ODocument document = new ODocument();
 
     document.field("value", "value one");
-    document.save(database.getClusterNameById(database.getDefaultClusterId()));
+    document.save();
 
     final ORID rid = document.getIdentity();
     final Future<?> future = executor.submit(new Runnable() {
@@ -55,7 +56,7 @@ public class RecordReloadTest extends DocumentDBBaseTest {
     final ODocument document = new ODocument();
 
     document.field("value", "value one");
-    document.save(database.getClusterNameById(database.getDefaultClusterId()));
+    document.save();
 
     final ORID rid = document.getIdentity();
     final Future<?> future = executor.submit(new Runnable() {
@@ -90,10 +91,9 @@ public class RecordReloadTest extends DocumentDBBaseTest {
 
     ODocument linkedValue = new ODocument();
     linkedValue.field("val", "value 1");
-    linkedValue.save(database.getClusterNameById(database.getDefaultClusterId()));
     document.field("link", linkedValue);
 
-    document.save(database.getClusterNameById(database.getDefaultClusterId()));
+    document.save();
 
     final ORID rid = document.getIdentity();
     final Future<?> future = executor.submit(new Runnable() {
@@ -131,10 +131,9 @@ public class RecordReloadTest extends DocumentDBBaseTest {
 
     ODocument linkedValue = new ODocument();
     linkedValue.field("val", "value 1");
-    linkedValue.save(database.getClusterNameById(database.getDefaultClusterId()));
     document.field("link", linkedValue);
 
-    document.save(database.getClusterNameById(database.getDefaultClusterId()));
+    document.save();
 
     final ORID rid = document.getIdentity();
     final Future<?> future = executor.submit(new Runnable() {

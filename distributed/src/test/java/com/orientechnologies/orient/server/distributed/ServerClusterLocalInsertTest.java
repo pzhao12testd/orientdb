@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2013 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.orientechnologies.orient.server.distributed;
 import org.junit.Test;
 
 /**
- * Insert records concurrently against the cluster using "plocal" protocol.
+ * Insert records concurrently against the cluster using "local" protocol.
  */
 public class ServerClusterLocalInsertTest extends AbstractServerClusterInsertTest {
   @Test

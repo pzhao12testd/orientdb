@@ -2,8 +2,7 @@ package com.orientechnologies.orient.server.network.protocol.http.command.post;
 
 import com.orientechnologies.common.concur.lock.OLockException;
 import com.orientechnologies.common.log.OLogManager;
-import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.exception.OSecurityAccessException;
 import com.orientechnologies.orient.core.metadata.security.OSecurityUser;
@@ -15,7 +14,6 @@ import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
 import com.orientechnologies.orient.server.network.protocol.http.command.OServerCommandAbstract;
 
 import java.io.IOException;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -24,9 +22,10 @@ import java.util.Map;
  * @author Emrul Islam <emrul@emrul.com> Copyright 2014 Emrul Islam
  */
 public class OServerCommandPostAuthToken extends OServerCommandAbstract {
-  private static final String[] NAMES           = { "POST|token/*" };
-  private static final String   RESPONSE_FORMAT = "indent:-1,attribSameRow";
+  private static final String[]  NAMES           = { "POST|token/*" };
+  private static final String    RESPONSE_FORMAT = "indent:-1,attribSameRow";
   private volatile OTokenHandler tokenHandler;
+  private volatile boolean       hasToken        = true;
 
   @Override
   public String[] getNames() {
@@ -34,9 +33,12 @@ public class OServerCommandPostAuthToken extends OServerCommandAbstract {
   }
 
   private void init() {
-
-    if (tokenHandler == null && server.getContextConfiguration().getValueAsBoolean(OGlobalConfiguration.NETWORK_HTTP_USE_TOKEN)) {
-      tokenHandler = server.getTokenHandler();
+    if (hasToken && tokenHandler == null) {
+      tokenHandler = (OTokenHandler) server.getPlugin(OTokenHandler.TOKEN_HANDLER_NAME);
+      if (tokenHandler != null && !tokenHandler.isEnabled()) {
+        tokenHandler = null;
+        hasToken = false;
+      }
     }
   }
 
@@ -50,14 +52,9 @@ public class OServerCommandPostAuthToken extends OServerCommandAbstract {
 
     // Parameter names consistent with 4.3.2 (Access Token Request) of RFC 6749
     Map<String, String> content = iRequest.getUrlEncodedContent();
-    if (content == null) {
-      ODocument result = new ODocument().field("error", "missing_auth_data");
-      sendError(iRequest, iResponse, result);
-      return false;
-    }
     String signedToken = "";// signedJWT.serialize();
 
-    String grantType = content.get("grant_type").toLowerCase(Locale.ENGLISH);
+    String grantType = content.get("grant_type").toLowerCase();
     String username = content.get("username");
     String password = content.get("password");
     String authenticatedRid;
@@ -67,13 +64,13 @@ public class OServerCommandPostAuthToken extends OServerCommandAbstract {
       authenticatedRid = authenticate(username, password, iRequest.databaseName);
       if (authenticatedRid == null) {
         sendAuthorizationRequest(iRequest, iResponse, iRequest.databaseName);
-      } else if (tokenHandler != null) {
+      } else {
         // Generate and return a JWT access token
 
-        ODatabaseDocument db = null;
+        ODatabaseDocumentTx db = null;
         OSecurityUser user = null;
         try {
-          db = (ODatabaseDocument) server.openDatabase(iRequest.databaseName, username, password);
+          db = (ODatabaseDocumentTx) server.openDatabase("document", iRequest.databaseName, username, password);
           user = db.getUser();
 
           if (user != null) {
@@ -86,7 +83,8 @@ public class OServerCommandPostAuthToken extends OServerCommandAbstract {
         } catch (OSecurityAccessException e) {
           // WRONG USER/PASSWD
         } catch (OLockException e) {
-          OLogManager.instance().error(this, "Cannot access to the database '" + iRequest.databaseName + "'", e);
+          OLogManager.instance().error(this, "Cannot access to the database '" + iRequest.databaseName + "'",
+              ODatabaseException.class, e);
         } finally {
           if (db != null) {
             db.close();
@@ -97,9 +95,6 @@ public class OServerCommandPostAuthToken extends OServerCommandAbstract {
         result = new ODocument().field("access_token", signedToken).field("expires_in", 3600);
 
         iResponse.writeRecord(result, RESPONSE_FORMAT, null);
-      } else {
-        result = new ODocument().field("error", "unsupported_grant_type");
-        sendError(iRequest, iResponse, result);
       }
     } else {
       result = new ODocument().field("error", "unsupported_grant_type");
@@ -113,16 +108,16 @@ public class OServerCommandPostAuthToken extends OServerCommandAbstract {
   // If user is server user (doesn't have a rid) then '<server user>' is returned.
   // null is returned in all other cases and means authentication was unsuccessful.
   protected String authenticate(final String username, final String password, final String iDatabaseName) throws IOException {
-    ODatabaseDocument db = null;
+    ODatabaseDocumentTx db = null;
     String userRid = null;
     try {
-      db = (ODatabaseDocument) server.openDatabase(iDatabaseName, username, password);
+      db = (ODatabaseDocumentTx) server.openDatabase("document", iDatabaseName, username, password);
 
       userRid = (db.getUser() == null ? "<server user>" : db.getUser().getDocument().getIdentity().toString());
     } catch (OSecurityAccessException e) {
       // WRONG USER/PASSWD
     } catch (OLockException e) {
-      OLogManager.instance().error(this, "Cannot access to the database '" + iDatabaseName + "'", e);
+      OLogManager.instance().error(this, "Cannot access to the database '" + iDatabaseName + "'", ODatabaseException.class, e);
     } finally {
       if (db != null) {
         db.close();
@@ -132,27 +127,23 @@ public class OServerCommandPostAuthToken extends OServerCommandAbstract {
   }
 
   protected void sendError(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODocument error) throws IOException {
-    iResponse
-        .send(OHttpUtils.STATUS_BADREQ_CODE, OHttpUtils.STATUS_BADREQ_DESCRIPTION, OHttpUtils.CONTENT_JSON, error.toJSON(), null);
+    iResponse.send(OHttpUtils.STATUS_BADREQ_CODE, OHttpUtils.STATUS_BADREQ_DESCRIPTION, OHttpUtils.CONTENT_JSON, error.toJSON(),
+        null);
   }
 
   protected void sendAuthorizationRequest(final OHttpRequest iRequest, final OHttpResponse iResponse, final String iDatabaseName)
       throws IOException {
-
     String header = null;
-    String xRequestedWithHeader = iRequest.getHeader("X-Requested-With");
-    if (xRequestedWithHeader == null || !xRequestedWithHeader.equals("XMLHttpRequest")) {
-      // Defaults to "WWW-Authenticate: Basic" if not an AJAX Request.
-      header = server.getSecurity().getAuthenticationHeader(iDatabaseName);
+    if (iRequest.authentication == null || iRequest.authentication.equalsIgnoreCase("basic")) {
+      header = "WWW-Authenticate: Basic realm=\"OrientDB db-" + iDatabaseName + "\"";
     }
 
     if (isJsonResponse(iResponse)) {
       sendJsonError(iResponse, OHttpUtils.STATUS_BADREQ_CODE, OHttpUtils.STATUS_BADREQ_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN,
           "401 Unauthorized.", header);
     } else {
-      iResponse
-          .send(OHttpUtils.STATUS_AUTH_CODE, OHttpUtils.STATUS_AUTH_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "401 Unauthorized.",
-              header);
+      iResponse.send(OHttpUtils.STATUS_AUTH_CODE, OHttpUtils.STATUS_AUTH_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN,
+          "401 Unauthorized.", header);
     }
 
   }

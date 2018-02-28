@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,34 +14,27 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandDistributedReplicateRequest;
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
-import com.orientechnologies.orient.core.exception.ODatabaseException;
-import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.metadata.schema.OSchema;
-import com.orientechnologies.orient.core.sql.parser.OIdentifier;
-import com.orientechnologies.orient.core.sql.parser.OTruncateClusterStatement;
 import com.orientechnologies.orient.core.storage.OCluster;
-import com.orientechnologies.orient.core.storage.OStorage;
 
 import java.io.IOException;
 import java.util.Map;
 
 /**
  * SQL TRUNCATE CLUSTER command: Truncates an entire record cluster.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 public class OCommandExecutorSQLTruncateCluster extends OCommandExecutorSQLAbstract implements OCommandDistributedReplicateRequest {
   public static final String KEYWORD_TRUNCATE = "TRUNCATE";
@@ -50,53 +43,31 @@ public class OCommandExecutorSQLTruncateCluster extends OCommandExecutorSQLAbstr
 
   @SuppressWarnings("unchecked")
   public OCommandExecutorSQLTruncateCluster parse(final OCommandRequest iRequest) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iRequest;
+    init((OCommandRequestText) iRequest);
 
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
-    try {
-      queryText = preParse(queryText, iRequest);
-      textRequest.setText(queryText);
+    StringBuilder word = new StringBuilder();
 
-      init((OCommandRequestText) iRequest);
+    int oldPos = 0;
+    int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_TRUNCATE))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_TRUNCATE + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      StringBuilder word = new StringBuilder();
+    oldPos = pos;
+    pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_CLUSTER))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_CLUSTER + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      int oldPos = 0;
-      int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_TRUNCATE))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_TRUNCATE + " not found. Use " + getSyntax(), parserText, oldPos);
+    oldPos = pos;
+    pos = nextWord(parserText, parserText, oldPos, word, true);
+    if (pos == -1)
+      throw new OCommandSQLParsingException("Expected cluster name. Use " + getSyntax(), parserText, oldPos);
 
-      oldPos = pos;
-      pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_CLUSTER))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_CLUSTER + " not found. Use " + getSyntax(), parserText, oldPos);
+    clusterName = word.toString();
 
-      oldPos = pos;
-      pos = nextWord(parserText, parserText, oldPos, word, true);
-      if (pos == -1)
-        throw new OCommandSQLParsingException("Expected cluster name. Use " + getSyntax(), parserText, oldPos);
-
-      clusterName = decodeClusterName(word.toString());
-
-      if (preParsedStatement != null) { // new parser, this will be removed and implemented with the new executor
-        OIdentifier name = ((OTruncateClusterStatement) preParsedStatement).clusterName;
-        if (name != null) {
-          clusterName = name.getStringValue();
-        }
-      }
-
-      final ODatabaseDocument database = getDatabase();
-      if (database.getClusterIdByName(clusterName) == -1)
-        throw new OCommandSQLParsingException("Cluster '" + clusterName + "' not found", parserText, oldPos);
-    } finally {
-      textRequest.setText(originalQuery);
-    }
+    final ODatabaseDocument database = getDatabase();
+    if (database.getClusterIdByName(clusterName) == -1)
+      throw new OCommandSQLParsingException("Cluster '" + clusterName + "' not found", parserText, oldPos);
     return this;
-  }
-
-  private String decodeClusterName(String s) {
-    return decodeClassName(s);
   }
 
   /**
@@ -106,38 +77,22 @@ public class OCommandExecutorSQLTruncateCluster extends OCommandExecutorSQLAbstr
     if (clusterName == null)
       throw new OCommandExecutionException("Cannot execute the command because it has not been parsed yet");
 
-    final ODatabaseDocumentInternal database = getDatabase();
+    final OCluster cluster = getDatabase().getStorage().getClusterByName(clusterName);
 
-    final int clusterId = database.getClusterIdByName(clusterName);
-    if (clusterId < 0) {
-      throw new ODatabaseException("Cluster with name " + clusterName + " does not exist");
+    final long recs = cluster.getEntries();
+
+    try {
+      cluster.truncate();
+    } catch (IOException e) {
+      throw new OCommandExecutionException("Error on executing command", e);
     }
 
-    final OSchema schema = database.getMetadata().getSchema();
-    final OClass clazz = schema.getClassByClusterId(clusterId);
-    if (clazz == null) {
-      final OStorage storage = database.getStorage();
-      final OCluster cluster = storage.getClusterById(clusterId);
-
-      if (cluster == null) {
-        throw new ODatabaseException("Cluster with name " + clusterName + " does not exist");
-      }
-
-      try {
-        database.checkForClusterPermissions(cluster.getName());
-        cluster.truncate();
-      } catch (IOException ioe) {
-        throw OException.wrapException(new ODatabaseException("Error during truncation of cluster with name " + clusterName), ioe);
-      }
-    } else {
-      clazz.truncateCluster(clusterName);
-    }
-    return true;
+    return recs;
   }
 
   @Override
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   @Override

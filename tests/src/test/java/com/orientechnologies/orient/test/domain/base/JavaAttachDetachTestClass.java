@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +28,11 @@ import javax.persistence.Transient;
 import javax.persistence.Version;
 
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.record.impl.OBlob;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 import com.orientechnologies.orient.test.domain.business.Child;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class JavaAttachDetachTestClass {
@@ -45,7 +45,7 @@ public class JavaAttachDetachTestClass {
   public Object                version;
   public ODocument             embeddedDocument;
   public ODocument             document;
-  public OBlob                 byteArray;
+  public ORecordBytes          byteArray;
   public String                name;
   public Child                 specialChild;
   public Child                 specialChild2;
@@ -102,11 +102,11 @@ public class JavaAttachDetachTestClass {
     this.document = document;
   }
 
-  public OBlob getByteArray() {
+  public ORecordBytes getByteArray() {
     return byteArray;
   }
 
-  public void setByteArray(OBlob byteArray) {
+  public void setByteArray(ORecordBytes byteArray) {
     this.byteArray = byteArray;
   }
 

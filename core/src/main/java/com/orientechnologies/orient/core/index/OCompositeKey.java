@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,36 +14,32 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.index;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.*;
 
 import com.orientechnologies.common.comparator.ODefaultComparator;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.serialization.ODocumentSerializable;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * Container for the list of heterogeneous values that are going to be stored in in index as composite keys.
- *
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com), Artem Orobets
+ * 
  * @see com.orientechnologies.orient.core.index.mvrbtree.OMVRBTree.PartialSearchMode
+ * @author Andrey lomakin, Artem Orobets
  */
-@SuppressFBWarnings(value = "SE_TRANSIENT_FIELD_NOT_RESTORED")
 public class OCompositeKey implements Comparable<OCompositeKey>, Serializable, ODocumentSerializable {
-  private static final long  serialVersionUID = 1L;
+  private static final long        serialVersionUID = 1L;
   /**
    * List of heterogeneous values that are going to be stored in {@link com.orientechnologies.orient.core.index.mvrbtree.OMVRBTree}.
    */
-  private final List<Object> keys;
+  private final List<Object>       keys;
 
-  private final transient Comparator<Object> comparator;
+  private final Comparator<Object> comparator;
 
   public OCompositeKey(final List<?> keys) {
     this.keys = new ArrayList<Object>(keys.size());
@@ -84,10 +80,10 @@ public class OCompositeKey implements Comparable<OCompositeKey>, Serializable, O
 
   /**
    * Add new key value to the list of already registered values.
-   * <p>
+   * 
    * If passed in value is {@link OCompositeKey} itself then its values will be copied in current index. But key itself will not be
    * added.
-   *
+   * 
    * @param key
    *          Key to add.
    */
@@ -104,12 +100,13 @@ public class OCompositeKey implements Comparable<OCompositeKey>, Serializable, O
 
   /**
    * Performs partial comparison of two composite keys.
-   * <p>
+   * 
    * Two objects will be equal if the common subset of their keys is equal. For example if first object contains two keys and second
    * contains four keys then only first two keys will be compared.
-   *
+   * 
    * @param otherKey
    *          Key to compare.
+   * 
    * @return a negative integer, zero, or a positive integer as this object is less than, equal to, or greater than the specified
    *         object.
    */

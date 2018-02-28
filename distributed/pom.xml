@@ -28,8 +28,7 @@
     <parent>
         <groupId>com.orientechnologies</groupId>
         <artifactId>orientdb-parent</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
-        <relativePath>../</relativePath>
+        <version>2.1.1</version>
     </parent>
 
     <artifactId>orientdb-distributed</artifactId>
@@ -37,30 +36,22 @@
     <name>OrientDB Distributed Server</name>
 
     <properties>
-        <hz.version>3.8.4</hz.version>
         <javac.src.version>1.6</javac.src.version>
         <javac.target.version>1.6</javac.target.version>
         <jar.manifest.mainclass>com.orientechnologies.orient.server.OServerMain</jar.manifest.mainclass>
         <osgi.import>com.hazelcast.*;resolution:=optional,*</osgi.import>
-        <osgi.export>com.orientechnologies.orient.server.hazelcast.*,com.orientechnologies.orient.server.distributed.impl.*</osgi.export>
+        <osgi.export>com.orientechnologies.orient.server.hazelcast.*</osgi.export>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <argLine>-ea
-            -Xmx${heapSize}
-            -Dstorage.diskCache.bufferSize=4096
-            -Dindex.flushAfterCreate=false
+        <argLine>-ea -Xmx2048m -Dindex.flushAfterCreate=false
             -Dstorage.makeFullCheckpointAfterCreate=false
-            -Dmemory.directMemory.trackMode=true
             -Dstorage.makeFullCheckpointAfterOpen=false
             -Dstorage.makeFullCheckpointAfterClusterCreate=false
             -Dstorage.wal.syncOnPageFlush=false
             -Dstorage.configuration.syncOnUpdate=false
             -Ddb.makeFullCheckpointOnIndexChange=false
             -Ddb.makeFullCheckpointOnSchemaChange=false
-            -Dhazelcast.wait.seconds.before.join=3
-            -Djava.util.logging.manager=com.orientechnologies.common.log.ShutdownLogManager
-            -Dstorage.diskCache.checksumMode=storeAndThrow
+            -Dhazelcast.wait.seconds.before.join=1
         </argLine>
-        <exclude.test.distributed>NONE</exclude.test.distributed>
     </properties>
 
     <profiles>
@@ -82,7 +73,7 @@
                 </property>
             </activation>
             <properties>
-                <skipTests>true</skipTests>
+                <skipTests>false</skipTests>
             </properties>
         </profile>
         <profile>
@@ -94,41 +85,12 @@
                 </property>
             </activation>
             <properties>
-                <skipTests>true</skipTests>
+                <skipTests>false</skipTests>
             </properties>
-        </profile>
-        <profile>
-            <id>crash-tests</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${surefire.version}</version>
-                        <configuration>
-                            <skipTests>true</skipTests>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
 
     <dependencies>
-
-        <dependency>
-            <groupId>com.orientechnologies</groupId>
-            <artifactId>orientdb-test-commons</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.orientechnologies</groupId>
-            <artifactId>orientdb-core</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>com.orientechnologies</groupId>
             <artifactId>orientdb-server</artifactId>
@@ -137,14 +99,20 @@
         </dependency>
         <dependency>
             <groupId>com.orientechnologies</groupId>
-            <artifactId>orientdb-tools</artifactId>
+            <artifactId>orientdb-graphdb</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.10</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.hazelcast</groupId>
-            <artifactId>hazelcast</artifactId>
-            <version>${hz.version}</version>
+            <artifactId>hazelcast-all</artifactId>
+            <version>3.3.5</version>
         </dependency>
     </dependencies>
 
@@ -164,22 +132,14 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.version}</version>
                 <configuration>
+
                     <systemPropertyVariables>
                         <buildDirectory>${project.build.directory}</buildDirectory>
                     </systemPropertyVariables>
-                    <excludes>
-                        <exclude>${exclude.test.distributed}</exclude>
-                    </excludes>
+                    <skipTests></skipTests>
                 </configuration>
-
-                <dependencies>
-                    <dependency>
-                        <groupId>org.apache.maven.surefire</groupId>
-                        <artifactId>surefire-junit47</artifactId>
-                        <version>${surefire.version}</version>
-                    </dependency>
-                </dependencies>
             </plugin>
         </plugins>
     </build>

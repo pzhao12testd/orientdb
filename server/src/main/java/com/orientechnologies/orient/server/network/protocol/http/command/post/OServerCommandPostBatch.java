@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command.post;
@@ -23,16 +23,16 @@ import com.orientechnologies.common.collection.OMultiValue;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.command.OCommandManager;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.command.script.OCommandScript;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
+import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
 import com.orientechnologies.orient.server.network.protocol.http.command.OServerCommandDocumentAbstract;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Executes a batch of operations in a single call. This is useful to reduce network latency issuing multiple commands as multiple
@@ -74,7 +74,7 @@ import java.util.stream.Collectors;
  * }
  * </pre>
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public class OServerCommandPostBatch extends OServerCommandDocumentAbstract {
@@ -86,7 +86,7 @@ public class OServerCommandPostBatch extends OServerCommandDocumentAbstract {
 
     iRequest.data.commandInfo = "Execute multiple requests in one shot";
 
-    ODatabaseDocument db = null;
+    ODatabaseDocumentTx db = null;
 
     ODocument batch = null;
 
@@ -192,9 +192,7 @@ public class OServerCommandPostBatch extends OServerCommandDocumentAbstract {
           } else
             text.append(script);
 
-          OResultSet result =  db.execute(language, text.toString());
-          lastResult = result.stream().map(x -> x.toElement()).collect(Collectors.toList());
-          result.close();
+          lastResult = db.command(new OCommandScript(language, text.toString())).execute();
         }
       }
 
@@ -203,6 +201,7 @@ public class OServerCommandPostBatch extends OServerCommandDocumentAbstract {
 
       try {
         iResponse.writeResult(lastResult);
+        iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, null, null);
       } catch (RuntimeException e) {
         OLogManager.instance()
             .error(this, "Error (%s) on serializing result of batch command:\n%s", e, batch.toJSON("prettyPrint"));

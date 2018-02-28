@@ -1,6 +1,6 @@
 /*
  *
- *  * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  * Copyright 2014 Orient Technologies.
  *  *
  *  * Licensed under the Apache License, Version 2.0 (the "License");
  *  * you may not use this file except in compliance with the License.
@@ -18,21 +18,11 @@
 
 package com.orientechnologies.orient.core.index;
 
-import com.orientechnologies.common.exception.OErrorCode;
-import com.orientechnologies.orient.core.exception.OCoreException;
-import com.orientechnologies.orient.core.storage.impl.local.paginated.base.ODurableComponent;
+import com.orientechnologies.common.exception.OException;
 
-public class OIndexEngineException extends OCoreException {
+public class OIndexEngineException extends OException {
 
-  public OIndexEngineException(OIndexEngineException exception) {
-    super(exception);
-  }
-
-  public OIndexEngineException(String message, String componentName) {
-    super(message, componentName);
-  }
-
-  public OIndexEngineException(String message) {
-    super(message);
+  public OIndexEngineException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 }

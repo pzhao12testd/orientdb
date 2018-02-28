@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.type;
 
 import java.io.Serializable;
 
+import com.orientechnologies.orient.core.annotation.OAfterDeserialization;
 import com.orientechnologies.orient.core.annotation.ODocumentInstance;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -29,7 +30,7 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
  * Base abstract class to wrap a document.
  * 
  * @see ODocumentWrapperNoClass
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 @SuppressWarnings("unchecked")
@@ -52,6 +53,7 @@ public class ODocumentWrapper implements Serializable {
     document = iDocument;
   }
 
+  @OAfterDeserialization
   public void fromStream(final ODocument iDocument) {
     document = iDocument;
   }

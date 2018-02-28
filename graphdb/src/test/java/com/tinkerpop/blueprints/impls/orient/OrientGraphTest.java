@@ -8,18 +8,18 @@ import com.tinkerpop.blueprints.util.io.graphml.GraphMLReaderTestSuite;
 import com.tinkerpop.blueprints.util.io.graphson.GraphSONReaderTestSuite;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 /**
  * Test suite for OrientDB graph implementation.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com) (http://orientdb.com)
+ * @author Luca Garulli (http://www.orientechnologies.com)
  */
 public abstract class OrientGraphTest extends GraphTest {
 
@@ -95,14 +95,9 @@ public abstract class OrientGraphTest extends GraphTest {
 
   @Test
   public void testTransactionalGraphTestSuite() throws Exception {
-    try {
-      this.stopWatch();
-      doTestSuite(new TransactionalGraphTestSuite(this));
-      printTestPerformance("TransactionGraphTestSuite", this.stopWatch());
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw e;
-    }
+    this.stopWatch();
+    doTestSuite(new TransactionalGraphTestSuite(this));
+    printTestPerformance("TransactionGraphTestSuite", this.stopWatch());
   }
 
   @Test
@@ -149,14 +144,13 @@ public abstract class OrientGraphTest extends GraphTest {
       if (graph.isClosed())
         currentGraphs.remove(url);
       else {
-        ODatabaseRecordThreadLocal.instance().set(graph.getRawGraph());
+        ODatabaseRecordThreadLocal.INSTANCE.set(graph.getRawGraph());
         return graph;
       }
     }
 
     graph = new OrientGraph(url);
     graph.setWarnOnForceClosingTx(false);
-    graph.setStandardExceptions(true);
 
     currentGraphs.put(url, graph);
 
@@ -203,7 +197,7 @@ public abstract class OrientGraphTest extends GraphTest {
   }
 
   public static ENV getEnvironment() {
-    String envName = System.getProperty("orientdb.test.env", "dev").toUpperCase(Locale.ENGLISH);
+    String envName = System.getProperty("orientdb.test.env", "dev").toUpperCase();
     ENV result = null;
     try {
       result = ENV.valueOf(envName);

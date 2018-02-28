@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package com.orientechnologies.orient.test.database.auto;
 
-import com.orientechnologies.common.util.OCallable;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
@@ -26,7 +25,6 @@ import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
@@ -82,7 +80,6 @@ public class GraphDatabaseTest extends DocumentDBBaseTest {
       Assert.assertTrue(v.getSchemaClass().isSubClassOf(vehicleClass));
     }
 
-    database.commit();
     database.shutdown();
 
     database = new OrientGraph(url);
@@ -107,7 +104,6 @@ public class GraphDatabaseTest extends DocumentDBBaseTest {
         edge2 = database.getVertex(v).getEdges(Direction.IN).iterator().next();
       }
     }
-    database.commit();
 
     Assert.assertEquals(edge1, edge2);
   }
@@ -313,44 +309,6 @@ public class GraphDatabaseTest extends DocumentDBBaseTest {
 
     Integer confirmDeleted = database.command(new OCommandSQL("delete from " + insertedEdge.getIdentity() + " unsafe")).execute();
     Assert.assertEquals(confirmDeleted.intValue(), 1);
-  }
-
-
-  public void testEmbeddedDoc() {
-    database.executeOutsideTx(new OCallable<Object, OrientBaseGraph>() {
-      @Override public Object call(OrientBaseGraph iArgument) {
-        return iArgument.getRawGraph().getMetadata().getSchema().createClass("NonVertex");
-      }
-    });
-    Vertex vertex = database.addVertex("class:V", "name", "vertexWithEmbedded");
-    ODocument doc = new ODocument();
-    doc.field("foo", "bar");
-    doc.save(database.getRawGraph().getClusterNameById(database.getRawGraph().getDefaultClusterId()));
-
-
-    vertex.setProperty("emb1", doc);
-
-
-    ODocument doc2 = new ODocument("V");
-    doc2.field("foo", "bar1");
-    vertex.setProperty("emb2", doc2);
-
-    ODocument doc3 = new ODocument("NonVertex");
-    doc3.field("foo", "bar2");
-    vertex.setProperty("emb3", doc3);
-
-    Object res1 = vertex.getProperty("emb1");
-    Assert.assertNotNull(res1);
-    Assert.assertTrue(res1 instanceof ODocument);
-
-    Object res2 = vertex.getProperty("emb2");
-    Assert.assertNotNull(res2);
-    Assert.assertFalse(res2 instanceof ODocument);
-
-    Object res3 = vertex.getProperty("emb3");
-    Assert.assertNotNull(res3);
-    Assert.assertTrue(res3 instanceof ODocument);
-    database.commit();
   }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ import java.util.Set;
 @Test(groups = { "record-object", "treeSchemaFull" }, dependsOnGroups = "physicalSchemaFull")
 public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
   protected long startRecordNumber;
-  private   long beginCities;
+  private long   beginCities;
   protected int  serialized;
   protected int  unserialized;
 
@@ -207,19 +207,23 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
     Country italy = database.newInstance(Country.class, "Italy");
 
     Profile garibaldi = database.newInstance(Profile.class, "GGaribaldi", "Giuseppe", "Garibaldi", null);
-    garibaldi.setLocation(
-        database.newInstance(Address.class, "Residence", database.newInstance(City.class, italy, "Rome"), "Piazza Navona, 1"));
+    garibaldi.setLocation(database.newInstance(Address.class, "Residence", database.newInstance(City.class, italy, "Rome"),
+        "Piazza Navona, 1"));
 
     Profile bonaparte = database.newInstance(Profile.class, "NBonaparte", "Napoleone", "Bonaparte", garibaldi);
-    bonaparte
-        .setLocation(database.newInstance(Address.class, "Residence", garibaldi.getLocation().getCity(), "Piazza di Spagna, 111"));
+    bonaparte.setLocation(database.newInstance(Address.class, "Residence", garibaldi.getLocation().getCity(),
+        "Piazza di Spagna, 111"));
     database.save(bonaparte);
 
     Assert.assertEquals(database.countClusterElements("Profile"), beginProfiles + 2);
-    Assert.assertEquals(database.countClusterElements("City"), beginCities + 1);
   }
 
   @Test(dependsOnMethods = "testPersonSaving")
+  public void testCitySaving() {
+    Assert.assertEquals(database.countClusterElements("City"), beginCities + 1);
+  }
+
+  @Test(dependsOnMethods = "testCitySaving")
   public void testCityEquality() {
     List<Profile> resultset = database.query(new OSQLSynchQuery<Object>("select from profile where location.city.name = 'Rome'"));
     Assert.assertEquals(resultset.size(), 2);
@@ -254,7 +258,7 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
     Profile parent;
     for (Profile r : result) {
 
-      //      System.out.println(r.getNick());
+//      System.out.println(r.getNick());
 
       parent = r.getInvitedBy();
 
@@ -273,7 +277,7 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
 
     for (ODocument profile : result) {
 
-      //      System.out.println(profile.field("name") + " " + profile.field("surname"));
+//      System.out.println(profile.field("name") + " " + profile.field("surname"));
 
       final Collection<ODocument> followers = profile.field("followers");
 
@@ -281,8 +285,8 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
         for (ODocument follower : followers) {
           Assert.assertTrue(((Collection<ODocument>) follower.field("followings")).contains(profile));
 
-          //          System.out.println("- follower: " + follower.field("name") + " " + follower.field("surname") + " (parent: "
-          //              + follower.field("name") + " " + follower.field("surname") + ")");
+//          System.out.println("- follower: " + follower.field("name") + " " + follower.field("surname") + " (parent: "
+//              + follower.field("name") + " " + follower.field("surname") + ")");
         }
       }
     }
@@ -776,6 +780,7 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
     database.close();
     database = OObjectDatabasePool.global().acquire(url, "admin", "admin");
 
+
     database.delete(testRid);
     mapChild1 = database.load(map1Rid);
     mapChild2 = database.load(map2Rid);
@@ -785,6 +790,7 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
     Assert.assertNull(mapChild3);
     database.close();
     database = OObjectDatabasePool.global().acquire(url, "admin", "admin");
+
 
     // MAP UPDATE TEST
     test = database.newInstance(JavaCascadeDeleteTestClass.class);
@@ -857,7 +863,7 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
         return new CustomType(iFieldValue);
       }
 
-    }, database);
+    });
     OObjectSerializerHelper.bindSerializerContext(null, serializerContext);
     database.getEntityManager().registerEntityClass(CustomClass.class);
 
@@ -922,8 +928,8 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
       Map<Long, CustomType> customTypeMap = new HashMap<Long, CustomType>();
       customTypeMap.put(1L, new CustomType(104L));
 
-      CustomClass pojo = database
-          .newInstance(CustomClass.class, "test", 33L, new CustomType(101L), customTypesList, customTypeSet, customTypeMap);
+      CustomClass pojo = database.newInstance(CustomClass.class, "test", 33L, new CustomType(101L), customTypesList, customTypeSet,
+          customTypeMap);
       Assert.assertEquals(serialized, 4);
       Assert.assertEquals(unserialized, 0);
 
@@ -978,7 +984,7 @@ public class ObjectTreeTestSchemaFull extends ObjectDBBaseTest {
         public Object unserializeFieldValue(Class<?> type, String str) {
           return SecurityRole.getByName(str);
         }
-      }, database);
+      });
 
       OObjectSerializerHelper.bindSerializerContext(null, serializerContext);
 

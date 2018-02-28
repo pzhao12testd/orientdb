@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,31 +14,32 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.record;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.io.OIOUtils;
 import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.ORecordElement;
 import com.orientechnologies.orient.core.exception.ORecordNotFoundException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
-import com.orientechnologies.orient.core.record.impl.ODirtyManager;
+import com.orientechnologies.orient.core.serialization.serializer.ONetworkThreadLocalSerializer;
 import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializer;
 import com.orientechnologies.orient.core.serialization.serializer.record.string.ORecordSerializerJSON;
 import com.orientechnologies.orient.core.storage.OStorage;
 import com.orientechnologies.orient.core.storage.impl.local.paginated.OOfflineClusterException;
+import com.orientechnologies.orient.core.version.ORecordVersion;
+import com.orientechnologies.orient.core.version.OVersionFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
@@ -46,20 +47,19 @@ import java.util.WeakHashMap;
 
 @SuppressWarnings({ "unchecked", "serial" })
 public abstract class ORecordAbstract implements ORecord {
-  protected ORecordId _recordId;
-  protected int _recordVersion = 0;
+  protected ORecordId                            _recordId;
+  protected ORecordVersion                       _recordVersion             = OVersionFactory.instance().createVersion();
 
-  protected byte[] _source;
-  protected int    _size;
+  protected byte[]                               _source;
+  protected int                                  _size;
 
-  protected transient ORecordSerializer _recordFormat;
-  protected           boolean               _dirty          = true;
-  protected           boolean               _contentChanged = true;
-  protected           ORecordElement.STATUS _status         = ORecordElement.STATUS.LOADED;
-  protected transient Set<ORecordListener>  _listeners      = null;
+  protected transient ORecordSerializer          _recordFormat;
+  protected boolean                              _dirty                     = true;
+  protected boolean                              _contentChanged            = true;
+  protected ORecordElement.STATUS                _status                    = ORecordElement.STATUS.LOADED;
+  protected transient Set<ORecordListener>       _listeners                 = null;
 
   private transient Set<OIdentityChangeListener> newIdentityChangeListeners = null;
-  protected ODirtyManager _dirtyManager;
 
   public ORecordAbstract() {
   }
@@ -100,7 +100,7 @@ public abstract class ORecordAbstract implements ORecord {
 
   public ORecordAbstract reset() {
     _status = ORecordElement.STATUS.LOADED;
-    _recordVersion = 0;
+    _recordVersion.reset();
     _size = 0;
 
     _source = null;
@@ -125,8 +125,11 @@ public abstract class ORecordAbstract implements ORecord {
   public ORecordAbstract fromStream(final byte[] iRecordBuffer) {
     _dirty = false;
     _contentChanged = false;
-    _dirtyManager = null;
-    _source = iRecordBuffer;
+    if (ONetworkThreadLocalSerializer.getNetworkSerializer() != null) {
+      ONetworkThreadLocalSerializer.getNetworkSerializer().fromStream(iRecordBuffer, this, null);
+      _source = null;
+    } else
+      _source = iRecordBuffer;
     _size = iRecordBuffer != null ? iRecordBuffer.length : 0;
     _status = ORecordElement.STATUS.LOADED;
 
@@ -160,7 +163,7 @@ public abstract class ORecordAbstract implements ORecord {
   public <RET extends ORecord> RET fromJSON(final String iSource, final String iOptions) {
     // ORecordSerializerJSON.INSTANCE.fromString(iSource, this, null, iOptions);
     ORecordSerializerJSON.INSTANCE.fromString(iSource, this, null, iOptions, false); // Add new parameter to accommodate new API,
-    // nothing change
+                                                                                     // nothing change
     return (RET) this;
   }
 
@@ -189,26 +192,24 @@ public abstract class ORecordAbstract implements ORecord {
     return ORecordSerializerJSON.INSTANCE.toString(this, new StringBuilder(1024), iFormat == null ? "" : iFormat).toString();
   }
 
-  public void toJSON(final String iFormat, final OutputStream stream) throws IOException {
-    stream.write(toJSON(iFormat).toString().getBytes());
-  }
-
-  public void toJSON(final OutputStream stream) throws IOException {
-    stream.write(toJSON().toString().getBytes());
-  }
-
   @Override
   public String toString() {
-    return (_recordId.isValid() ? _recordId : "") + (_source != null ? Arrays.toString(_source) : "[]") + " v" + _recordVersion;
+    return (_recordId.isValid() ? _recordId : "") + (_source != null ? Arrays.toString(_source) : "[]") + " v"
+        + _recordVersion.toString();
   }
 
   public int getVersion() {
     // checkForLoading();
-    return _recordVersion;
+    return _recordVersion.getCounter();
   }
 
   protected void setVersion(final int iVersion) {
-    _recordVersion = iVersion;
+    _recordVersion.setCounter(iVersion);
+  }
+
+  public ORecordVersion getRecordVersion() {
+    // checkForLoading();
+    return _recordVersion;
   }
 
   public ORecordAbstract unload() {
@@ -221,22 +222,26 @@ public abstract class ORecordAbstract implements ORecord {
 
   public ORecord load() {
     if (!getIdentity().isValid())
-      throw new ORecordNotFoundException(getIdentity(), "The record has no id, probably it's new or transient yet ");
+      throw new ORecordNotFoundException("The record has no id, probably it's new or transient yet ");
 
-    final ORecord result = getDatabase().load(this);
+    try {
+      final ORecord result = getDatabase().load(this);
 
-    if (result == null)
-      throw new ORecordNotFoundException(getIdentity());
+      if (result == null)
+        throw new ORecordNotFoundException("The record with id '" + getIdentity() + "' not found");
 
-    return result;
+      return result;
+    } catch (Exception e) {
+      throw new ORecordNotFoundException("The record with id '" + getIdentity() + "' not found", e);
+    }
   }
 
   public ODatabaseDocumentInternal getDatabase() {
-    return ODatabaseRecordThreadLocal.instance().get();
+    return ODatabaseRecordThreadLocal.INSTANCE.get();
   }
 
-  public ODatabaseDocumentInternal getDatabaseIfDefined() {
-    return ODatabaseRecordThreadLocal.instance().getIfDefined();
+  public ODatabaseDocument getDatabaseIfDefined() {
+    return ODatabaseRecordThreadLocal.INSTANCE.getIfDefined();
   }
 
   public ORecord reload() {
@@ -254,19 +259,16 @@ public abstract class ORecordAbstract implements ORecord {
   @Override
   public ORecord reload(String fetchPlan, boolean ignoreCache, boolean force) throws ORecordNotFoundException {
     if (!getIdentity().isValid())
-      throw new ORecordNotFoundException(getIdentity(), "The record has no id. It is probably new or still transient");
+      throw new ORecordNotFoundException("The record has no id. It is probably new or still transient");
 
     try {
       getDatabase().reload(this, fetchPlan, ignoreCache, force);
 
       return this;
-
     } catch (OOfflineClusterException e) {
       throw e;
-    } catch (ORecordNotFoundException e) {
-      throw e;
     } catch (Exception e) {
-      throw OException.wrapException(new ORecordNotFoundException(getIdentity()), e);
+      throw new ORecordNotFoundException("The record with id '" + getIdentity() + "' not found", e);
     }
   }
 
@@ -289,6 +291,7 @@ public abstract class ORecordAbstract implements ORecord {
 
   public ORecordAbstract delete() {
     getDatabase().delete(this);
+    setDirty();
     return this;
   }
 
@@ -298,23 +301,23 @@ public abstract class ORecordAbstract implements ORecord {
 
   @Override
   public void lock(final boolean iExclusive) {
-    ODatabaseRecordThreadLocal.instance().get().getTransaction()
+    ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction()
         .lockRecord(this, iExclusive ? OStorage.LOCKING_STRATEGY.EXCLUSIVE_LOCK : OStorage.LOCKING_STRATEGY.SHARED_LOCK);
   }
 
   @Override
   public boolean isLocked() {
-    return ODatabaseRecordThreadLocal.instance().get().getTransaction().isLockedRecord(this);
+    return ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().isLockedRecord(this);
   }
 
   @Override
   public OStorage.LOCKING_STRATEGY lockingStrategy() {
-    return ODatabaseRecordThreadLocal.instance().get().getTransaction().lockingStrategy(this);
+    return ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().lockingStrategy(this);
   }
 
   @Override
   public void unlock() {
-    ODatabaseRecordThreadLocal.instance().get().getTransaction().unlockRecord(this);
+    ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().unlockRecord(this);
   }
 
   @Override
@@ -363,45 +366,25 @@ public abstract class ORecordAbstract implements ORecord {
     cloned._source = _source;
     cloned._size = _size;
     cloned._recordId = _recordId.copy();
-    cloned._recordVersion = _recordVersion;
+    cloned._recordVersion = _recordVersion.copy();
     cloned._status = _status;
     cloned._recordFormat = _recordFormat;
     cloned._listeners = null;
     cloned._dirty = false;
     cloned._contentChanged = false;
-    cloned._dirtyManager = null;
     return cloned;
   }
 
-  protected ORecordAbstract fill(final ORID iRid, final int iVersion, final byte[] iBuffer, boolean iDirty) {
-    _recordId.setClusterId(iRid.getClusterId());
-    _recordId.setClusterPosition(iRid.getClusterPosition());
-    _recordVersion = iVersion;
+  protected ORecordAbstract fill(final ORID iRid, final ORecordVersion iVersion, final byte[] iBuffer, boolean iDirty) {
+    _recordId.clusterId = iRid.getClusterId();
+    _recordId.clusterPosition = iRid.getClusterPosition();
+    _recordVersion.copyFrom(iVersion);
     _status = ORecordElement.STATUS.LOADED;
     _source = iBuffer;
     _size = iBuffer != null ? iBuffer.length : 0;
     if (_source != null && _source.length > 0) {
       _dirty = iDirty;
       _contentChanged = iDirty;
-      if (!iDirty && _dirtyManager != null)
-        _dirtyManager.removePointed(this);
-    }
-
-    return this;
-  }
-
-  protected ORecordAbstract fill(final ORID iRid, final int iVersion, final byte[] iBuffer, boolean iDirty, ODatabaseDocumentInternal db) {
-    _recordId.setClusterId(iRid.getClusterId());
-    _recordId.setClusterPosition(iRid.getClusterPosition());
-    _recordVersion = iVersion;
-    _status = ORecordElement.STATUS.LOADED;
-    _source = iBuffer;
-    _size = iBuffer != null ? iBuffer.length : 0;
-    if (_source != null && _source.length > 0) {
-      _dirty = iDirty;
-      _contentChanged = iDirty;
-      if (!iDirty && _dirtyManager != null)
-        _dirtyManager.removePointed(this);
     }
 
     return this;
@@ -411,8 +394,8 @@ public abstract class ORecordAbstract implements ORecord {
     if (_recordId == null || _recordId == ORecordId.EMPTY_RECORD_ID)
       _recordId = new ORecordId(iClusterId, iClusterPosition);
     else {
-      _recordId.setClusterId(iClusterId);
-      _recordId.setClusterPosition(iClusterPosition);
+      _recordId.clusterId = iClusterId;
+      _recordId.clusterPosition = iClusterPosition;
     }
     return this;
   }
@@ -420,8 +403,6 @@ public abstract class ORecordAbstract implements ORecord {
   protected void unsetDirty() {
     _contentChanged = false;
     _dirty = false;
-    if (_dirtyManager != null)
-      _dirtyManager.removePointed(this);
   }
 
   protected abstract byte getRecordType();
@@ -444,19 +425,19 @@ public abstract class ORecordAbstract implements ORecord {
   }
 
   protected ODatabaseDocumentInternal getDatabaseInternal() {
-    return ODatabaseRecordThreadLocal.instance().get();
+    return ODatabaseRecordThreadLocal.INSTANCE.get();
   }
 
   protected ODatabaseDocumentInternal getDatabaseIfDefinedInternal() {
-    return ODatabaseRecordThreadLocal.instance().getIfDefined();
+    return ODatabaseRecordThreadLocal.INSTANCE.getIfDefined();
   }
 
   /**
    * Add a listener to the current document to catch all the supported events.
-   *
-   * @param iListener ODocumentListener implementation
-   *
+   * 
    * @see ORecordListener ju
+   * @param iListener
+   *          ODocumentListener implementation
    */
   protected void addListener(final ORecordListener iListener) {
     if (_listeners == null)
@@ -467,7 +448,7 @@ public abstract class ORecordAbstract implements ORecord {
 
   /**
    * Remove the current event listener.
-   *
+   * 
    * @see ORecordListener
    */
   protected void removeListener(final ORecordListener listener) {
@@ -506,7 +487,7 @@ public abstract class ORecordAbstract implements ORecord {
   }
 
   protected void checkForLoading() {
-    if (_status == ORecordElement.STATUS.NOT_LOADED && ODatabaseRecordThreadLocal.instance().isDefined())
+    if (_status == ORecordElement.STATUS.NOT_LOADED && ODatabaseRecordThreadLocal.INSTANCE.isDefined())
       reload(null, true);
   }
 
@@ -520,32 +501,6 @@ public abstract class ORecordAbstract implements ORecord {
 
   protected void clearSource() {
     this._source = null;
-  }
-
-  protected ODirtyManager getDirtyManager() {
-    if (this._dirtyManager == null) {
-      this._dirtyManager = new ODirtyManager();
-      if (this.getIdentity().isNew() && getOwner() == null)
-        this._dirtyManager.setDirty(this);
-    }
-    return this._dirtyManager;
-  }
-
-  protected void setDirtyManager(ODirtyManager dirtyManager) {
-    if (this._dirtyManager != null && dirtyManager != null) {
-      dirtyManager.merge(this._dirtyManager);
-    }
-    this._dirtyManager = dirtyManager;
-    if (this.getIdentity().isNew() && getOwner() == null && this._dirtyManager != null)
-      this._dirtyManager.setDirty(this);
-  }
-
-  protected void track(OIdentifiable id) {
-    this.getDirtyManager().track(this, id);
-  }
-
-  protected void unTrack(OIdentifiable id) {
-    this.getDirtyManager().unTrack(this, id);
   }
 
 }

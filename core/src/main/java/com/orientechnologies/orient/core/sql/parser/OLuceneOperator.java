@@ -18,7 +18,7 @@ public class OLuceneOperator extends SimpleNode implements OBinaryCompareOperato
 
   @Override
   public boolean execute(Object left, Object right) {
-    throw new UnsupportedOperationException(toString() + " operator cannot be evaluated in this context");
+    return false;
   }
 
   @Override
@@ -27,19 +27,9 @@ public class OLuceneOperator extends SimpleNode implements OBinaryCompareOperato
   }
 
   @Override public boolean supportsBasicCalculation() {
-    return true;
+    return false;
   }
 
-  @Override public OLuceneOperator copy() {
-    return this;
-  }
 
-  @Override public boolean equals(Object obj) {
-    return obj != null && obj.getClass().equals(this.getClass());
-  }
-
-  @Override public int hashCode() {
-    return getClass().hashCode();
-  }
 }
 /* JavaCC - OriginalChecksum=bda1e010e6ba48c815829b22ce458b9d (do not edit this line) */

@@ -1,14 +1,18 @@
 {
   "autoDeploy": true,
+  "hotAlignment": false,
+  "offlineMsgQueueSize": 0,
   "readQuorum": 1,
-  "writeQuorum": "majority",
+  "writeQuorum": 2,
+  "failureAvailableNodesLessQuorum": false,
   "readYourWrites": true,
-  "newNodeStrategy": "dynamic",
   "servers": {
     "*": "master"
   },
   "clusters": {
     "internal": {
+    },
+    "index": {
     },
     "*": {
       "servers": ["<NEW_NODE>"]

@@ -1,15 +1,15 @@
 package com.orientechnologies.common.collection;
 
-
-import org.junit.Assert;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @author Luigi Dell'Aquila (l.dellaquila-(at)-orientdb.com)
+ * @author Luigi Dell'Aquila
  */
+@Test
 public class OMultiValueTest {
 
   @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.iterator.ORecordIteratorCluster;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OSchema;
-import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
@@ -31,7 +30,12 @@ import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * If some of the tests start to fail then check cluster number in queries, e.g #7:1. It can be because the order of clusters could
@@ -57,16 +61,15 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
     }
 
     addressClusterId = addressClass.getDefaultClusterId();
-
   }
 
   @Test
   public void updateWithWhereOperator() {
 
-    List<Long> positions = getValidPositions(addressClusterId);
+    List<Long> positions = getValidPositions(4);
 
-    Integer records = database.command(new OCommandSQL(
-        "update Profile set salary = 120.30, location = " + addressClusterId + ":" + positions.get(2)
+    Integer records = database.command(
+        new OCommandSQL("update Profile set salary = 120.30, location = 4:" + positions.get(2)
             + ", salary_cloned = salary where surname = 'Obama'")).execute();
 
     Assert.assertEquals(records.intValue(), 3);
@@ -81,7 +84,7 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
     Assert.assertEquals(result.size(), 3);
 
     Integer records = database.command(new OCommandSQL("update Profile set salary = 133.00 where @rid = ?")).execute(
-        result.get(0).<Object>field("rid"));
+        result.get(0).field("rid"));
 
     Assert.assertEquals(records.intValue(), 1);
 
@@ -90,8 +93,8 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
   @Test
   public void updateUpsertOperator() {
 
-    List<ODocument> result = database
-        .command(new OCommandSQL("UPDATE Profile SET surname='Merkel' RETURN AFTER where surname = 'Merkel'")).execute();
+    List<ODocument> result = database.command(
+        new OCommandSQL("UPDATE Profile SET surname='Merkel' RETURN AFTER where surname = 'Merkel'")).execute();
     Assert.assertEquals(result.size(), 0);
 
     result = database.command(new OCommandSQL("UPDATE Profile SET surname='Merkel' UPSERT RETURN AFTER  where surname = 'Merkel'"))
@@ -125,10 +128,10 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
 
     for (ODocument doc : docs) {
 
-      final int records = database.command(new OCommandSQL(
-          "update Account set addresses = [#" + addressClusterId + ":" + positions.get(0) + ", #" + addressClusterId + ":"
-              + positions.get(1) + ",#" + addressClusterId + ":" + positions.get(2) + "] where @rid = " + doc.getIdentity()))
-          .execute();
+      final int records = database.command(
+          new OCommandSQL("update Account set addresses = [#" + addressClusterId + ":" + positions.get(0) + ", #"
+              + addressClusterId + ":" + positions.get(1) + ",#" + addressClusterId + ":" + positions.get(2) + "] where @rid = "
+              + doc.getIdentity())).execute();
 
       Assert.assertEquals(records, 1);
 
@@ -136,7 +139,7 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
       Assert.assertEquals(((List<?>) loadedDoc.field("addresses")).size(), 3);
       Assert.assertEquals(((OIdentifiable) ((List<?>) loadedDoc.field("addresses")).get(0)).getIdentity().toString(), "#"
           + addressClusterId + ":" + positions.get(0));
-      loadedDoc.field("addresses", doc.<Object>field("addresses"));
+      loadedDoc.field("addresses", doc.field("addresses"));
       database.save(loadedDoc);
     }
 
@@ -145,12 +148,15 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
   @Test(dependsOnMethods = "updateCollectionsRemoveWithWhereOperator")
   public void updateMapsWithSetOperator() {
 
-    ODocument doc = database.command(new OCommandSQL(
-        "insert into cluster:default (equaledges, name, properties) values ('no', 'circleUpdate', {'round':'eeee', 'blaaa':'zigzag'} )"))
+    ODocument doc = database
+        .command(
+            new OCommandSQL(
+                "insert into cluster:default (equaledges, name, properties) values ('no', 'circleUpdate', {'round':'eeee', 'blaaa':'zigzag'} )"))
         .execute();
 
-    Integer records = database.command(new OCommandSQL(
-        "update " + doc.getIdentity() + " set properties = {'roundOne':'ffff', 'bla':'zagzig','testTestTEST':'okOkOK'}")).execute();
+    Integer records = database.command(
+        new OCommandSQL("update " + doc.getIdentity()
+            + " set properties = {'roundOne':'ffff', 'bla':'zagzig','testTestTEST':'okOkOK'}")).execute();
 
     Assert.assertEquals(records.intValue(), 1);
 
@@ -174,13 +180,14 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
   @Test(dependsOnMethods = "updateCollectionsRemoveWithWhereOperator")
   public void updateMapsWithPutOperatorAndWhere() {
 
-    ODocument doc = database.command(new OCommandSQL(
-        "insert into cluster:default (equaledges, name, properties) values ('no', 'updateMapsWithPutOperatorAndWhere', {} )"))
+    ODocument doc = database.command(
+        new OCommandSQL(
+            "insert into cluster:default (equaledges, name, properties) values ('no', 'updateMapsWithPutOperatorAndWhere', {} )"))
         .execute();
 
-    Integer records = database.command(new OCommandSQL(
-        "update " + doc.getIdentity() + " put properties = 'one', 'two' where name = 'updateMapsWithPutOperatorAndWhere'"))
-        .execute();
+    Integer records = database.command(
+        new OCommandSQL("update " + doc.getIdentity()
+            + " put properties = 'one', 'two' where name = 'updateMapsWithPutOperatorAndWhere'")).execute();
 
     Assert.assertEquals(records.intValue(), 1);
 
@@ -276,14 +283,14 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
     result1 = database.command(new OCommandSQL(sqlString)).execute();
     Assert.assertEquals(result1.size(), 1);
     Assert.assertTrue(result1.get(0).containsField("value"));
-    Assert.assertEquals(result1.get(0).<Object>field("value"), 101);
+    Assert.assertEquals(result1.get(0).field("value"), 101);
     // check exclude + WHERE + LIMIT
     sqlString = "UPDATE " + doc.getIdentity().toString()
         + " INCREMENT Age = 100 RETURN AFTER $current.Exclude('really_big_field') WHERE Age=101 LIMIT 1";
     result1 = database.command(new OCommandSQL(sqlString)).execute();
     Assert.assertEquals(result1.size(), 1);
     Assert.assertTrue(result1.get(0).containsField("Age"));
-    Assert.assertEquals(result1.get(0).<Object>field("Age"), 201);
+    Assert.assertEquals(result1.get(0).field("Age"), 201);
     Assert.assertFalse(result1.get(0).containsField("really_big_field"));
 
   }
@@ -348,8 +355,8 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
     List<ODocument> result1 = database.command(new OCommandSQL("select salary from Account where salary is defined")).execute();
     Assert.assertFalse(result1.isEmpty());
 
-    updatedRecords = database
-        .command(new OCommandSQL("update Account set salary2 = salary, checkpoint = true where salary is defined")).execute();
+    updatedRecords = database.command(
+        new OCommandSQL("update Account set salary2 = salary, checkpoint = true where salary is defined")).execute();
     Assert.assertTrue(updatedRecords > 0);
 
     List<ODocument> result2 = database.command(new OCommandSQL("select from Account where salary is defined")).execute();
@@ -360,7 +367,7 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
       float salary1 = result1.get(i).field("salary");
       float salary2 = result2.get(i).field("salary2");
       Assert.assertEquals(salary2, salary1);
-      Assert.assertEquals(result2.get(i).<Object>field("checkpoint"), true);
+      Assert.assertEquals(result2.get(i).field("checkpoint"), true);
     }
 
   }
@@ -394,9 +401,9 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
 
     Assert.assertEquals(document.field("test"), "aaa ' bbb");
 
-    database.command(new OCommandSQL(
-        "UPDATE FormatEscapingTest SET test = 'ccc \\' eee', test2 = format('aaa \\' bbb') WHERE @rid = " + document.getIdentity()))
-        .execute();
+    database.command(
+        new OCommandSQL("UPDATE FormatEscapingTest SET test = 'ccc \\' eee', test2 = format('aaa \\' bbb') WHERE @rid = "
+            + document.getIdentity())).execute();
 
     document.reload();
     Assert.assertEquals(document.field("test"), "ccc ' eee");
@@ -447,13 +454,13 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
     database.command(new OCommandSQL("create edge from " + vOneId + " to " + vTwoId)).execute();
     database.command(new OCommandSQL("create edge from " + vOneId + " to " + vTwoId)).execute();
 
-    List<ODocument> result = database
-        .query(new OSQLSynchQuery<ODocument>("select sum(outE().size(), inE().size()) from UpdateVertexContent"));
+    List<ODocument> result = database.query(new OSQLSynchQuery<ODocument>(
+        "select sum(outE().size(), inE().size()) from UpdateVertexContent"));
 
     Assert.assertEquals(result.size(), 2);
 
     for (ODocument doc : result) {
-      Assert.assertEquals(doc.<Object>field("sum"), 3);
+      Assert.assertEquals(doc.field("sum"), 3);
     }
 
     database.command(new OCommandSQL("update UpdateVertexContent content {value : 'val'} where @rid = " + vOneId)).execute();
@@ -464,7 +471,7 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
     Assert.assertEquals(result.size(), 2);
 
     for (ODocument doc : result) {
-      Assert.assertEquals(doc.<Object>field("sum"), 3);
+      Assert.assertEquals(doc.field("sum"), 3);
     }
 
     result = database.query(new OSQLSynchQuery<ODocument>("select from UpdateVertexContent"));
@@ -541,8 +548,8 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
   public void testMultiplePut() {
     final ODocument v = database.newInstance("V").save();
 
-    Integer records = database
-        .command(new OCommandSQL("UPDATE " + v.getIdentity() + " PUT embmap = \"test\", \"Luca\" PUT embmap = \"test2\", \"Alex\""))
+    Integer records = database.command(
+        new OCommandSQL("UPDATE " + v.getIdentity() + " PUT embmap = \"test\", \"Luca\" PUT embmap = \"test2\", \"Alex\""))
         .execute();
 
     Assert.assertEquals(records.intValue(), 1);
@@ -551,59 +558,5 @@ public class SQLUpdateTest extends DocumentDBBaseTest {
 
     Assert.assertTrue(v.field("embmap") instanceof Map);
     Assert.assertEquals(((Map) v.field("embmap")).size(), 2);
-  }
-
-  public void testAutoConversionOfEmbeddededListWithLinkedClass() {
-    OClass c = database.getMetadata().getSchema().getOrCreateClass("TestConvert");
-    if (!c.existsProperty("embeddedListWithLinkedClass"))
-      c.createProperty("embeddedListWithLinkedClass", OType.EMBEDDEDLIST,
-          database.getMetadata().getSchema().getOrCreateClass("TestConvertLinkedClass"));
-
-    ODocument doc = database.command(new OCommandSQL(
-        "INSERT INTO TestConvert SET name = 'embeddedListWithLinkedClass', embeddedListWithLinkedClass = [{'line1':'123 Fake Street'}]"))
-        .execute();
-
-    database.command(
-        new OCommandSQL("UPDATE " + doc.getIdentity() + " ADD embeddedListWithLinkedClass = [{'line1':'123 Fake Street'}]"))
-        .execute();
-
-    doc.reload();
-
-    Assert.assertTrue(doc.field("embeddedListWithLinkedClass") instanceof List);
-    Assert.assertEquals(((Collection) doc.field("embeddedListWithLinkedClass")).size(), 2);
-
-    database
-        .command(new OCommandSQL("UPDATE " + doc.getIdentity() + " ADD embeddedListWithLinkedClass = {'line1':'123 Fake Street'}"))
-        .execute();
-
-    doc.reload();
-
-    Assert.assertTrue(doc.field("embeddedListWithLinkedClass") instanceof List);
-    Assert.assertEquals(((Collection) doc.field("embeddedListWithLinkedClass")).size(), 3);
-
-    List addr = doc.field("embeddedListWithLinkedClass");
-    for (Object o : addr) {
-      Assert.assertTrue(o instanceof ODocument);
-      Assert.assertEquals(((ODocument) o).getClassName(), "TestConvertLinkedClass");
-    }
-  }
-
-  public void testPutListOfMaps() {
-    String className = "testPutListOfMaps";
-    database.getMetadata().getSchema().createClass(className);
-
-    database.command(new OCommandSQL("insert into " + className + " set list = [{\"xxx\":1},{\"zzz\":3},{\"yyy\":2}]")).execute();
-    database.command(new OCommandSQL("UPDATE " + className + " ADD list = {\"kkk\":4}")).execute();
-
-    List<ODocument> result = database.query(new OSQLSynchQuery<Object>("select from " + className));
-    Assert.assertEquals(result.size(), 1);
-    ODocument doc = result.get(0);
-    List list = doc.field("list");
-    Assert.assertEquals(list.size(), 4);
-    Object fourth = list.get(3);
-
-    Assert.assertTrue(fourth instanceof Map);
-    Assert.assertEquals(((Map) fourth).keySet().iterator().next(), "kkk");
-    Assert.assertEquals(((Map) fourth).values().iterator().next(), 4);
   }
 }

@@ -7,7 +7,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.exception.OSerializationException;
 import com.orientechnologies.orient.core.serialization.OSerializableStream;
@@ -32,7 +31,7 @@ public class OSerializableWrapper implements OSerializableStream {
       writer.writeObject(serializable);
       writer.close();
     } catch (IOException e) {
-      throw OException.wrapException(new ODatabaseException("Error on serialization of Serializable"), e);
+      throw new ODatabaseException("Error on serialization of Serializable", e);
     }
     return output.toByteArray();
   }
@@ -45,7 +44,7 @@ public class OSerializableWrapper implements OSerializableStream {
       serializable = (Serializable) reader.readObject();
       reader.close();
     } catch (Exception e) {
-      throw OException.wrapException(new ODatabaseException("Error on deserialization of Serializable"), e);
+      throw new ODatabaseException("Error on deserialization of Serializable", e);
     }
     return this;
   }

@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.storage;
@@ -23,22 +23,23 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.id.ORID;
 
 public class OClusterEntryIterator implements Iterator<OPhysicalPosition> {
-  private final OCluster cluster;
+  private final OCluster         cluster;
 
+  private final long max;
   private final long min;
 
-  private OPhysicalPosition[] positionsToProcess;
-  private int positionsIndex;
+  private OPhysicalPosition[]    positionsToProcess;
+  private int                    positionsIndex;
 
   public OClusterEntryIterator(final OCluster iCluster) {
     cluster = iCluster;
     try {
       min = cluster.getFirstPosition();
+      max = cluster.getLastPosition();
     } catch (IOException ioe) {
       throw new IllegalStateException("Exception during iterator creation", ioe);
     }
@@ -47,7 +48,6 @@ public class OClusterEntryIterator implements Iterator<OPhysicalPosition> {
     positionsIndex = -1;
   }
 
-  @Override
   public boolean hasNext() {
     if (min == ORID.CLUSTER_POS_INVALID)
       return false;
@@ -58,7 +58,6 @@ public class OClusterEntryIterator implements Iterator<OPhysicalPosition> {
     return positionsToProcess.length != 0;
   }
 
-  @Override
   public OPhysicalPosition next() {
     try {
       if (positionsIndex == -1) {
@@ -79,11 +78,10 @@ public class OClusterEntryIterator implements Iterator<OPhysicalPosition> {
 
       return result;
     } catch (IOException e) {
-      throw OException.wrapException(new ODatabaseException("Cannot read next record of cluster"), e);
+      throw new ODatabaseException("Cannot read next record of cluster.", e);
     }
   }
 
-  @Override
   public void remove() {
     throw new UnsupportedOperationException("remove");
   }

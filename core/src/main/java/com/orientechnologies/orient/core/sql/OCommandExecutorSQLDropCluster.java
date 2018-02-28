@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,12 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
+
+import java.util.Map;
 
 import com.orientechnologies.orient.core.command.OCommandDistributedReplicateRequest;
 import com.orientechnologies.orient.core.command.OCommandRequest;
@@ -28,12 +30,11 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 
-import java.util.Map;
-
 /**
  * SQL DROP CLUSTER command: Drop a cluster from the database
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 @SuppressWarnings("unchecked")
 public class OCommandExecutorSQLDropCluster extends OCommandExecutorSQLAbstract implements OCommandDistributedReplicateRequest {
@@ -43,39 +44,26 @@ public class OCommandExecutorSQLDropCluster extends OCommandExecutorSQLAbstract 
   private String             clusterName;
 
   public OCommandExecutorSQLDropCluster parse(final OCommandRequest iRequest) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iRequest;
+    init((OCommandRequestText) iRequest);
 
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
-    try {
-      queryText = preParse(queryText, iRequest);
-      textRequest.setText(queryText);
+    final StringBuilder word = new StringBuilder();
 
-      init((OCommandRequestText) iRequest);
+    int oldPos = 0;
+    int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_DROP))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_DROP + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      final StringBuilder word = new StringBuilder();
+    pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_CLUSTER))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_CLUSTER + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      int oldPos = 0;
-      int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_DROP))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_DROP + " not found. Use " + getSyntax(), parserText, oldPos);
+    pos = nextWord(parserText, parserTextUpperCase, pos, word, false);
+    if (pos == -1)
+      throw new OCommandSQLParsingException("Expected <cluster>. Use " + getSyntax(), parserText, pos);
 
-      pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_CLUSTER))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_CLUSTER + " not found. Use " + getSyntax(), parserText, oldPos);
-
-      pos = nextWord(parserText, parserTextUpperCase, pos, word, false);
-      if (pos == -1)
-        throw new OCommandSQLParsingException("Expected <cluster>. Use " + getSyntax(), parserText, pos);
-
-      clusterName = word.toString();
-      if (clusterName == null)
-        throw new OCommandSQLParsingException("Cluster is null. Use " + getSyntax(), parserText, pos);
-
-      clusterName = decodeClassName(clusterName);
-    } finally {
-      textRequest.setText(originalQuery);
-    }
+    clusterName = word.toString();
+    if (clusterName == null)
+      throw new OCommandSQLParsingException("Cluster is null. Use " + getSyntax(), parserText, pos);
 
     return this;
   }
@@ -99,19 +87,13 @@ public class OCommandExecutorSQLDropCluster extends OCommandExecutorSQLAbstract 
       }
     }
 
-    // REMOVE CACHE OF COMMAND RESULTS IF ACTIVE
-    database.getMetadata().getCommandCache().invalidateResultsOfCluster(clusterName);
-
     database.dropCluster(clusterId, true);
     return true;
   }
 
   @Override
   public long getDistributedTimeout() {
-    if (clusterName != null && getDatabase().existsCluster(clusterName))
-      return 10 * getDatabase().countClusterElements(clusterName);
-
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_LONG_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   @Override

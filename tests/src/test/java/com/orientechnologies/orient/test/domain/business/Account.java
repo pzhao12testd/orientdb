@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import javax.persistence.OneToMany;
 
 import com.orientechnologies.orient.core.annotation.OAfterDeserialization;
 import com.orientechnologies.orient.core.annotation.OBeforeSerialization;
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 
@@ -127,7 +126,7 @@ public class Account {
     initialized = true;
     if (iDocument.containsField("externalPhoto")) {
       // READ THE PHOTO FROM AN EXTERNAL RECORD AS PURE BINARY
-      OBlob extRecord = iDocument.field("externalPhoto");
+      ORecordBytes extRecord = iDocument.field("externalPhoto");
       photo = extRecord.toStream();
     }
   }
@@ -136,7 +135,7 @@ public class Account {
   public void toStream(final ODocument iDocument) {
     if (thumbnail != null) {
       // WRITE THE PHOTO IN AN EXTERNAL RECORD AS PURE BINARY
-      OBlob externalPhoto = new ORecordBytes(thumbnail);
+      ORecordBytes externalPhoto = new ORecordBytes(thumbnail);
       iDocument.field("externalPhoto", externalPhoto);
     }
   }

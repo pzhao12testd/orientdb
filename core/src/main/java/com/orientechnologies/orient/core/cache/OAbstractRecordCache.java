@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.cache;
@@ -29,24 +29,24 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Cache of documents. Delegates real work on storing to {@link ORecordCache} implementation passed at creation time leaving only DB
+ * Cache of documents. Delegates real work on storing to {@link OCache} implementation passed at creation time leaving only DB
  * specific functionality
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public abstract class OAbstractRecordCache {
-  protected ORecordCache underlying;
+  protected OCache underlying;
   protected String profilerPrefix         = "noname";
   protected String profilerMetadataPrefix = "noname";
   protected int    excludedCluster        = -1;
 
   /**
    * Create cache backed by given implementation
-   *
+   * 
    * @param impl
    *          actual implementation of cache
    */
-  public OAbstractRecordCache(final ORecordCache impl) {
+  public OAbstractRecordCache(final OCache impl) {
     underlying = impl;
   }
 
@@ -75,7 +75,7 @@ public abstract class OAbstractRecordCache {
 
   /**
    * Remove record with specified identifier
-   *
+   * 
    * @param rid
    *          unique identifier of record
    * @return record stored in cache if any, otherwise - {@code null}
@@ -86,7 +86,7 @@ public abstract class OAbstractRecordCache {
 
   /**
    * Remove all records belonging to specified cluster
-   *
+   * 
    * @param cid
    *          identifier of cluster
    */

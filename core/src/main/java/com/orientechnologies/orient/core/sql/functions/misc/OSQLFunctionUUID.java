@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 package com.orientechnologies.orient.core.sql.functions.misc;
@@ -28,8 +28,9 @@ import java.util.UUID;
 /**
  * Generates a UUID as a 128-bits value using the Leach-Salz variant. For more information look at:
  * http://docs.oracle.com/javase/6/docs/api/java/util/UUID.html.
+ * 
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
  */
 public class OSQLFunctionUUID extends OSQLFunctionAbstract {
   public static final String NAME = "uuid";
@@ -43,7 +44,7 @@ public class OSQLFunctionUUID extends OSQLFunctionAbstract {
 
   public Object execute(Object iThis, final OIdentifiable iCurrentRecord, final Object iCurrentResult, final Object[] iParams,
       OCommandContext iContext) {
-    return UUID.randomUUID().toString();
+    return UUID.randomUUID();
   }
 
   public boolean aggregateResults(final Object[] configuredParameters) {

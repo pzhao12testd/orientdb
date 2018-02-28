@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,18 +14,36 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.metadata.schema;
 
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.orientechnologies.common.collection.OMultiCollectionIterator;
-import com.orientechnologies.common.collection.OMultiValue;
 import com.orientechnologies.common.io.OIOUtils;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.types.OBinary;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.orientechnologies.orient.core.db.record.*;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.db.record.ORecordLazyList;
+import com.orientechnologies.orient.core.db.record.ORecordLazyMap;
+import com.orientechnologies.orient.core.db.record.ORecordLazySet;
+import com.orientechnologies.orient.core.db.record.OTrackedList;
+import com.orientechnologies.orient.core.db.record.OTrackedMap;
+import com.orientechnologies.orient.core.db.record.OTrackedSet;
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
@@ -33,18 +51,14 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.serialization.ODocumentSerializable;
 import com.orientechnologies.orient.core.serialization.OSerializableStream;
 import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
-
-import java.io.Serializable;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.text.ParseException;
-import java.util.*;
+import com.orientechnologies.orient.core.type.tree.OMVRBTreeRIDSet;
 
 /**
  * Generic representation of a type.<br>
  * allowAssignmentFrom accepts any class, but Array.class means that the type accepts generic Arrays.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 public enum OType {
   BOOLEAN("Boolean", 0, Boolean.class, new Class<?>[] { Number.class }),
@@ -73,7 +87,7 @@ public enum OType {
 
   EMBEDDEDMAP("EmbeddedMap", 12, Map.class, new Class<?>[] { Map.class }),
 
-  LINK("Link", 13, OIdentifiable.class, new Class<?>[] { OIdentifiable.class, ORID.class }),
+  LINK("Link", 13, Object.class, new Class<?>[] { OIdentifiable.class, ORID.class }),
 
   LINKLIST("LinkList", 14, List.class, new Class<?>[] { List.class }),
 
@@ -96,8 +110,8 @@ public enum OType {
   ANY("Any", 23, null, new Class<?>[] {});
 
   // Don't change the order, the type discover get broken if you change the order.
-  protected static final OType[] TYPES = new OType[] { EMBEDDEDLIST, EMBEDDEDSET, EMBEDDEDMAP, LINK, CUSTOM, EMBEDDED, STRING,
-      DATETIME };
+  protected static final OType[]              TYPES          = new OType[] { EMBEDDEDLIST, EMBEDDEDSET, EMBEDDEDMAP, LINK, CUSTOM,
+      EMBEDDED, STRING, DATETIME                            };
 
   protected static final OType[]              TYPES_BY_ID    = new OType[24];
   // Values previosly stored in javaTypes
@@ -133,6 +147,7 @@ public enum OType {
     TYPES_BY_CLASS.put(BigDecimal.class, DECIMAL);
     TYPES_BY_CLASS.put(ORidBag.class, LINKBAG);
     TYPES_BY_CLASS.put(OTrackedSet.class, EMBEDDEDSET);
+    TYPES_BY_CLASS.put(OMVRBTreeRIDSet.class, LINKSET);
     TYPES_BY_CLASS.put(ORecordLazySet.class, LINKSET);
     TYPES_BY_CLASS.put(OTrackedList.class, EMBEDDEDLIST);
     TYPES_BY_CLASS.put(ORecordLazyList.class, LINKLIST);
@@ -149,11 +164,11 @@ public enum OType {
     EMBEDDEDLIST.castable.add(EMBEDDEDSET);
   }
 
-  protected final String     name;
-  protected final int        id;
-  protected final Class<?>   javaDefaultType;
-  protected final Class<?>[] allowAssignmentFrom;
-  protected final Set<OType> castable;
+  protected final String                      name;
+  protected final int                         id;
+  protected final Class<?>                    javaDefaultType;
+  protected final Class<?>[]                  allowAssignmentFrom;
+  protected final Set<OType>                  castable;
 
   private OType(final String iName, final int iId, final Class<?> iJavaDefaultType, final Class<?>[] iAllowAssignmentBy) {
     name = iName;
@@ -166,9 +181,9 @@ public enum OType {
 
   /**
    * Return the type by ID.
-   *
-   * @param iId The id to search
-   *
+   * 
+   * @param iId
+   *          The id to search
    * @return The type if any, otherwise null
    */
   public static OType getById(final byte iId) {
@@ -179,7 +194,7 @@ public enum OType {
 
   /**
    * Get the identifier of the type. use this instead of {@link Enum#ordinal()} for guarantee a cross code version identifier.
-   *
+   * 
    * @return the identifier of the type.
    */
   public int getId() {
@@ -188,9 +203,9 @@ public enum OType {
 
   /**
    * Return the correspondent type by checking the "assignability" of the class received as parameter.
-   *
-   * @param iClass Class to check
-   *
+   * 
+   * @param iClass
+   *          Class to check
    * @return OType instance if found, otherwise null
    */
   public static OType getTypeByClass(final Class<?> iClass) {
@@ -272,31 +287,33 @@ public enum OType {
 
     final Class<? extends Object> iType = iObject.getClass();
 
-    if (iType.isPrimitive() || Number.class.isAssignableFrom(iType) || String.class.isAssignableFrom(iType) || Boolean.class
-        .isAssignableFrom(iType) || Date.class.isAssignableFrom(iType) || (iType.isArray() && (iType.equals(byte[].class) || iType
-        .equals(char[].class) || iType.equals(int[].class) || iType.equals(long[].class) || iType.equals(double[].class) || iType
-        .equals(float[].class) || iType.equals(short[].class) || iType.equals(Integer[].class) || iType.equals(String[].class)
-        || iType.equals(Long[].class) || iType.equals(Short[].class) || iType.equals(Double[].class))))
+    if (iType.isPrimitive()
+        || Number.class.isAssignableFrom(iType)
+        || String.class.isAssignableFrom(iType)
+        || Boolean.class.isAssignableFrom(iType)
+        || Date.class.isAssignableFrom(iType)
+        || (iType.isArray() && (iType.equals(byte[].class) || iType.equals(char[].class) || iType.equals(int[].class)
+            || iType.equals(long[].class) || iType.equals(double[].class) || iType.equals(float[].class)
+            || iType.equals(short[].class) || iType.equals(Integer[].class) || iType.equals(String[].class)
+            || iType.equals(Long[].class) || iType.equals(Short[].class) || iType.equals(Double[].class))))
       return true;
 
     return false;
   }
 
   /**
-   * Convert types based on the iTargetClass parameter.
-   *
-   * @param iValue       Value to convert
-   * @param iTargetClass Expected class
-   *
+   * Convert types between numbers based on the iTargetClass parameter.
+   * 
+   * @param iValue
+   *          Value to convert
+   * @param iTargetClass
+   *          Expected class
    * @return The converted value or the original if no conversion was applied
    */
   @SuppressWarnings({ "unchecked", "rawtypes" })
   public static Object convert(final Object iValue, final Class<?> iTargetClass) {
     if (iValue == null)
       return null;
-
-    if (iTargetClass == null)
-      return iValue;
 
     if (iValue.getClass().equals(iTargetClass))
       // SAME TYPE: DON'T CONVERT IT
@@ -360,7 +377,9 @@ public enum OType {
           return ((Number) iValue).floatValue();
 
       } else if (iTargetClass.equals(BigDecimal.class)) {
-        if (iValue instanceof String)
+        if (iValue instanceof BigDecimal)
+          return iValue;
+        else if (iValue instanceof String)
           return new BigDecimal((String) iValue);
         else if (iValue instanceof Number)
           return new BigDecimal(iValue.toString());
@@ -388,41 +407,15 @@ public enum OType {
         } else if (iValue instanceof Number)
           return ((Number) iValue).intValue() != 0;
 
-      } else if (Set.class.isAssignableFrom(iTargetClass)) {
-        // The caller specifically wants a Set.  If the value is a collection
-        // we will add all of the items in the collection to a set.  Otherwise
-        // we will create a singleton set with only the value in it.
-        if (iValue instanceof Collection<?>) {
-          final Set<Object> set = new HashSet<Object>();
-          set.addAll((Collection<? extends Object>) iValue);
-          return set;
-        } else {
-          return Collections.singleton(iValue);
-        }
+      } else if (iValue instanceof Collection<?> && !(iValue instanceof Set<?>) && Set.class.isAssignableFrom(iTargetClass)) {
+        final Set<Object> set = new HashSet<Object>();
+        set.addAll((Collection<? extends Object>) iValue);
+        return set;
 
-      } else if (List.class.isAssignableFrom(iTargetClass)) {
-        // The caller specifically wants a List.  If the value is a collection
-        // we will add all of the items in the collection to a List.  Otherwise
-        // we will create a singleton List with only the value in it.
-        if (iValue instanceof Collection<?>) {
-          final List<Object> list = new ArrayList<Object>();
-          list.addAll((Collection<? extends Object>) iValue);
-          return list;
-        } else {
-          return Collections.singletonList(iValue);
-        }
-
-      } else if (Collection.class.equals(iTargetClass)) {
-        // The caller specifically wants a Collection of any type.
-        // we will return a list if the value is a collection or
-        // a singleton set if the value is not a collection.
-        if (iValue instanceof Collection<?>) {
-          final List<Object> set = new ArrayList<Object>();
-          set.addAll((Collection<? extends Object>) iValue);
-          return set;
-        } else {
-          return Collections.singleton(iValue);
-        }
+      } else if (!(iValue instanceof Collection<?>) && Collection.class.isAssignableFrom(iTargetClass)) {
+        final Set<Object> set = new HashSet<Object>();
+        set.add(iValue);
+        return set;
 
       } else if (iTargetClass.equals(Date.class)) {
         if (iValue instanceof Number)
@@ -431,44 +424,20 @@ public enum OType {
           if (OIOUtils.isLong(iValue.toString()))
             return new Date(Long.parseLong(iValue.toString()));
           try {
-            return ODatabaseRecordThreadLocal.instance().get().getStorage().getConfiguration().getDateTimeFormatInstance()
+            return ODatabaseRecordThreadLocal.INSTANCE.get().getStorage().getConfiguration().getDateTimeFormatInstance()
                 .parse((String) iValue);
-          } catch (ParseException ignore) {
-            return ODatabaseRecordThreadLocal.instance().get().getStorage().getConfiguration().getDateFormatInstance()
+          } catch (ParseException e) {
+            return ODatabaseRecordThreadLocal.INSTANCE.get().getStorage().getConfiguration().getDateFormatInstance()
                 .parse((String) iValue);
           }
         }
-      } else if (iTargetClass.equals(String.class)) {
+      } else if (iTargetClass.equals(String.class))
         return iValue.toString();
-      } else if (iTargetClass.equals(OIdentifiable.class)) {
-        if (OMultiValue.isMultiValue(iValue)) {
-          List<OIdentifiable> result = new ArrayList<OIdentifiable>();
-          for (Object o : OMultiValue.getMultiValueIterable(iValue)) {
-            if (o instanceof OIdentifiable) {
-              result.add((OIdentifiable) o);
-            } else if (o instanceof String) {
-              try {
-                result.add(new ORecordId(iValue.toString()));
-              } catch (Exception e) {
-                OLogManager.instance()
-                    .debug(OType.class, "Error in conversion of value '%s' to type '%s'", e, iValue, iTargetClass);
-              }
-            }
-          }
-          return result;
-        } else if (iValue instanceof String) {
-          try {
-            return new ORecordId((String) iValue);
-          } catch (Exception e) {
-            OLogManager.instance().debug(OType.class, "Error in conversion of value '%s' to type '%s'", e, iValue, iTargetClass);
-          }
-        }
-      }
     } catch (IllegalArgumentException e) {
       // PASS THROUGH
       throw e;
     } catch (Exception e) {
-      OLogManager.instance().debug(OType.class, "Error in conversion of value '%s' to type '%s'", e, iValue, iTargetClass);
+      OLogManager.instance().debug(OType.class, "Error in conversion of value '%s' to type '%s'", iValue, iTargetClass);
       return null;
     }
 
@@ -581,13 +550,13 @@ public enum OType {
 
     }
 
-    throw new IllegalArgumentException(
-        "Cannot increment value '" + a + "' (" + a.getClass() + ") with '" + b + "' (" + b.getClass() + ")");
+    throw new IllegalArgumentException("Cannot increment value '" + a + "' (" + a.getClass() + ") with '" + b + "' ("
+        + b.getClass() + ")");
   }
 
   public static Number[] castComparableNumber(Number context, Number max) {
     // CHECK FOR CONVERSION
-    if (context instanceof Short) {
+    if (context instanceof Integer) {
       // SHORT
       if (max instanceof Integer)
         context = context.intValue();
@@ -657,9 +626,9 @@ public enum OType {
 
   /**
    * Convert the input object to an integer.
-   *
-   * @param iValue Any type supported
-   *
+   * 
+   * @param iValue
+   *          Any type supported
    * @return The integer value if the conversion succeed, otherwise the IllegalArgumentException exception
    */
   public int asInt(final Object iValue) {
@@ -675,9 +644,9 @@ public enum OType {
 
   /**
    * Convert the input object to a long.
-   *
-   * @param iValue Any type supported
-   *
+   * 
+   * @param iValue
+   *          Any type supported
    * @return The long value if the conversion succeed, otherwise the IllegalArgumentException exception
    */
   public long asLong(final Object iValue) {
@@ -693,9 +662,9 @@ public enum OType {
 
   /**
    * Convert the input object to a float.
-   *
-   * @param iValue Any type supported
-   *
+   * 
+   * @param iValue
+   *          Any type supported
    * @return The float value if the conversion succeed, otherwise the IllegalArgumentException exception
    */
   public float asFloat(final Object iValue) {
@@ -709,9 +678,9 @@ public enum OType {
 
   /**
    * Convert the input object to a double.
-   *
-   * @param iValue Any type supported
-   *
+   * 
+   * @param iValue
+   *          Any type supported
    * @return The double value if the conversion succeed, otherwise the IllegalArgumentException exception
    */
   public double asDouble(final Object iValue) {
@@ -725,9 +694,9 @@ public enum OType {
 
   /**
    * Convert the input object to a string.
-   *
-   * @param iValue Any type supported
-   *
+   * 
+   * @param iValue
+   *          Any type supported
    * @return The string if the conversion succeed, otherwise the IllegalArgumentException exception
    */
   @Deprecated
@@ -743,9 +712,9 @@ public enum OType {
   public boolean isLink() {
     return this == LINK || this == LINKSET || this == LINKLIST || this == LINKMAP || this == LINKBAG;
   }
-
+  
   public boolean isEmbedded() {
-    return this == EMBEDDED || this == EMBEDDEDLIST || this == EMBEDDEDMAP || this == EMBEDDEDSET;
+	  return this == EMBEDDED || this == EMBEDDEDLIST || this == EMBEDDEDMAP || this == EMBEDDEDSET;
   }
 
   public Class<?> getDefaultJavaType() {

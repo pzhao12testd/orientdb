@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,22 +14,22 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command;
+
+import java.io.IOException;
 
 import com.orientechnologies.orient.server.config.OServerConfiguration;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
 
-import java.io.IOException;
-
 /**
  * Server based authenticated commands. Authenticates against the OrientDB server users found in configuration.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public abstract class OServerCommandAuthenticatedServerAbstract extends OServerCommandAbstract {
 
@@ -87,7 +87,7 @@ public abstract class OServerCommandAuthenticatedServerAbstract extends OServerC
   }
 
   protected boolean checkGuestAccess() {
-    return server.isAllowed(OServerConfiguration.GUEST_USER, resource);
+    return server.isAllowed(OServerConfiguration.SRV_ROOT_GUEST, resource);
   }
 
   protected void sendNotAuthorizedResponse(final OHttpRequest iRequest, final OHttpResponse iResponse) throws IOException {
@@ -97,20 +97,12 @@ public abstract class OServerCommandAuthenticatedServerAbstract extends OServerC
   protected void sendAuthorizationRequest(final OHttpRequest iRequest, final OHttpResponse iResponse) throws IOException {
     // UNAUTHORIZED
     iRequest.sessionId = SESSIONID_UNAUTHORIZED;
-
-    String header = null;
-    String xRequestedWithHeader = iRequest.getHeader("X-Requested-With");
-    if (xRequestedWithHeader == null || !xRequestedWithHeader.equals("XMLHttpRequest")) {
-      // Defaults to "WWW-Authenticate: Basic" if not an AJAX Request.
-      header = server.getSecurity().getAuthenticationHeader(null);
-    }
-
     if (isJsonResponse(iResponse)) {
       sendJsonError(iResponse, OHttpUtils.STATUS_AUTH_CODE, OHttpUtils.STATUS_AUTH_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN,
-          "401 Unauthorized.", header);
+          "401 Unauthorized.", "WWW-Authenticate: Basic realm=\"OrientDB Server\"");
     } else {
       iResponse.send(OHttpUtils.STATUS_AUTH_CODE, OHttpUtils.STATUS_AUTH_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN,
-          "401 Unauthorized.", header);
+          "401 Unauthorized.", "WWW-Authenticate: Basic realm=\"OrientDB Server\"");
     }
   }
 }

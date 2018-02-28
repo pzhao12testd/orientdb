@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.graph.sql;
@@ -48,7 +48,7 @@ import java.util.Set;
 /**
  * SQL MOVE VERTEX command.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public class OCommandExecutorSQLMoveVertex extends OCommandExecutorSQLSetAware implements OCommandDistributedReplicateRequest {
@@ -129,7 +129,6 @@ public class OCommandExecutorSQLMoveVertex extends OCommandExecutorSQLSetAware i
       throw new OCommandExecutionException("Cannot execute the command because it has not been parsed yet");
 
     OModifiableBoolean shutdownGraph = new OModifiableBoolean();
-    final boolean txAlreadyBegun = getDatabase().getTransaction().isActive();
     final OrientGraph graph = OGraphCommandExecutorSQLFactory.getGraph(true, shutdownGraph);
     try {
       final Set<OIdentifiable> sourceRIDs = OSQLEngine.getInstance().parseRIDTarget(graph.getRawGraph(), source, context, iArgs);
@@ -167,19 +166,14 @@ public class OCommandExecutorSQLMoveVertex extends OCommandExecutorSQLSetAware i
         result.add(new ODocument().setTrackingChanges(false).field("old", oldVertex, OType.LINK)
             .field("new", newVertex, OType.LINK));
 
-        if (batch > 0 && result.size() % batch == 0) {
+        if (batch > 0 && result.size() % batch == 0)
           graph.commit();
-          if (!graph.isAutoStartTx())
-            graph.begin();
-        }
       }
 
       graph.commit();
 
       return result;
     } finally {
-      if (!txAlreadyBegun)
-        graph.commit();
 
       if (shutdownGraph.getValue())
         graph.shutdown(false);

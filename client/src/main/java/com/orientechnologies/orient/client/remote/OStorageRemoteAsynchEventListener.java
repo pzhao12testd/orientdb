@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -27,83 +27,56 @@ import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.ORecordInternal;
 import com.orientechnologies.orient.core.sql.query.OLiveResultListener;
-import com.orientechnologies.orient.core.storage.OStorage.STATUS;
+import com.orientechnologies.orient.core.version.ORecordVersion;
+import com.orientechnologies.orient.core.version.OVersionFactory;
 import com.orientechnologies.orient.enterprise.channel.binary.OChannelBinaryProtocol;
 import com.orientechnologies.orient.enterprise.channel.binary.ORemoteServerEventListener;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 public class OStorageRemoteAsynchEventListener implements ORemoteServerEventListener {
 
-  private Map<Integer, OLiveResultListener>                  liveQueryListeners = new ConcurrentHashMap<Integer, OLiveResultListener>();
-  private ConcurrentMap<ORemoteConnectionPool, Set<Integer>> poolLiveQuery      = new ConcurrentHashMap<ORemoteConnectionPool, Set<Integer>>();
+  private Map<Integer, OLiveResultListener> liveQueryListeners = new ConcurrentHashMap<Integer, OLiveResultListener>();
 
-  private OStorageRemote storage;
+  private OStorageRemote                 storage;
 
   public OStorageRemoteAsynchEventListener(final OStorageRemote storage) {
     this.storage = storage;
   }
 
   public void onRequest(final byte iRequestCode, final Object obj) {
-    //Using get status to avoid to check the session.
-    if (storage.getStatus() == STATUS.CLOSED)
-      return;
-
     if (iRequestCode == OChannelBinaryProtocol.REQUEST_PUSH_DISTRIB_CONFIG) {
-      storage.updateClusterConfiguration(null, (byte[]) obj);
+      storage.updateClusterConfiguration(storage.getCurrentServerURL(), (byte[]) obj);
 
       if (OLogManager.instance().isDebugEnabled()) {
         synchronized (storage.getClusterConfiguration()) {
-          OLogManager.instance()
-              .debug(this, "Received new cluster configuration: %s", storage.getClusterConfiguration().toJSON("prettyPrint"));
+          OLogManager.instance().debug(this, "Received new cluster configuration: %s",
+              storage.getClusterConfiguration().toJSON("prettyPrint"));
         }
       }
     } else if (iRequestCode == OChannelBinaryProtocol.REQUEST_PUSH_LIVE_QUERY) {
       byte[] bytes = (byte[]) obj;
       DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes));
-      Integer id = null;
       try {
-        byte what = dis.readByte();
-        if (what == 'r') {
-          byte op = dis.readByte();
-          id = dis.readInt();
+        byte op = dis.readByte();
+        Integer id = dis.readInt();
 
+        final ORecord record = Orient.instance().getRecordFactoryManager().newInstance(dis.readByte());
 
-          final int version = readVersion(dis);
-          final ORecordId rid = readRID(dis);
-          final byte[] content = readBytes(dis);
-          final ORecord record = Orient.instance().getRecordFactoryManager().newInstance(dis.readByte(), rid.getClusterId(), null);
-          ORecordInternal.fill(record, rid, version, content, false);
+        final ORecordId rid = readRID(dis);
+        final ORecordVersion version = readVersion(dis);
+        final byte[] content = readBytes(dis);
+        ORecordInternal.fill(record, rid, version, content, false);
 
-          OLiveResultListener listener = liveQueryListeners.get(id);
-          if (listener != null) {
-            listener.onLiveResult(id, new ORecordOperation(record, op));
-          } else {
-            OLogManager.instance().warn(this, "Receiving invalid LiveQuery token: " + id);
-          }
-        } else if (what == 'u') {
-          id = dis.readInt();
-          OLiveResultListener listener = liveQueryListeners.get(id);
-          listener.onUnsubscribe(id);
-        }
+        OLiveResultListener listener = liveQueryListeners.get(id);
+        listener.onLiveResult(id, new ORecordOperation(record, op));
 
       } catch (IOException e) {
-        if (id != null) {
-          OLiveResultListener listener = liveQueryListeners.get(id);
-          if (listener != null) {
-            listener.onError(id);
-          }
-        }
-
-        OLogManager.instance().error(this, "Error during live query processing", e);
+        e.printStackTrace();
       }
 
     }
@@ -111,8 +84,10 @@ public class OStorageRemoteAsynchEventListener implements ORemoteServerEventList
 
   }
 
-  private int readVersion(DataInputStream dis) throws IOException {
-    return dis.readInt();
+  private ORecordVersion readVersion(DataInputStream dis) throws IOException {
+    final ORecordVersion version = OVersionFactory.instance().createVersion();
+    version.setCounter(dis.readInt());
+    return version;
   }
 
   private ORecordId readRID(DataInputStream dis) throws IOException {
@@ -135,29 +110,11 @@ public class OStorageRemoteAsynchEventListener implements ORemoteServerEventList
     return storage;
   }
 
-  public void registerLiveListener(ORemoteConnectionPool pool, Integer id, OLiveResultListener listener) {
+  public void registerLiveListener(Integer id, OLiveResultListener listener) {
     this.liveQueryListeners.put(id, listener);
-    Set<Integer> res = this.poolLiveQuery.get(pool);
-    if (res == null) {
-      res = Collections.synchronizedSet(new HashSet<Integer>());
-      Set<Integer> prev = poolLiveQuery.putIfAbsent(pool, res);
-      if (prev != null)
-        res = prev;
-    }
-    res.add(id);
   }
 
   public void unregisterLiveListener(Integer id) {
     this.liveQueryListeners.remove(id);
-  }
-
-  public void onEndUsedConnections(ORemoteConnectionPool pool) {
-    final Set<Integer> res = this.poolLiveQuery.get(pool);
-    if (res != null)
-      for (Integer query : res) {
-        OLiveResultListener liveQuery = this.liveQueryListeners.remove(query);
-        liveQuery.onError(query);
-      }
-
   }
 }

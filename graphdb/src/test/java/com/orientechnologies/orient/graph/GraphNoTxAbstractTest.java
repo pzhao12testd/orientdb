@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,27 +14,32 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.graph;
 
+import com.orientechnologies.common.io.OFileUtils;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
 import org.junit.AfterClass;
 
-import java.util.Locale;
+import java.io.File;
 
 /**
  * Base class for tests against Non transactonal Graphs.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
  */
 public abstract class GraphNoTxAbstractTest {
   protected static OrientGraphNoTx graph;
 
+  public static enum ENV {
+    DEV, RELEASE, CI
+  }
+
   public static ENV getEnvironment() {
-    String envName = System.getProperty("orientdb.test.env", "dev").toUpperCase(Locale.ENGLISH);
+    String envName = System.getProperty("orientdb.test.env", "dev").toUpperCase();
     ENV result = null;
     try {
       result = ENV.valueOf(envName);
@@ -56,9 +61,9 @@ public abstract class GraphNoTxAbstractTest {
 
   public static void init(final String dbName) {
     final String storageType = getStorageType();
-    final String buildDirectory = "./target/";
+    final String buildDirectory = System.getProperty("buildDirectory", ".");
 
-//    OFileUtils.deleteRecursively(new File(buildDirectory + "/" + dbName));
+    OFileUtils.deleteRecursively(new File(buildDirectory + "/" + dbName));
 
     final String url = System.getProperty("url");
     if (url != null)
@@ -73,9 +78,5 @@ public abstract class GraphNoTxAbstractTest {
       graph.shutdown();
       graph = null;
     }
-  }
-
-  public static enum ENV {
-    DEV, RELEASE, CI
   }
 }

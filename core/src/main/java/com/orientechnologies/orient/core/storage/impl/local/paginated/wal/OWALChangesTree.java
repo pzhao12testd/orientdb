@@ -1,46 +1,37 @@
 package com.orientechnologies.orient.core.storage.impl.local.paginated.wal;
 
+import com.orientechnologies.common.directmemory.ODirectMemory;
+import com.orientechnologies.common.directmemory.ODirectMemoryPointer;
 import com.orientechnologies.common.serialization.types.OByteSerializer;
 import com.orientechnologies.common.serialization.types.OIntegerSerializer;
 import com.orientechnologies.common.serialization.types.OLongSerializer;
 import com.orientechnologies.common.serialization.types.OShortSerializer;
 import com.orientechnologies.common.types.OModifiableInteger;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
-public class OWALChangesTree implements OWALChanges {
-  private static final boolean BLACK = false;
-  private static final boolean RED   = true;
+public class OWALChangesTree {
+  private static final boolean BLACK          = false;
+  private static final boolean RED            = true;
 
-  private Node root    = null;
-  private int  version = 0;
+  private Node                 root           = null;
+  private int                  version        = 0;
 
-  private boolean debug;
+  private boolean              debug;
 
-  private int serializedSize = OIntegerSerializer.INT_SIZE;
+  private int                  serializedSize = OIntegerSerializer.INT_SIZE;
 
   public void setDebug(boolean debug) {
     this.debug = debug;
   }
 
-  @Override
-  public byte getByteValue(ByteBuffer buffer, int offset) {
-    if (root == null && buffer != null) {
-      return buffer.get(offset);
-    }
-
+  public byte getByteValue(ODirectMemoryPointer pointer, int offset) {
     final int end = offset + OByteSerializer.BYTE_SIZE;
-    final List<Node> result = new ArrayList<>();
+    final List<Node> result = new ArrayList<Node>();
     findIntervals(root, offset, end, result);
 
-    if (buffer != null && result.isEmpty())
-      return buffer.get(offset);
+    if (pointer != null && result.isEmpty())
+      return pointer.getByte(offset);
 
     byte[] value = new byte[] { 0 };
     applyChanges(value, offset, end, result);
@@ -48,32 +39,20 @@ public class OWALChangesTree implements OWALChanges {
     return value[0];
   }
 
-  @Override
-  public byte[] getBinaryValue(ByteBuffer buffer, int offset, int len) {
-    if (root == null && buffer != null) {
-      final byte[] value = new byte[len];
-      buffer.position(offset);
-      buffer.get(value);
-    }
-
+  public byte[] getBinaryValue(ODirectMemoryPointer pointer, int offset, int len) {
     final int end = offset + len;
 
-    final List<Node> result = new ArrayList<>();
+    final List<Node> result = new ArrayList<Node>();
     findIntervals(root, offset, end, result);
 
-    if (result.isEmpty() && buffer != null) {
-      final byte[] value = new byte[len];
-      buffer.position(offset);
-      buffer.get(value);
-    }
+    if (result.isEmpty() && pointer != null)
+      return pointer.get(offset, len);
 
     byte[] value;
 
-    if (buffer != null) {
-      value = new byte[len];
-      buffer.position(offset);
-      buffer.get(value);
-    } else
+    if (pointer != null)
+      value = pointer.get(offset, len);
+    else
       value = new byte[len];
 
     applyChanges(value, offset, end, result);
@@ -81,25 +60,19 @@ public class OWALChangesTree implements OWALChanges {
     return value;
   }
 
-  @Override
-  public short getShortValue(ByteBuffer buffer, int offset) {
-    if (root == null && buffer != null) {
-      return buffer.getShort(offset);
-    }
+  public short getShortValue(ODirectMemoryPointer pointer, int offset) {
     int end = offset + OShortSerializer.SHORT_SIZE;
 
-    final List<Node> result = new ArrayList<>();
+    final List<Node> result = new ArrayList<Node>();
     findIntervals(root, offset, end, result);
 
-    if (result.isEmpty() && buffer != null)
-      return buffer.getShort(offset);
+    if (result.isEmpty() && pointer != null)
+      return pointer.getShort(offset);
 
     byte[] value;
-    if (buffer != null) {
-      value = new byte[OShortSerializer.SHORT_SIZE];
-      buffer.position(offset);
-      buffer.get(value);
-    } else
+    if (pointer != null)
+      value = pointer.get(offset, OShortSerializer.SHORT_SIZE);
+    else
       value = new byte[OShortSerializer.SHORT_SIZE];
 
     applyChanges(value, offset, end, result);
@@ -107,25 +80,19 @@ public class OWALChangesTree implements OWALChanges {
     return OShortSerializer.INSTANCE.deserializeNative(value, 0);
   }
 
-  @Override
-  public int getIntValue(ByteBuffer buffer, int offset) {
-    if (root == null && buffer != null) {
-      return buffer.getInt(offset);
-    }
+  public int getIntValue(ODirectMemoryPointer pointer, int offset) {
     int end = offset + OIntegerSerializer.INT_SIZE;
 
-    final List<Node> result = new ArrayList<>();
+    final List<Node> result = new ArrayList<Node>();
     findIntervals(root, offset, end, result);
 
-    if (result.isEmpty() && buffer != null)
-      return buffer.getInt(offset);
+    if (result.isEmpty() && pointer != null)
+      return pointer.getInt(offset);
 
     byte[] value;
-    if (buffer != null) {
-      value = new byte[OIntegerSerializer.INT_SIZE];
-      buffer.position(offset);
-      buffer.get(value);
-    } else
+    if (pointer != null)
+      value = pointer.get(offset, OIntegerSerializer.INT_SIZE);
+    else
       value = new byte[OIntegerSerializer.INT_SIZE];
 
     applyChanges(value, offset, end, result);
@@ -133,60 +100,24 @@ public class OWALChangesTree implements OWALChanges {
     return OIntegerSerializer.INSTANCE.deserializeNative(value, 0);
   }
 
-  @Override
-  public long getLongValue(ByteBuffer buffer, int offset) {
-    if (root == null && buffer != null) {
-      return buffer.getLong(offset);
-    }
+  public long getLongValue(ODirectMemoryPointer pointer, int offset) {
     int end = offset + OLongSerializer.LONG_SIZE;
 
-    final List<Node> result = new ArrayList<>();
+    final List<Node> result = new ArrayList<Node>();
     findIntervals(root, offset, end, result);
 
-    if (result.isEmpty() && buffer != null)
-      return buffer.getLong(offset);
+    if (result.isEmpty() && pointer != null)
+      return pointer.getLong(offset);
 
     byte[] value;
-    if (buffer != null) {
-      value = new byte[OLongSerializer.LONG_SIZE];
-      buffer.position(offset);
-      buffer.get(value);
-    } else
+    if (pointer != null)
+      value = pointer.get(offset, OLongSerializer.LONG_SIZE);
+    else
       value = new byte[OLongSerializer.LONG_SIZE];
 
     applyChanges(value, offset, end, result);
 
     return OLongSerializer.INSTANCE.deserializeNative(value, 0);
-  }
-
-  @Override
-  public void setIntValue(ByteBuffer buffer, int value, int offset) {
-    byte[] sValue = new byte[OIntegerSerializer.INT_SIZE];
-    OIntegerSerializer.INSTANCE.serializeNative(value, sValue, 0);
-    add(sValue, offset);
-  }
-
-  @Override
-  public void setLongValue(ByteBuffer buffer, long value, int offset) {
-    byte[] sValue = new byte[OLongSerializer.LONG_SIZE];
-    OLongSerializer.INSTANCE.serializeNative(value, sValue, 0);
-    add(sValue, offset);
-  }
-
-  @Override
-  public void moveData(ByteBuffer buffer, int from, int to, int len) {
-    byte[] content = getBinaryValue(buffer, from, len);
-    add(content, to);
-  }
-
-  @Override
-  public void setBinaryValue(ByteBuffer buffer, byte[] value, int offset) {
-    add(value, offset);
-  }
-
-  @Override
-  public void setByteValue(ByteBuffer buffer, byte value, int offset) {
-    add(new byte[] { value }, offset);
   }
 
   public void add(byte[] value, int start) {
@@ -199,11 +130,11 @@ public class OWALChangesTree implements OWALChanges {
     if (value == null || value.length == 0)
       return;
 
-    final Node fNode = bSearch(start);
+    final Node fnode = bsearch(start);
 
     final Node node = new Node(value, start, RED, version);
 
-    if (fNode == null) {
+    if (fnode == null) {
       root = node;
       root.color = BLACK;
 
@@ -216,18 +147,18 @@ public class OWALChangesTree implements OWALChanges {
       return;
     }
 
-    if (start < fNode.start) {
-      fNode.left = node;
-      node.parent = fNode;
+    if (start < fnode.start) {
+      fnode.left = node;
+      node.parent = fnode;
 
       if (updateSerializedSize)
         serializedSize += serializedSize(value.length);
 
       updateMaxEndAfterAppend(node);
       insertCaseOne(node);
-    } else if (start > fNode.start) {
-      fNode.right = node;
-      node.parent = fNode;
+    } else if (start > fnode.start) {
+      fnode.right = node;
+      node.parent = fnode;
 
       if (updateSerializedSize)
         serializedSize += serializedSize(value.length);
@@ -236,56 +167,56 @@ public class OWALChangesTree implements OWALChanges {
       insertCaseOne(node);
     } else {
       final int end = start + value.length;
-      if (end == fNode.end) {
-        if (fNode.version < version) {
+      if (end == fnode.end) {
+        if (fnode.version < version) {
           if (updateSerializedSize)
-            serializedSize -= fNode.value.length;
+            serializedSize -= fnode.value.length;
 
-          fNode.value = value;
-          fNode.version = version;
+          fnode.value = value;
+          fnode.version = version;
 
           if (updateSerializedSize)
-            serializedSize += fNode.value.length;
+            serializedSize += fnode.value.length;
         }
-      } else if (end < fNode.end) {
-        if (fNode.version < version) {
-          final byte[] cValue = Arrays.copyOfRange(fNode.value, end - start, fNode.end - start);
-          final int cVersion = fNode.version;
-          final int cStart = end;
+      } else if (end < fnode.end) {
+        if (fnode.version < version) {
+          final byte[] cvalue = Arrays.copyOfRange(fnode.value, end - start, fnode.end - start);
+          final int cversion = fnode.version;
+          final int cstart = end;
 
           if (updateSerializedSize)
-            serializedSize -= fNode.value.length;
+            serializedSize -= fnode.value.length;
 
-          fNode.end = end;
-          fNode.value = value;
-          fNode.version = version;
+          fnode.end = end;
+          fnode.value = value;
+          fnode.version = version;
 
           if (updateSerializedSize)
-            serializedSize += fNode.value.length;
+            serializedSize += fnode.value.length;
 
-          updateMaxEndAccordingToChildren(fNode);
+          updateMaxEndAccordingToChildren(fnode);
 
-          add(cValue, cStart, cVersion, updateSerializedSize);
+          add(cvalue, cstart, cversion, updateSerializedSize);
         }
       } else {
-        if (fNode.version > version) {
-          final byte[] cValue = Arrays.copyOfRange(value, fNode.end - start, end - start);
-          final int cVersion = version;
-          final int cStart = fNode.end;
+        if (fnode.version > version) {
+          final byte[] cvalue = Arrays.copyOfRange(value, fnode.end - start, end - start);
+          final int cversion = version;
+          final int cstart = fnode.end;
 
-          add(cValue, cStart, cVersion, updateSerializedSize);
+          add(cvalue, cstart, cversion, updateSerializedSize);
         } else {
           if (updateSerializedSize)
-            serializedSize -= fNode.value.length;
+            serializedSize -= fnode.value.length;
 
-          fNode.end = end;
-          fNode.value = value;
-          fNode.version = version;
+          fnode.end = end;
+          fnode.value = value;
+          fnode.version = version;
 
           if (updateSerializedSize)
-            serializedSize += fNode.value.length;
+            serializedSize += fnode.value.length;
 
-          updateMaxEndAccordingToChildren(fNode);
+          updateMaxEndAccordingToChildren(fnode);
         }
       }
     }
@@ -296,18 +227,12 @@ public class OWALChangesTree implements OWALChanges {
 
   public void applyChanges(byte[] values, int start) {
     final int end = start + values.length;
-    final List<Node> result = new ArrayList<>();
+    final List<Node> result = new ArrayList<Node>();
     findIntervals(root, start, end, result);
 
     applyChanges(values, start, end, result);
   }
 
-  @Override
-  public void applyOriginalValues(ByteBuffer buffer) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public int serializedSize() {
     return serializedSize;
   }
@@ -320,7 +245,7 @@ public class OWALChangesTree implements OWALChanges {
     if (result.isEmpty())
       return;
 
-    final Queue<Node> processedNodes = new ArrayDeque<>();
+    final Queue<Node> processedNodes = new ArrayDeque<Node>();
 
     for (Node activeNode : result) {
       int activeStart = activeNode.start;
@@ -361,26 +286,27 @@ public class OWALChangesTree implements OWALChanges {
       if (vLength <= 0)
         continue;
 
-      System.arraycopy(activeNode.value,
-          deltaStart >= 0 ? activeStart - activeNode.start : activeStart - activeNode.start - deltaStart, values,
-          deltaStart >= 0 ? deltaStart : 0, vLength);
+      System.arraycopy(activeNode.value, deltaStart >= 0 ? activeStart - activeNode.start : activeStart - activeNode.start
+          - deltaStart, values, deltaStart >= 0 ? deltaStart : 0, vLength);
     }
   }
 
-  @Override
-  public void applyChanges(ByteBuffer buffer) {
+  public void applyChanges(ODirectMemoryPointer pointer) {
     if (root == null)
       return;
 
-    final Queue<Node> processedNodes = new ArrayDeque<>();
-    applyChanges(buffer, root, processedNodes);
+    final Queue<Node> processedNodes = new ArrayDeque<Node>();
+    applyChanges(pointer, root, processedNodes);
+  }
+
+  public PointerWrapper wrap(final ODirectMemoryPointer pointer) {
+    return new PointerWrapper(pointer);
   }
 
   public int getSerializedSize() {
     return serializedSize;
   }
 
-  @Override
   public int fromStream(int offset, byte[] stream) {
     serializedSize = OIntegerSerializer.INSTANCE.deserializeNative(stream, offset);
     int readBytes = OIntegerSerializer.INT_SIZE;
@@ -406,7 +332,6 @@ public class OWALChangesTree implements OWALChanges {
     return offset + readBytes;
   }
 
-  @Override
   public int toStream(int offset, byte[] stream) {
     OIntegerSerializer.INSTANCE.serializeNative(serializedSize, stream, offset);
     offset += OIntegerSerializer.INT_SIZE;
@@ -440,9 +365,9 @@ public class OWALChangesTree implements OWALChanges {
     return offset;
   }
 
-  private void applyChanges(ByteBuffer buffer, Node node, Queue<Node> processedNodes) {
+  private void applyChanges(ODirectMemoryPointer pointer, Node node, Queue<Node> processedNodes) {
     if (node.left != null)
-      applyChanges(buffer, node.left, processedNodes);
+      applyChanges(pointer, node.left, processedNodes);
 
     int activeStart = node.start;
 
@@ -460,12 +385,11 @@ public class OWALChangesTree implements OWALChanges {
 
     if (activeStart < node.end) {
       final int vLength = node.end - activeStart;
-      buffer.position(activeStart);
-      buffer.put(node.value, activeStart - node.start, vLength);
+      pointer.set(activeStart, node.value, activeStart - node.start, vLength);
     }
 
     if (node.right != null)
-      applyChanges(buffer, node.right, processedNodes);
+      applyChanges(pointer, node.right, processedNodes);
   }
 
   private void assertInvariants() {
@@ -477,7 +401,7 @@ public class OWALChangesTree implements OWALChanges {
   }
 
   private boolean allBlackPathsAreEqual() {
-    List<OModifiableInteger> paths = new ArrayList<>();
+    List<OModifiableInteger> paths = new ArrayList<OModifiableInteger>();
     OModifiableInteger currentPath = new OModifiableInteger();
     paths.add(currentPath);
 
@@ -595,7 +519,6 @@ public class OWALChangesTree implements OWALChanges {
     return true;
   }
 
-  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
   private boolean valueIsMaxEndValueAmongChildren(Node node, int value) {
     if (node.end > value)
       return false;
@@ -629,7 +552,7 @@ public class OWALChangesTree implements OWALChanges {
       findIntervals(node.right, start, end, result);
   }
 
-  private Node bSearch(int start) {
+  private Node bsearch(int start) {
     if (root == null)
       return null;
 
@@ -815,13 +738,13 @@ public class OWALChangesTree implements OWALChanges {
     private byte[]  value;
     private int     version;
 
-    private final int start;
-    private       int end;
-    private       int maxEnd;
+    private int     start;
+    private int     end;
+    private int     maxEnd;
 
-    private Node parent;
-    private Node left;
-    private Node right;
+    private Node    parent;
+    private Node    left;
+    private Node    right;
 
     public Node(byte[] value, int start, boolean color, int version) {
       this.color = color;
@@ -833,13 +756,45 @@ public class OWALChangesTree implements OWALChanges {
       this.maxEnd = end;
     }
 
+    private boolean overlapsWith(Node other) {
+      return start < other.end && end > other.start;
+    }
+
     private boolean overlapsWith(int start, int end) {
       return this.start < end && this.end > start;
     }
   }
 
-  @Override
-  public boolean hasChanges() {
-    return root != null;
+  public final class PointerWrapper {
+    private final ODirectMemoryPointer pointer;
+
+    private PointerWrapper(ODirectMemoryPointer pointer) {
+      this.pointer = pointer;
+    }
+
+    public byte getByte(long offset) {
+      return OWALChangesTree.this.getByteValue(pointer, (int) offset);
+    }
+
+    public short getShort(long offset) {
+      return OWALChangesTree.this.getShortValue(pointer, (int) offset);
+    }
+
+    public int getInt(long offset) {
+      return OWALChangesTree.this.getIntValue(pointer, (int) offset);
+    }
+
+    public long getLong(long offset) {
+      return OWALChangesTree.this.getLongValue(pointer, (int) offset);
+    }
+
+    public byte[] get(long offset, int len) {
+      return OWALChangesTree.this.getBinaryValue(pointer, (int) offset, len);
+    }
+
+    public char getChar(long offset) {
+      return (char) OWALChangesTree.this.getShortValue(pointer, (int) offset);
+    }
+
   }
 }

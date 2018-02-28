@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
@@ -36,24 +36,33 @@ import com.orientechnologies.orient.core.record.impl.ODocumentHelper;
 import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
 import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
 import com.orientechnologies.orient.core.serialization.serializer.record.string.ORecordSerializerCSVAbstract;
-import com.orientechnologies.orient.core.sql.filter.*;
+import com.orientechnologies.orient.core.sql.filter.OSQLFilterItem;
+import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemAbstract;
+import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemField;
+import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemParameter;
+import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemVariable;
+import com.orientechnologies.orient.core.sql.filter.OSQLPredicate;
 import com.orientechnologies.orient.core.sql.functions.OSQLFunctionRuntime;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * SQL Helper class
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
  * 
  */
 public class OSQLHelper {
-  public static final String NAME = "sql";
+  public static final String NAME              = "sql";
 
-  public static final String VALUE_NOT_PARSED = "_NOT_PARSED_";
-  public static final String NOT_NULL         = "_NOT_NULL_";
-  public static final String DEFINED          = "_DEFINED_";
+  public static final String VALUE_NOT_PARSED  = "_NOT_PARSED_";
+  public static final String NOT_NULL          = "_NOT_NULL_";
+  public static final String DEFINED           = "_DEFINED_";
 
   private static ClassLoader orientClassLoader = OSQLFilterItemAbstract.class.getClassLoader();
 
@@ -71,22 +80,17 @@ public class OSQLHelper {
     }
 
     // PARSE AS FIELD
-    return iWord;
+    return new OSQLFilterItemField(null, iWord);
   }
 
   /**
    * Convert fields from text to real value. Supports: String, RID, Boolean, Float, Integer and NULL.
-   *
-   * @param iValue Value to convert.
-   *
+   * 
+   * @param iValue
+   *          Value to convert.
    * @return The value converted if recognized, otherwise VALUE_NOT_PARSED
    */
   public static Object parseValue(String iValue, final OCommandContext iContext) {
-    return parseValue(iValue, iContext, false);
-  }
-
-  public static Object parseValue(String iValue, final OCommandContext iContext, boolean resolveContextVariables) {
-
     if (iValue == null)
       return null;
 
@@ -96,24 +100,24 @@ public class OSQLHelper {
 
     if (iValue.startsWith("'") && iValue.endsWith("'") || iValue.startsWith("\"") && iValue.endsWith("\""))
       // STRING
-      fieldValue = OIOUtils.getStringContent(iValue);
+      fieldValue = OStringSerializerHelper.getStringContent(iValue);
     else if (iValue.charAt(0) == OStringSerializerHelper.LIST_BEGIN
         && iValue.charAt(iValue.length() - 1) == OStringSerializerHelper.LIST_END) {
       // COLLECTION/ARRAY
-      final List<String> items = OStringSerializerHelper
-          .smartSplit(iValue.substring(1, iValue.length() - 1), OStringSerializerHelper.RECORD_SEPARATOR);
+      final List<String> items = OStringSerializerHelper.smartSplit(iValue.substring(1, iValue.length() - 1),
+          OStringSerializerHelper.RECORD_SEPARATOR);
 
       final List<Object> coll = new ArrayList<Object>();
       for (String item : items) {
-        coll.add(parseValue(item, iContext, resolveContextVariables));
+        coll.add(parseValue(item, iContext));
       }
       fieldValue = coll;
 
     } else if (iValue.charAt(0) == OStringSerializerHelper.MAP_BEGIN
         && iValue.charAt(iValue.length() - 1) == OStringSerializerHelper.MAP_END) {
       // MAP
-      final List<String> items = OStringSerializerHelper
-          .smartSplit(iValue.substring(1, iValue.length() - 1), OStringSerializerHelper.RECORD_SEPARATOR);
+      final List<String> items = OStringSerializerHelper.smartSplit(iValue.substring(1, iValue.length() - 1),
+          OStringSerializerHelper.RECORD_SEPARATOR);
 
       final Map<Object, Object> map = new HashMap<Object, Object>();
       for (String item : items) {
@@ -122,15 +126,7 @@ public class OSQLHelper {
         if (parts == null || parts.size() != 2)
           throw new OCommandSQLParsingException("Map found but entries are not defined as <key>:<value>");
 
-        Object key = OStringSerializerHelper.decode(parseValue(parts.get(0), iContext).toString());
-        Object value = parseValue(parts.get(1), iContext);
-        if (VALUE_NOT_PARSED == value) {
-          value = new OSQLPredicate(parts.get(1)).evaluate(iContext);
-        }
-        if(value instanceof String){
-          value = OStringSerializerHelper.decode(value.toString());
-        }
-        map.put(key, value);
+        map.put(parseValue(parts.get(0), iContext), parseValue(parts.get(1), iContext));
       }
 
       if (map.containsKey(ODocumentHelper.ATTRIBUTE_TYPE))
@@ -171,8 +167,6 @@ public class OSQLHelper {
         if (func != null) {
           fieldValue = func.execute(null, null, null, iContext);
         }
-      } else if (resolveContextVariables && iValue.startsWith("$") && iContext != null) {
-        fieldValue = iContext.getVariable(iValue);
       } else {
         final Object v = parseStringNumber(iValue);
         if (v != null)
@@ -219,14 +213,11 @@ public class OSQLHelper {
   }
 
   public static Object parseValue(final OBaseParser iCommand, final String iWord, final OCommandContext iContext) {
-    return parseValue(iCommand, iWord, iContext, false);
-  }
-  public static Object parseValue(final OBaseParser iCommand, final String iWord, final OCommandContext iContext, boolean resolveContextVariables) {
     if (iWord.equals("*"))
       return "*";
 
     // TRY TO PARSE AS RAW VALUE
-    final Object v = parseValue(iWord, iContext, resolveContextVariables);
+    final Object v = parseValue(iWord, iContext);
     if (v != VALUE_NOT_PARSED)
       return v;
 
@@ -242,7 +233,7 @@ public class OSQLHelper {
       return new OSQLFilterItemVariable(iCommand, iWord);
 
     // PARSE AS FIELD
-    return new OSQLFilterItemField(iCommand, iWord, null);
+    return new OSQLFilterItemField(iCommand, iWord);
   }
 
   public static OSQLFunctionRuntime getFunction(final OBaseParser iCommand, final String iWord) {
@@ -338,7 +329,7 @@ public class OSQLHelper {
         if (fieldValue instanceof OCommandSQL) {
           final OCommandSQL cmd = (OCommandSQL) fieldValue;
           cmd.getContext().setParent(iContext);
-          fieldValue = ODatabaseRecordThreadLocal.instance().get().command(cmd).execute();
+          fieldValue = ODatabaseRecordThreadLocal.INSTANCE.get().command(cmd).execute();
 
           // CHECK FOR CONVERSIONS
           OImmutableClass immutableClass = ODocumentInternal.getImmutableSchemaClass(iDocument);
@@ -356,21 +347,14 @@ public class OSQLHelper {
                     fieldValue = null;
                 }
               }
-            } else if (immutableClass.isEdgeType() && ("out".equals(fieldName) || "in".equals(fieldName))
-                && (fieldValue instanceof List)) {
-              List lst = (List) fieldValue;
-              if (lst.size() == 1) {
-                fieldValue = lst.get(0);
-              }
             }
-
           }
 
           if (OMultiValue.isMultiValue(fieldValue)) {
             final List<Object> tempColl = new ArrayList<Object>(OMultiValue.getSize(fieldValue));
 
             String singleFieldName = null;
-            for (Object o : OMultiValue.getMultiValueIterable(fieldValue, false)) {
+            for (Object o : OMultiValue.getMultiValueIterable(fieldValue)) {
               if (o instanceof OIdentifiable && !((OIdentifiable) o).getIdentity().isPersistent()) {
                 // TEMPORARY / EMBEDDED
                 final ORecord rec = ((OIdentifiable) o).getRecord();

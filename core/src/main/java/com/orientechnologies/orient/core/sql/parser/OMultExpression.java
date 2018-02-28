@@ -2,8 +2,6 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import java.util.Set;
-
 public
 class OMultExpression extends OMathExpression {
 
@@ -19,10 +17,6 @@ class OMultExpression extends OMathExpression {
   /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
-  }
-
-  public boolean needsAliases(Set<String> aliases) {
-    return super.needsAliases(aliases);
   }
 }
 /* JavaCC - OriginalChecksum=f75b8be48dca1e0cafae0cacadc608c8 (do not edit this line) */

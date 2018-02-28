@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,17 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.command.OCommandContext;
@@ -27,8 +34,6 @@ import com.orientechnologies.orient.core.command.traverse.OTraverse;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OQueryParsingException;
 import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
-
-import java.util.*;
 
 /**
  * Executes a TRAVERSE crossing records. Returns a List<OIdentifiable> containing all the traversed records that match the WHERE
@@ -46,7 +51,7 @@ import java.util.*;
  * <code>SELECT FROM (TRAVERSE children FROM #5:23 WHERE $depth BETWEEN 1 AND 3) WHERE city.name = 'Rome'</code>
  * </p>
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 @SuppressWarnings("unchecked")
 public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbstract {
@@ -68,7 +73,7 @@ public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbs
     try {
       // System.out.println("NEW PARSER FROM: " + queryText);
       queryText = preParse(queryText, iRequest);
-      // System.out.println("NEW PARSER TO: " + queryText);
+      // System.out.println("NEW PARSER   TO: " + queryText);
       textRequest.setText(queryText);
 
       super.parse(iRequest);
@@ -80,7 +85,7 @@ public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbs
 
       int endPosition = parserText.length();
 
-      parsedTarget = OSQLEngine.getInstance().parseTarget(parserText.substring(pos, endPosition), getContext());
+      parsedTarget = OSQLEngine.getInstance().parseTarget(parserText.substring(pos, endPosition), getContext(), KEYWORD_WHILE);
 
       if (parsedTarget.parserIsEnded())
         parserSetCurrentPosition(endPosition);
@@ -101,17 +106,16 @@ public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbs
 
           traverse.predicate(compiledFilter);
           optimize();
-          parserSetCurrentPosition(compiledFilter.parserIsEnded() ? endPosition
-              : compiledFilter.parserGetCurrentPosition() + parserGetCurrentPosition());
+          parserSetCurrentPosition(compiledFilter.parserIsEnded() ? endPosition : compiledFilter.parserGetCurrentPosition()
+              + parserGetCurrentPosition());
         } else
           parserGoBack();
       }
 
       parserSkipWhiteSpaces();
 
-      while (!parserIsEnded()) {
-        if (parserOptionalKeyword(KEYWORD_LIMIT, KEYWORD_SKIP, KEYWORD_OFFSET, KEYWORD_TIMEOUT, KEYWORD_MAXDEPTH,
-            KEYWORD_STRATEGY)) {
+      if (!parserIsEnded()) {
+        if (parserOptionalKeyword(KEYWORD_LIMIT, KEYWORD_SKIP, KEYWORD_OFFSET, KEYWORD_TIMEOUT, KEYWORD_MAXDEPTH, KEYWORD_STRATEGY)) {
           final String w = parserGetLastWord();
           if (w.equals(KEYWORD_LIMIT))
             parseLimit(w);
@@ -131,7 +135,7 @@ public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbs
       else
         traverse.limit(limit);
 
-      traverse.getContext().setParent(iRequest.getContext());
+      traverse.getContext().setChild(iRequest.getContext());
     } finally {
       textRequest.setText(originalQuery);
     }
@@ -146,7 +150,7 @@ public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbs
 
     try {
       traverse.setMaxDepth(Integer.parseInt(word));
-    } catch (Exception ignore) {
+    } catch (Exception e) {
       throwParsingException("Invalid " + KEYWORD_MAXDEPTH + " value set to '" + word + "' but it should be a valid long. Example: "
           + KEYWORD_MAXDEPTH + " 3000");
     }
@@ -167,7 +171,7 @@ public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbs
       // BROWSE ALL THE RECORDS AND COLLECTS RESULT
       final List<OIdentifiable> result = traverse.execute();
       for (OIdentifiable r : result)
-        if (!handleResult(r, context))
+        if (!handleResult(r))
           // LIMIT REACHED
           break;
 
@@ -196,8 +200,11 @@ public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbs
   }
 
   protected void warnDeprecatedWhere() {
-    OLogManager.instance().warn(this,
-        "Keyword WHERE in traverse has been replaced by WHILE. Please change your query to support WHILE instead of WHERE because now it's only deprecated, but in future it will be removed the back-ward compatibility.");
+    OLogManager
+        .instance()
+        .warn(
+            this,
+            "Keyword WHERE in traverse has been replaced by WHILE. Please change your query to support WHILE instead of WHERE because now it's only deprecated, but in future it will be removed the back-ward compatibility.");
   }
 
   @Override
@@ -256,8 +263,8 @@ public class OCommandExecutorSQLTraverse extends OCommandExecutorSQLResultsetAbs
     final String strategyWord = parserNextWord(true);
 
     try {
-      traverse.setStrategy(OTraverse.STRATEGY.valueOf(strategyWord.toUpperCase(Locale.ENGLISH)));
-    } catch (IllegalArgumentException ignore) {
+      traverse.setStrategy(OTraverse.STRATEGY.valueOf(strategyWord.toUpperCase()));
+    } catch (IllegalArgumentException e) {
       throwParsingException("Invalid " + KEYWORD_STRATEGY + ". Use one between " + Arrays.toString(OTraverse.STRATEGY.values()));
     }
     return true;

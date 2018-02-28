@@ -6,7 +6,6 @@ import java.util.Map;
 
 public class OUpdateIncrementItem extends SimpleNode {
   protected OIdentifier left;
-  protected OModifier   leftModifier;
   protected OExpression right;
 
   public OUpdateIncrementItem(int id) {
@@ -17,53 +16,22 @@ public class OUpdateIncrementItem extends SimpleNode {
     super(p, id);
   }
 
-  /**
-   * Accept the visitor.
-   **/
+  /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
   }
 
-  public void toString(Map<Object, Object> params, StringBuilder builder) {
-    left.toString(params, builder);
-    if (leftModifier != null) {
-      leftModifier.toString(params, builder);
-    }
-    builder.append(" = ");
-    right.toString(params, builder);
+  public void replaceParameters(Map<Object, Object> params) {
+    right.replaceParameters(params);
   }
 
-  public OUpdateIncrementItem copy() {
-    OUpdateIncrementItem result = new OUpdateIncrementItem(-1);
-    result.left = left == null ? null : left.copy();
-    result.leftModifier = leftModifier == null ? null : leftModifier.copy();
-    result.right = right == null ? null : right.copy();
-    return result;
-  }
-
-  @Override public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-
-    OUpdateIncrementItem that = (OUpdateIncrementItem) o;
-
-    if (left != null ? !left.equals(that.left) : that.left != null)
-      return false;
-    if (leftModifier != null ? !leftModifier.equals(that.leftModifier) : that.leftModifier != null)
-      return false;
-    if (right != null ? !right.equals(that.right) : that.right != null)
-      return false;
-
-    return true;
-  }
-
-  @Override public int hashCode() {
-    int result = left != null ? left.hashCode() : 0;
-    result = 31 * result + (leftModifier != null ? leftModifier.hashCode() : 0);
-    result = 31 * result + (right != null ? right.hashCode() : 0);
-    return result;
+  @Override
+  public String toString() {
+    StringBuilder result = new StringBuilder();
+    result.append(left.toString());
+    result.append(" = ");
+    result.append(right.toString());
+    return result.toString();
   }
 }
 /* JavaCC - OriginalChecksum=94dd82febb904e4e31130bdcbbb48fe3 (do not edit this line) */

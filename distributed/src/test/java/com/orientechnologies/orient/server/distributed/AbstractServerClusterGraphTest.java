@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,22 +14,20 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.common.concur.ONeedRetryException;
-import com.orientechnologies.orient.core.db.ODatabasePool;
-import com.orientechnologies.orient.core.db.OrientDBConfig;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.OVertex;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import org.junit.Assert;
+import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
+import junit.framework.Assert;
 
 import java.util.Date;
 import java.util.UUID;
@@ -39,162 +37,110 @@ import java.util.concurrent.Callable;
  * Test distributed TX
  */
 public abstract class AbstractServerClusterGraphTest extends AbstractServerClusterInsertTest {
-  protected ORID rootVertexId;
-  protected Object lock = new Object();
-  private ODatabasePool dbPool;
+  protected OrientGraphFactory factory;
 
   class TxWriter implements Callable<Void> {
+    private final String databaseUrl;
     private final int    serverId;
     private final int    threadId;
 
-    public TxWriter(final int iServerId, final int iThreadId) {
+    public TxWriter(final int iServerId, final int iThreadId, final String db) {
       serverId = iServerId;
       threadId = iThreadId;
+      databaseUrl = db;
     }
 
     @Override
     public Void call() throws Exception {
       String name = Integer.toString(serverId);
 
-      synchronized (lock) {
-        if (rootVertexId == null) {
-          // ONLY THE FIRST TIME CREATE THE ROOT
-          ODatabaseDocument graph = dbPool.acquire();
+      for (int i = 0; i < count; i++) {
+        final OrientGraph graph = factory.getTx();
+        try {
+          if ((i + 1) % 100 == 0)
+            System.out.println("\nWriter " + databaseUrl + " managed " + (i + 1) + "/" + count + " vertices so far");
+
           try {
-            graph.begin();
-            OVertex root = createVertex(graph, serverId, threadId, 0);
+            OrientVertex person = createVertex(graph, serverId, threadId, i);
+            updateVertex(graph, person);
+            checkVertex(graph, person);
+            // checkIndex(database, (String) person.field("name"), person.getIdentity());
+
             graph.commit();
-            rootVertexId = root.getIdentity();
-          } finally {
-            graph.close();
-          }
-        }
-      }
 
-      int itemInTx = 0;
-      final ODatabaseDocument graph = dbPool.acquire();
-      try {
-        graph.begin();
-        for (int i = 1; i <= count; i++) {
-          if (i % 100 == 0)
-            System.out.println("\nWriter " + graph.getURL() + " managed " + i + "/" + count + " vertices so far");
-
-          for (int retry = 0; retry < 100; retry++) {
-            try {
-              OVertex person = createVertex(graph, serverId, threadId, i);
-              updateVertex(graph, person);
-              checkVertex(graph, person);
-
-              ODocument rootDoc = graph.load(rootVertexId);
-              final OVertex root = rootDoc.asVertex().get();
-              graph.save(root.addEdge(person));
-
-              // checkIndex(database, (String) person.field("name"), person.getIdentity());
-
-              if (i % 10 == 0 || i == count) {
-                graph.commit();
-                graph.begin();
-                itemInTx = 0;
-              } else
-                itemInTx++;
-
-              break;
-
-            } catch (ONeedRetryException e) {
-              graph.rollback();
-              graph.begin();
-              i -= itemInTx;
-              itemInTx = 0;
-              // RETRY
-            } catch (Exception e) {
-              graph.rollback();
-              graph.begin();
-              throw e;
-            }
+            Assert.assertTrue(person.getIdentity().isPersistent());
+          } catch (Exception e) {
+            graph.rollback();
+            throw e;
           }
 
           if (delayWriter > 0)
             Thread.sleep(delayWriter);
+
+        } catch (InterruptedException e) {
+          System.out.println("Writer received interrupt (db=" + databaseUrl);
+          Thread.currentThread().interrupt();
+          break;
+        } catch (Exception e) {
+          System.out.println("Writer received exception (db=" + databaseUrl);
+          e.printStackTrace();
+          break;
+        } finally {
+          runningWriters.countDown();
+          graph.shutdown();
         }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      } catch (Exception e) {
-        e.printStackTrace();
-      } finally {
-        runningWriters.countDown();
-        graph.close();
       }
 
+      System.out.println("\nWriter " + name + " END");
       return null;
     }
   }
 
-  @Override
-  protected void computeExpected(int servers) {
-    expected = writerCount * count * servers + baseCount + 1;
-  }
-
   protected void onAfterExecution() {
-    dbPool.close();
+    factory.close();
   }
 
   @Override
-  protected void onAfterDatabaseCreation(final ODatabaseDocument graph) {
+  protected void onAfterDatabaseCreation(final OrientBaseGraph graph) {
     System.out.println("Creating graph schema...");
 
     // CREATE BASIC SCHEMA
-    OClass personClass = graph.createVertexClass("Person");
+    OrientVertexType personClass = graph.createVertexType("Person");
     personClass.createProperty("id", OType.STRING);
     personClass.createProperty("name", OType.STRING);
     personClass.createProperty("birthday", OType.DATE);
     personClass.createProperty("children", OType.STRING);
 
-    OClass person = graph.getClass("Person");
+    OrientVertexType person = graph.getVertexType("Person");
     idx = person.createIndex("Person.name", OClass.INDEX_TYPE.UNIQUE, "name");
 
-    OClass customer = graph.createClass("Customer", personClass.getName());
+    OrientVertexType customer = graph.createVertexType("Customer", person);
     customer.createProperty("totalSold", OType.DECIMAL);
 
-    OClass provider = graph.createClass("Provider", personClass.getName());
+    OrientVertexType provider = graph.createVertexType("Provider", person);
     provider.createProperty("totalPurchased", OType.DECIMAL);
 
-  }
-
-  protected void setFactorySettings(ODatabasePool pool) {
-  }
-
-  @Override
-  public void executeTest() throws Exception {
-    dbPool = new ODatabasePool(serverInstance.get(0).getServerInstance().getContext(), getDatabaseName(), "admin", "admin",
-        OrientDBConfig.defaultConfig());
-    setFactorySettings(dbPool);
-    super.executeTest();
+    factory = new OrientGraphFactory(graph.getRawGraph().getURL(), "admin", "admin");
+    factory.setStandardElementConstraints(false);
   }
 
   @Override
-  protected Callable<Void> createWriter(final int serverId, final int threadId, ServerRun server) {
-    return new TxWriter(serverId, threadId);
+  protected Callable<Void> createWriter(final int serverId, final int threadId, String databaseURL) {
+    return new TxWriter(serverId, threadId, databaseURL);
   }
 
-  protected OVertex createVertex(ODatabaseDocument graph, int serverId, int threadId, int i) {
+  protected OrientVertex createVertex(OrientGraph graph, int serverId, int threadId, int i) {
     final String uniqueId = serverId + "-" + threadId + "-" + i;
 
-    OVertex result = graph.newVertex("Person");
-    result.setProperty("id", UUID.randomUUID().toString());
-    result.setProperty("name", "Billy" + uniqueId);
-    result.setProperty("surname", "Mayes" + uniqueId);
-    result.setProperty("birthday", new Date());
-    result.setProperty("children", uniqueId);
-    graph.save(result);
-    return result;
+    return graph.addVertex("class:Person", "id", UUID.randomUUID().toString(), "name", "Billy" + uniqueId, "surname", "Mayes"
+        + uniqueId, "birthday", new Date(), "children", uniqueId);
   }
 
-  protected void updateVertex(ODatabaseDocument graph, OVertex v) {
+  protected void updateVertex(OrientGraph graph, OrientVertex v) {
     v.setProperty("updated", true);
-    v.save();
   }
 
-  protected void checkVertex(ODatabaseDocument graph, OVertex v) {
+  protected void checkVertex(OrientGraph graph, OrientVertex v) {
     v.reload();
     Assert.assertEquals(v.getProperty("updated"), Boolean.TRUE);
   }

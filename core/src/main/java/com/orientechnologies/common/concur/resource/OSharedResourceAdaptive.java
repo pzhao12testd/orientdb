@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.common.concur.resource;
 
 import com.orientechnologies.common.concur.OTimeoutException;
 import com.orientechnologies.common.concur.lock.OLockException;
-import com.orientechnologies.common.exception.OException;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -37,15 +36,16 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Adaptive class to handle shared resources. It's configurable specifying if it's running in a concurrent environment and allow o
  * specify a maximum timeout to avoid deadlocks.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public class OSharedResourceAdaptive {
-  private final ReentrantReadWriteLock lock  = new ReentrantReadWriteLock();
-  private final AtomicInteger          users = new AtomicInteger(0);
+  private final ReentrantReadWriteLock lock          = new ReentrantReadWriteLock();
+  private final AtomicInteger          users         = new AtomicInteger(0);
   private final boolean                concurrent;
   private final int                    timeout;
   private final boolean                ignoreThreadInterruption;
+  private int                          scaledUpCount = 0;
 
   protected OSharedResourceAdaptive() {
     this.concurrent = true;
@@ -117,15 +117,13 @@ public class OSharedResourceAdaptive {
                 Thread.currentThread().interrupt();
                 return;
               }
-            } catch (InterruptedException ignore) {
+            } catch (InterruptedException e2) {
               Thread.currentThread().interrupt();
             }
           }
 
-          final OLockException exception = new OLockException("Thread interrupted while waiting for resource of class '"
-              + getClass() + "' with timeout=" + timeout);
-          throw OException.wrapException(exception, e);
-
+          throw new OLockException("Thread interrupted while waiting for resource of class '" + getClass() + "' with timeout="
+              + timeout, e);
         }
         throwTimeoutException(lock.writeLock());
       } else {
@@ -153,14 +151,12 @@ public class OSharedResourceAdaptive {
                 Thread.currentThread().interrupt();
                 return;
               }
-            } catch (InterruptedException ignore) {
+            } catch (InterruptedException e2) {
               Thread.currentThread().interrupt();
             }
           }
-
-          final OLockException exception = new OLockException("Thread interrupted while waiting for resource of class '"
-              + getClass() + "' with timeout=" + timeout);
-          throw OException.wrapException(exception, e);
+          throw new OLockException("Thread interrupted while waiting for resource of class '" + getClass() + "' with timeout="
+              + timeout, e);
         }
 
         throwTimeoutException(lock.readLock());
@@ -214,7 +210,15 @@ public class OSharedResourceAdaptive {
 
       printWriter.flush();
       return stringWriter.toString();
-    } catch (RuntimeException | NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException ignore) {
+    } catch (RuntimeException e) {
+      return null;
+    } catch (NoSuchFieldException e) {
+      return null;
+    } catch (IllegalAccessException e) {
+      return null;
+    } catch (NoSuchMethodException e) {
+      return null;
+    } catch (InvocationTargetException e) {
       return null;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2014 OrientDB LTD (info--at--orientdb.com)
+ * Copyright 2010-2014 Orient Technologies LTD (info--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,11 @@ import com.tinkerpop.blueprints.Direction;
 /**
  * Represents a Vertex class.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com) (http://orientdb.com)
+ * @author Luca Garulli (http://www.orientechnologies.com)
  */
 public class OrientVertexType extends OrientElementType {
   // Keeping the name in Immutable class because i cannot do the other way around
-  public static final String CLASS_NAME = OClass.VERTEX_CLASS_NAME;
+  public static final String CLASS_NAME = OImmutableClass.VERTEX_CLASS_NAME;
 
   public class OrientVertexProperty extends OPropertyAbstractDelegate {
     public static final String      ORDERED = "ordered";
@@ -94,14 +94,6 @@ public class OrientVertexType extends OrientElementType {
   public OrientVertexType addCluster(final String iClusterName) {
     delegate.addCluster(iClusterName);
     return this;
-  }
-
-  @Override public boolean isEdgeType() {
-    return false;
-  }
-
-  @Override public boolean isVertexType() {
-    return true;
   }
 
   @Override

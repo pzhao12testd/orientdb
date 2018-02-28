@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,11 +23,13 @@ import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.ORecordInternal;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.orientechnologies.orient.core.tx.OTransaction.TXTYPE;
+import com.orientechnologies.orient.core.version.ORecordVersion;
+import com.orientechnologies.orient.core.version.OVersionFactory;
+import com.orientechnologies.orient.enterprise.channel.binary.OResponseProcessingException;
 import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
 import com.orientechnologies.orient.test.domain.business.Account;
 import com.orientechnologies.orient.test.domain.business.Address;
@@ -51,7 +53,7 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
   protected ODatabaseDocumentTx database1;
   protected ODatabaseDocumentTx database2;
 
-  public static final String NAME = "name";
+  public static final String    NAME = "name";
 
   @Parameters(value = "url")
   public TransactionConsistencyTest(@Optional String url) {
@@ -68,12 +70,12 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
     // Create docA.
     ODocument vDocA_db1 = database1.newInstance();
     vDocA_db1.field(NAME, "docA");
-    database1.save(vDocA_db1, database1.getClusterNameById(database1.getDefaultClusterId()));
+    database1.save(vDocA_db1);
 
     // Create docB.
     ODocument vDocB_db1 = database1.newInstance();
     vDocB_db1.field(NAME, "docB");
-    database1.save(vDocB_db1, database1.getClusterNameById(database1.getDefaultClusterId()));
+    database1.save(vDocB_db1);
 
     database1.commit();
 
@@ -81,8 +83,8 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
     ORID vDocA_Rid = vDocA_db1.getIdentity().copy();
     ORID vDocB_Rid = vDocB_db1.getIdentity().copy();
 
-    int vDocA_version = -1;
-    int vDocB_version = -1;
+    ORecordVersion vDocA_version = OVersionFactory.instance().createUntrackedVersion();
+    ORecordVersion vDocB_version = OVersionFactory.instance().createUntrackedVersion();
 
     database2 = new ODatabaseDocumentTx(url).open("admin", "admin");
     database2.begin(TXTYPE.OPTIMISTIC);
@@ -99,14 +101,16 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
         vDocA_db1.field(NAME, "docA_v3");
         database1.save(vDocA_db1);
         database1.commit();
+      } catch (OResponseProcessingException e) {
+        Assert.fail("Should not failed here...");
       } catch (OConcurrentModificationException e) {
         Assert.fail("Should not failed here...");
       }
       Assert.assertEquals(vDocA_db1.field(NAME), "docA_v3");
       // Keep the last versions.
       // Following updates should failed and reverted.
-      vDocA_version = vDocA_db1.getVersion();
-      vDocB_version = vDocB_db1.getVersion();
+      vDocA_version = vDocA_db1.getRecordVersion();
+      vDocB_version = vDocB_db1.getRecordVersion();
 
       // Update docB in db2 transaction context -> should be rollbacked.
       database2.activateOnCurrentThread();
@@ -117,6 +121,8 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
       // Will throw OConcurrentModificationException
       database2.commit();
       Assert.fail("Should throw OConcurrentModificationException");
+    } catch (OResponseProcessingException e) {
+      Assert.assertTrue(e.getCause() instanceof OConcurrentModificationException);
     } catch (OConcurrentModificationException e) {
       database2.rollback();
     }
@@ -131,12 +137,12 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
 
     ODocument vDocA_db2 = database2.load(vDocA_Rid);
     Assert.assertEquals(vDocA_db2.field(NAME), "docA_v3");
-    Assert.assertEquals(vDocA_db2.getVersion(), vDocA_version);
+    Assert.assertEquals(vDocA_db2.getRecordVersion(), vDocA_version);
 
     // docB should be in the first state : "docB"
     ODocument vDocB_db2 = database2.load(vDocB_Rid);
     Assert.assertEquals(vDocB_db2.field(NAME), "docB");
-    Assert.assertEquals(vDocB_db2.getVersion(), vDocB_version);
+    Assert.assertEquals(vDocB_db2.getRecordVersion(), vDocB_version);
 
     database2.close();
   }
@@ -148,7 +154,7 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
     // Create docA.
     ODocument vDocA_db1 = database1.newInstance();
     vDocA_db1.field(NAME, "docA");
-    database1.save(vDocA_db1, database1.getClusterNameById(database1.getDefaultClusterId()));
+    database1.save(vDocA_db1);
 
     // Keep the IDs.
     ORID vDocA_Rid = vDocA_db1.getIdentity().copy();
@@ -176,6 +182,9 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
       database2.activateOnCurrentThread();
       database2.commit();
       Assert.fail("Should throw OConcurrentModificationException");
+    } catch (OResponseProcessingException e) {
+      Assert.assertTrue(e.getCause() instanceof OConcurrentModificationException);
+      database2.rollback();
     } catch (OConcurrentModificationException e) {
       database2.rollback();
     }
@@ -206,7 +215,7 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
     // Create docA.
     ODocument vDocA_db1 = database1.newInstance();
     vDocA_db1.field(NAME, "docA");
-    database1.save(vDocA_db1, database1.getClusterNameById(database1.getDefaultClusterId()));
+    database1.save(vDocA_db1);
 
     // Keep the IDs.
     ORID vDocA_Rid = vDocA_db1.getIdentity().copy();
@@ -234,6 +243,9 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
       database2.activateOnCurrentThread();
       database2.commit();
       Assert.fail("Should throw OConcurrentModificationException");
+    } catch (OResponseProcessingException e) {
+      Assert.assertTrue(e.getCause() instanceof OConcurrentModificationException);
+      database2.rollback();
     } catch (OConcurrentModificationException e) {
       database2.rollback();
     }
@@ -264,7 +276,7 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
     database1.begin(TXTYPE.OPTIMISTIC);
     ODocument vDocA_db1 = database1.newInstance();
     vDocA_db1.field(NAME, "docA");
-    database1.save(vDocA_db1, database1.getClusterNameById(database1.getDefaultClusterId()));
+    database1.save(vDocA_db1);
     database1.commit();
 
     // Keep the ID.
@@ -314,21 +326,21 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
 
     ODocument loadedJack = database.load(jack.getIdentity());
 
-    int jackLastVersion = loadedJack.getVersion();
+    ORecordVersion jackLastVersion = loadedJack.getRecordVersion().copy();
     database.begin();
     loadedJack.field("occupation", "agent");
     loadedJack.save();
     database.commit();
-    Assert.assertTrue(jackLastVersion != loadedJack.getVersion());
+    Assert.assertTrue(!jackLastVersion.equals(loadedJack.getRecordVersion()));
 
     loadedJack = database.load(jack.getIdentity());
-    Assert.assertTrue(jackLastVersion != loadedJack.getVersion());
+    Assert.assertTrue(!jackLastVersion.equals(loadedJack.getRecordVersion()));
 
     database.close();
 
     database.open("admin", "admin");
     loadedJack = database.load(jack.getIdentity());
-    Assert.assertTrue(jackLastVersion != loadedJack.getVersion());
+    Assert.assertTrue(!jackLastVersion.equals(loadedJack.getRecordVersion()));
     database.close();
   }
 
@@ -337,8 +349,8 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
   public void createLinkInTx() {
     database = new ODatabaseDocumentTx(url).open("admin", "admin");
 
-    OClass profile = database.getMetadata().getSchema().createClass("MyProfile", 1, null);
-    OClass edge = database.getMetadata().getSchema().createClass("MyEdge", 1, null);
+    OClass profile = database.getMetadata().getSchema().createClass("MyProfile", database.addCluster("myprofile"));
+    OClass edge = database.getMetadata().getSchema().createClass("MyEdge", database.addCluster("myedge"));
     profile.createProperty("name", OType.STRING).setMin("3").setMax("30").createIndex(OClass.INDEX_TYPE.NOTUNIQUE);
     profile.createProperty("surname", OType.STRING).setMin("3").setMax("30");
     profile.createProperty("in", OType.LINKSET, edge);
@@ -644,10 +656,13 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
       }
 
       ((ODocument) inserted.elementAt(cnt - 1)).delete();
-      ORecordInternal.setVersion(((ODocument) inserted.elementAt(cnt - 2)), 0);
+      ((ODocument) inserted.elementAt(cnt - 2)).getRecordVersion().reset();
       ((ODocument) inserted.elementAt(cnt - 2)).save();
       database.commit();
       Assert.assertTrue(false);
+    } catch (OResponseProcessingException e) {
+      Assert.assertTrue(e.getCause() instanceof OConcurrentModificationException);
+      database.rollback();
     } catch (OConcurrentModificationException e) {
       Assert.assertTrue(true);
       database.rollback();
@@ -670,15 +685,15 @@ public class TransactionConsistencyTest extends DocumentDBBaseTest {
       graph.addVertex(null, "purpose", "testQueryIsolation");
 
       if (!url.startsWith("remote")) {
-        List<OIdentifiable> result = graph.getRawGraph()
-            .query(new OSQLSynchQuery<Object>("select from V where purpose = 'testQueryIsolation'"));
+        List<OIdentifiable> result = graph.getRawGraph().query(
+            new OSQLSynchQuery<Object>("select from V where purpose = 'testQueryIsolation'"));
         Assert.assertEquals(result.size(), 1);
       }
 
       graph.commit();
 
-      List<OIdentifiable> result = graph.getRawGraph()
-          .query(new OSQLSynchQuery<Object>("select from V where purpose = 'testQueryIsolation'"));
+      List<OIdentifiable> result = graph.getRawGraph().query(
+          new OSQLSynchQuery<Object>("select from V where purpose = 'testQueryIsolation'"));
       Assert.assertEquals(result.size(), 1);
 
     } finally {

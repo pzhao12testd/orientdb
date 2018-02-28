@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.metadata.function;
@@ -22,16 +22,16 @@ package com.orientechnologies.orient.core.metadata.function;
 import java.util.Set;
 
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.record.OProxedResource;
 
 /**
  * Proxy class to access to the centralized Function Library instance.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
-public class OFunctionLibraryProxy extends OProxedResource<OFunctionLibraryImpl> implements OFunctionLibrary {
-  public OFunctionLibraryProxy(final OFunctionLibraryImpl iDelegate, final ODatabaseDocumentInternal iDatabase) {
+public class OFunctionLibraryProxy extends OProxedResource<OFunctionLibrary> implements OFunctionLibrary {
+  public OFunctionLibraryProxy(final OFunctionLibrary iDelegate, final ODatabaseDocumentInternal iDatabase) {
     super(iDelegate, iDatabase);
   }
 
@@ -47,31 +47,21 @@ public class OFunctionLibraryProxy extends OProxedResource<OFunctionLibraryImpl>
 
   @Override
   public OFunction createFunction(final String iName) {
-    return delegate.createFunction(database, iName);
+    return delegate.createFunction(iName);
   }
 
   @Override
   public void create() {
-    delegate.create(database);
+    delegate.create();
   }
 
   @Override
   public void load() {
-    delegate.load(database);
+    delegate.load();
   }
 
   @Override
   public void close() {
     delegate.close();
-  }
-
-  @Override
-  public void dropFunction(OFunction function) {
-    delegate.dropFunction(function);
-  }
-
-  @Override
-  public void dropFunction(String iName) {
-    delegate.dropFunction(iName);
   }
 }

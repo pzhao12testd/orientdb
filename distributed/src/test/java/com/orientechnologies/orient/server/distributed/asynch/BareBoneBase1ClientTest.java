@@ -12,7 +12,7 @@ public abstract class BareBoneBase1ClientTest extends TestCase {
   protected static final String CONFIG_DIR = "src/test/resources";
   protected static final String DB1_DIR    = "target/db1";
 
-  protected volatile Throwable exceptionInThread;
+  protected volatile Throwable  exceptionInThread;
 
   protected abstract void dbClient1();
 
@@ -32,7 +32,7 @@ public abstract class BareBoneBase1ClientTest extends TestCase {
 
   @Override
   protected void tearDown() throws Exception {
-    ODatabaseDocumentTx.closeAll();
+    new ODatabaseDocumentTx(getLocalURL()).open("admin", "admin").drop();
     OFileUtils.deleteRecursively(new File(DB1_DIR));
   }
 
@@ -64,27 +64,22 @@ public abstract class BareBoneBase1ClientTest extends TestCase {
   }
 
   protected void endTest(BareBonesServer[] servers) throws Throwable {
-    for (BareBonesServer server : servers)
-      if (server != null) {
-        try {
-          server.stop();
-        } catch (Exception e) {
-          e.printStackTrace();
-        }
-      }
     if (exceptionInThread != null) {
       throw exceptionInThread;
     }
+
+    for (BareBonesServer server : servers)
+      server.stop();
   }
 
   protected BareBonesServer dbServer(String dbDirectory, String orientUrl, String dbConfigName) {
     BareBonesServer dbServer = new BareBonesServer();
     dbServer.deleteRecursively(new File(dbDirectory));
-    System.setProperty("ORIENTDB_HOME", dbDirectory);
-    dbServer.start(CONFIG_DIR, dbConfigName);
     if (orientUrl != null) {
       dbServer.createDB(orientUrl);
     }
+    System.setProperty("ORIENTDB_HOME", dbDirectory);
+    dbServer.start(CONFIG_DIR, dbConfigName);
 
     return dbServer;
   }

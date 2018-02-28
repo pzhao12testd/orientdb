@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -23,62 +23,37 @@ package com.orientechnologies.orient.core.storage.impl.local.paginated.wal;
 import com.orientechnologies.common.serialization.types.OLongSerializer;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 26.04.13
  */
 public class OUpdatePageRecord extends OAbstractPageWALRecord {
-  private OWALChanges        changes;
-  /**
-   * Previous value of LSN for current page.
-   * This value is used when we want to rollback changes of not completed transactions after restore.
-   */
-  private OLogSequenceNumber prevLsn;
+  private OWALChangesTree changesTree;
 
-  @SuppressWarnings("WeakerAccess")
   public OUpdatePageRecord() {
   }
 
   public OUpdatePageRecord(final long pageIndex, final long fileId, final OOperationUnitId operationUnitId,
-      final OWALChanges changes, final OLogSequenceNumber prevLsn) {
-    super(pageIndex, fileId, operationUnitId);
-    this.changes = changes;
-    this.prevLsn = prevLsn;
+      final OWALChangesTree changesTree, OLogSequenceNumber startLsn) {
+    super(pageIndex, fileId, operationUnitId, startLsn);
+    this.changesTree = changesTree;
   }
 
-  public OWALChanges getChanges() {
-    return changes;
+  public OWALChangesTree getChanges() {
+    return changesTree;
   }
 
   @Override
   public int serializedSize() {
     int serializedSize = super.serializedSize();
-    serializedSize += changes.serializedSize();
-
-    serializedSize += 2 * OLongSerializer.LONG_SIZE;
+    serializedSize += changesTree.serializedSize();
 
     return serializedSize;
-  }
-
-  /**
-   * Previous value of LSN for current page.
-   *
-   * This value is used when we want to rollback changes of not completed transactions at the end of restore procedure which was
-   * triggered at server start after its abnormal crash.
-   */
-  public OLogSequenceNumber getPrevLsn() {
-    return prevLsn;
   }
 
   @Override
   public int toStream(final byte[] content, int offset) {
     offset = super.toStream(content, offset);
-    offset = changes.toStream(offset, content);
-
-    OLongSerializer.INSTANCE.serializeNative(prevLsn.getSegment(), content, offset);
-    offset += OLongSerializer.LONG_SIZE;
-
-    OLongSerializer.INSTANCE.serializeNative(prevLsn.getPosition(), content, offset);
-    offset += OLongSerializer.LONG_SIZE;
+    offset = changesTree.toStream(offset, content);
 
     return offset;
   }
@@ -87,16 +62,8 @@ public class OUpdatePageRecord extends OAbstractPageWALRecord {
   public int fromStream(final byte[] content, int offset) {
     offset = super.fromStream(content, offset);
 
-    changes = new OWALPageChangesPortion();
-    offset = changes.fromStream(offset, content);
-
-    final long segment = OLongSerializer.INSTANCE.deserializeNative(content, offset);
-    offset += OLongSerializer.LONG_SIZE;
-
-    final long position = OLongSerializer.INSTANCE.deserializeNative(content, offset);
-    offset += OLongSerializer.LONG_SIZE;
-
-    prevLsn = new OLogSequenceNumber(segment, position);
+    changesTree = new OWALChangesTree();
+    offset = changesTree.fromStream(offset, content);
 
     return offset;
   }

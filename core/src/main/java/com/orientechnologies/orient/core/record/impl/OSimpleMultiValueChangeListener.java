@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -25,40 +25,37 @@ import com.orientechnologies.orient.core.db.record.OMultiValueChangeListener;
 import com.orientechnologies.orient.core.db.record.OMultiValueChangeTimeLine;
 import com.orientechnologies.orient.core.db.record.ORecordElement.STATUS;
 
-import java.lang.ref.WeakReference;
-
 /**
  * Perform gathering of all operations performed on tracked collection and create mapping between list of collection operations and
  * field name that contains collection that was changed.
- *
- * @param <K> Value that uniquely identifies position of item in collection
- * @param <V> Item value.
+ * 
+ * @param <K>
+ *          Value that uniquely identifies position of item in collection
+ * @param <V>
+ *          Item value.
  */
 final class OSimpleMultiValueChangeListener<K, V> implements OMultiValueChangeListener<K, V> {
   /**
-   *
+   * 
    */
-  private final WeakReference<ODocument> oDocument;
-  private final ODocumentEntry           entry;
+  private final ODocument      oDocument;
+  private final ODocumentEntry entry;
 
   OSimpleMultiValueChangeListener(ODocument oDocument, final ODocumentEntry entry) {
-    this.oDocument = new WeakReference<ODocument>(oDocument);
+    this.oDocument = oDocument;
     this.entry = entry;
   }
 
   public void onAfterRecordChanged(final OMultiValueChangeEvent<K, V> event) {
-    ODocument document = oDocument.get();
-    if (document == null)
-      //doc not alive anymore, do nothing.
-      return;
-    if (document.getInternalStatus() != STATUS.UNMARSHALLING) {
+    if (this.oDocument.getInternalStatus() != STATUS.UNMARSHALLING) {
       if (event.isChangesOwnerContent())
-        document.setDirty();
+        this.oDocument.setDirty();
       else
-        document.setDirtyNoChanged();
+        this.oDocument.setDirtyNoChanged();
     }
 
-    if (!(document._trackingChanges && document.getIdentity().isValid()) || document.getInternalStatus() == STATUS.UNMARSHALLING)
+    if (!(this.oDocument._trackingChanges && this.oDocument.getIdentity().isValid())
+        || this.oDocument.getInternalStatus() == STATUS.UNMARSHALLING)
       return;
 
     if (entry == null || entry.isChanged())

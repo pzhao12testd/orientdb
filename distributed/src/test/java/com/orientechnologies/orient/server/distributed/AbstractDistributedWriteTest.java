@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli(at)orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,52 +16,56 @@
 
 package com.orientechnologies.orient.server.distributed;
 
-//import com.orientechnologies.orient.core.db.OPartitionedDatabasePoolFactory;
-
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.OPartitionedDatabasePoolFactory;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import com.orientechnologies.orient.server.distributed.impl.ODistributedOutput;
 import junit.framework.Assert;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Insert records concurrently against the cluster
  */
 public abstract class AbstractDistributedWriteTest extends AbstractServerClusterTest {
-  protected final    int delayWriter = 0;
-  protected          int writerCount = 5;
-  protected volatile int count       = 100;
-  protected CountDownLatch runningWriters;
-//  protected final OPartitionedDatabasePoolFactory poolFactory = new OPartitionedDatabasePoolFactory();
+  protected static final int                      delayWriter = 0;
+  protected static final int                      writerCount = 5;
+  protected volatile int                          count       = 100;
+  protected CountDownLatch                        runningWriters;
+  protected final OPartitionedDatabasePoolFactory poolFactory = new OPartitionedDatabasePoolFactory();
 
   class Writer implements Callable<Void> {
-    private int serverId;
-    private int threadId;
+    private final String databaseUrl;
+    private int          serverId;
+    private int          threadId;
 
-    public Writer(final int iServerId, final int iThreadId) {
+    public Writer(final int iServerId, final int iThreadId, final String db) {
       serverId = iServerId;
       threadId = iThreadId;
+      databaseUrl = db;
     }
 
     @Override
     public Void call() throws Exception {
       String name = Integer.toString(threadId);
       for (int i = 0; i < count; i++) {
-        final ODatabaseDocument database = getDatabase(serverId);
-
+        final ODatabaseDocumentTx database = poolFactory.get(databaseUrl, "admin", "admin").acquire();
         try {
           if ((i + 1) % 100 == 0)
-            System.out.println(
-                "\nWriter " + threadId + "(" + database.getURL() + ") managed " + (i + 1) + "/" + count + " records so far");
+            System.out.println("\nWriter " + threadId + "(" + database.getURL() + ") managed " + (i + 1) + "/" + count
+                + " records so far");
 
           final ODocument person = createRecord(database, i);
           updateRecord(database, i);
@@ -89,12 +93,11 @@ public abstract class AbstractDistributedWriteTest extends AbstractServerCluster
       return null;
     }
 
-    private ODocument createRecord(ODatabaseDocument database, int i) {
+    private ODocument createRecord(ODatabaseDocumentTx database, int i) {
       final String uniqueId = serverId + "-" + threadId + "-" + i;
 
-      ODocument person = new ODocument("Person")
-          .fields("id", UUID.randomUUID().toString(), "name", "Billy" + uniqueId, "surname", "Mayes" + uniqueId, "birthday",
-              new Date(), "children", uniqueId);
+      ODocument person = new ODocument("Person").fields("id", UUID.randomUUID().toString(), "name", "Billy" + uniqueId, "surname",
+          "Mayes" + uniqueId, "birthday", new Date(), "children", uniqueId);
       database.save(person);
 
       Assert.assertTrue(person.getIdentity().isPersistent());
@@ -102,31 +105,31 @@ public abstract class AbstractDistributedWriteTest extends AbstractServerCluster
       return person;
     }
 
-    private void updateRecord(ODatabaseDocument database, int i) {
+    private void updateRecord(ODatabaseDocumentTx database, int i) {
       ODocument doc = loadRecord(database, i);
       doc.field("updated", true);
       doc.save();
     }
 
-    private void checkRecord(ODatabaseDocument database, int i) {
+    private void checkRecord(ODatabaseDocumentTx database, int i) {
       ODocument doc = loadRecord(database, i);
       Assert.assertEquals(doc.field("updated"), Boolean.TRUE);
     }
 
-    private void checkIndex(ODatabaseDocument database, final String key, final ORID rid) {
-      final List<OIdentifiable> result = database.command(new OCommandSQL("select from index:Person.name where key = ?"))
-          .execute(key);
+    private void checkIndex(ODatabaseDocumentTx database, final String key, final ORID rid) {
+      final List<OIdentifiable> result = database.command(new OCommandSQL("select from index:Person.name where key = ?")).execute(
+          key);
       Assert.assertNotNull(result);
       Assert.assertEquals(result.size(), 1);
       Assert.assertNotNull(result.get(0).getRecord());
       Assert.assertEquals(((ODocument) result.get(0)).field("rid"), rid);
     }
 
-    private ODocument loadRecord(ODatabaseDocument database, int i) {
+    private ODocument loadRecord(ODatabaseDocumentTx database, int i) {
       final String uniqueId = serverId + "-" + threadId + "-" + i;
 
-      List<ODocument> result = database
-          .query(new OSQLSynchQuery<ODocument>("select from Person where name = 'Billy" + uniqueId + "'"));
+      List<ODocument> result = database.query(new OSQLSynchQuery<ODocument>("select from Person where name = 'Billy" + uniqueId
+          + "'"));
       if (result.size() == 0)
         Assert.assertTrue("No record found with name = 'Billy" + uniqueId + "'!", false);
       else if (result.size() > 1)
@@ -143,6 +146,7 @@ public abstract class AbstractDistributedWriteTest extends AbstractServerCluster
   @Override
   public void executeTest() throws Exception {
 
+    ODatabaseDocumentTx database = poolFactory.get(getDatabaseURL(serverInstance.get(0)), "admin", "admin").acquire();
     System.out.println("Creating Writers and Readers threads...");
 
     final ExecutorService writerExecutors = Executors.newCachedThreadPool();
@@ -154,7 +158,7 @@ public abstract class AbstractDistributedWriteTest extends AbstractServerCluster
     List<Callable<Void>> writerWorkers = new ArrayList<Callable<Void>>();
     for (ServerRun server : serverInstance) {
       for (int j = 0; j < writerCount; j++) {
-        Callable writer = createWriter(serverId, threadId++, server);
+        Callable writer = createWriter(serverId, threadId++, getDatabaseURL(server));
         writerWorkers.add(writer);
       }
       serverId++;
@@ -175,33 +179,7 @@ public abstract class AbstractDistributedWriteTest extends AbstractServerCluster
 
   protected abstract String getDatabaseURL(ServerRun server);
 
-  protected Callable<Void> createWriter(final int serverId, final int threadId, final ServerRun serverRun) {
-    return new Writer(serverId, threadId);
-  }
-
-  protected void dumpDistributedDatabaseCfgOfAllTheServers() {
-    for (ServerRun s : serverInstance) {
-      final ODistributedServerManager dManager = s.getServerInstance().getDistributedManager();
-      final ODistributedConfiguration cfg = dManager.getDatabaseConfiguration(getDatabaseName());
-      final String cfgOutput = ODistributedOutput
-          .formatClusterTable(dManager, getDatabaseName(), cfg, dManager.getAvailableNodes(getDatabaseName()));
-
-      ODistributedServerLog
-          .info(this, s.getServerInstance().getDistributedManager().getLocalNodeName(), null, ODistributedServerLog.DIRECTION.NONE,
-              "Distributed configuration for database: %s (version=%d)%s\n", getDatabaseName(), cfg.getVersion(), cfgOutput);
-    }
-  }
-
-  protected void checkThePersonClassIsPresentOnAllTheServers() {
-    for (ServerRun s : serverInstance) {
-      // CHECK THE CLASS WAS CREATED ON ALL THE SERVERS
-      ODatabaseDocument database = getDatabase(s);
-      try {
-        org.junit.Assert
-            .assertTrue("Server=" + s + " db=" + getDatabaseName(), database.getMetadata().getSchema().existsClass("Person"));
-      } finally {
-        database.close();
-      }
-    }
+  protected Callable<Void> createWriter(final int serverId, final int threadId, String databaseURL) {
+    return new Writer(serverId, threadId, databaseURL);
   }
 }

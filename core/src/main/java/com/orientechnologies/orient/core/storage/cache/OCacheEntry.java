@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,57 +14,129 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.core.storage.cache;
 
-import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChanges;
-
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 7/23/13
  */
-public interface OCacheEntry {
+public class OCacheEntry {
+  OCachePointer dataPointer;
 
-  void markDirty();
+  final long    fileId;
+  final long    pageIndex;
 
-  void clearDirty();
+  boolean       dirty;
+  int           usagesCount;
 
-  boolean isDirty();
+  public OCacheEntry(long fileId, long pageIndex, OCachePointer dataPointer, boolean dirty) {
+    this.fileId = fileId;
+    this.pageIndex = pageIndex;
 
-  OCachePointer getCachePointer();
+    this.dataPointer = dataPointer;
+    this.dirty = dirty;
+  }
 
-  void clearCachePointer();
+  public void markDirty() {
+    this.dirty = true;
+  }
 
-  void setCachePointer(OCachePointer cachePointer);
+  public void clearDirty() {
+    this.dirty = false;
+  }
 
-  long getFileId();
+  public boolean isDirty() {
+    return dirty;
+  }
 
-  long getPageIndex();
+  public OCachePointer getCachePointer() {
+    return dataPointer;
+  }
 
-  void acquireExclusiveLock();
+  public void clearCachePointer() {
+    dataPointer = null;
+  }
 
-  void releaseExclusiveLock();
+  public void setCachePointer(OCachePointer cachePointer) {
+    this.dataPointer = cachePointer;
+  }
 
-  void acquireSharedLock();
+  public long getFileId() {
+    return fileId;
+  }
 
-  void releaseSharedLock();
+  public long getPageIndex() {
+    return pageIndex;
+  }
 
-  int getUsagesCount();
+  public void acquireExclusiveLock() {
+    dataPointer.acquireExclusiveLock();
+  }
 
-  void incrementUsages();
+  public void releaseExclusiveLock() {
+    dataPointer.releaseExclusiveLock();
+  }
 
-  /**
-   * DEBUG only !!
-   *
-   * @return Whether lock acquired on current entry
-   */
-  boolean isLockAcquiredByCurrentThread();
+  public void acquireSharedLock() {
+    dataPointer.acquireSharedLock();
+  }
 
-  void decrementUsages();
+  public void releaseSharedLock() {
+    dataPointer.releaseSharedLock();
+  }
 
-  OWALChanges getChanges();
+  public int getUsagesCount() {
+    return usagesCount;
+  }
 
+  public void incrementUsages() {
+    usagesCount++;
+  }
+
+  public void decrementUsages() {
+    usagesCount--;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o)
+      return true;
+    if (o == null || getClass() != o.getClass())
+      return false;
+
+    OCacheEntry that = (OCacheEntry) o;
+
+    if (fileId != that.fileId)
+      return false;
+    if (dirty != that.dirty)
+      return false;
+    if (pageIndex != that.pageIndex)
+      return false;
+    if (usagesCount != that.usagesCount)
+      return false;
+    if (dataPointer != null ? !dataPointer.equals(that.dataPointer) : that.dataPointer != null)
+      return false;
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = (int) (fileId ^ (fileId >>> 32));
+    result = 31 * result + (int) (pageIndex ^ (pageIndex >>> 32));
+    result = 31 * result + (dataPointer != null ? dataPointer.hashCode() : 0);
+    result = 31 * result + (dirty ? 1 : 0);
+    result = 31 * result + usagesCount;
+    return result;
+  }
+
+  @Override
+  public String toString() {
+    return "OReadCacheEntry{" + "fileId=" + fileId + ", pageIndex=" + pageIndex + ", dataPointer=" + dataPointer + ", dirty="
+        + dirty + ", usagesCount=" + usagesCount + '}';
+  }
 }

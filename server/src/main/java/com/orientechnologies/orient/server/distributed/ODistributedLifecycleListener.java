@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.distributed;
@@ -22,7 +22,7 @@ package com.orientechnologies.orient.server.distributed;
 /**
  * Distributed lifecycle interface to catch event from the distributed cluster.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  */
 public interface ODistributedLifecycleListener {
@@ -51,17 +51,4 @@ public interface ODistributedLifecycleListener {
    *          Node name that left
    */
   void onNodeLeft(String iNode);
-
-  /**
-   * Called upon change of database status on a node. Available statuses are defined in ODistributedServerManager.DB_STATUS.
-   * 
-   * @since 2.2.0
-   * @param iNode
-   *          The node name
-   * @param iDatabaseName
-   *          Database name
-   * @param iNewStatus
-   *          The new status
-   */
-  void onDatabaseChangeStatus(String iNode, String iDatabaseName, ODistributedServerManager.DB_STATUS iNewStatus);
 }

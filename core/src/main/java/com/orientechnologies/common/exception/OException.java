@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,34 +14,42 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.common.exception;
 
-public abstract class OException extends RuntimeException {
+public class OException extends RuntimeException {
 
   private static final long serialVersionUID = 3882447822497861424L;
 
-  public static OException wrapException(final OException exception, final Throwable cause) {
-    if (cause instanceof OHighLevelException)
-      return (OException) cause;
-
-    exception.initCause(cause);
-    return exception;
+  public OException() {
   }
 
   public OException(final String message) {
     super(message);
   }
 
-  /**
-   * This constructor is needed to restore and reproduce exception on client side in case of remote storage exception handling.
-   * Please create "copy constructor" for each exception which has current one as a parent.
-   */
-  public OException(final OException exception) {
-    super(exception.getMessage(), exception.getCause());
+  public OException(final Throwable cause) {
+    super(cause);
   }
 
+  public OException(final String message, final Throwable cause) {
+    super(message, cause);
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (obj == null || !obj.getClass().equals(getClass()))
+      return false;
+
+    final String myMsg = getMessage();
+    final String otherMsg = ((OException) obj).getMessage();
+    if (myMsg == null || otherMsg == null)
+      // UNKNOWN
+      return false;
+
+    return myMsg.equals(otherMsg);
+  }
 }

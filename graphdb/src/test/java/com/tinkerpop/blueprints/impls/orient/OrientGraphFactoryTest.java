@@ -8,10 +8,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 /**
- * @author Luca Garulli (l.garulli--(at)--orientdb.com) (http://orientdb.com)
+ * 
+ * @author Luca Garulli (http://www.orientechnologies.com)
  */
 @RunWith(JUnit4.class)
 public class OrientGraphFactoryTest {
@@ -63,7 +67,7 @@ public class OrientGraphFactoryTest {
     OrientBaseGraph g = factory.getNoTx();
     assertSame(g, OrientBaseGraph.getActiveGraph());
     assertEquals(g.getClass(), OrientGraphNoTx.class);
-    assertEquals(g.getRawGraph().getClass().getSuperclass(), ODatabaseDocumentTx.class);
+    assertEquals(g.getRawGraph().getClass(), ODatabaseDocumentTx.class);
     g.shutdown();
     assertNull(OrientBaseGraph.getActiveGraph());
     factory.close();
@@ -89,12 +93,12 @@ public class OrientGraphFactoryTest {
     OrientGraphFactory factory = new OrientGraphFactory("memory:testPool");
     OrientBaseGraph g = factory.getTx();
     assertEquals(g.getClass(), OrientGraph.class);
-    assertEquals(g.getRawGraph().getClass().getSuperclass(), ODatabaseDocumentTx.class);
+    assertEquals(g.getRawGraph().getClass(), ODatabaseDocumentTx.class);
     g.shutdown();
 
     g = factory.getNoTx();
     assertEquals(g.getClass(), OrientGraphNoTx.class);
-    assertEquals(g.getRawGraph().getClass().getSuperclass(), ODatabaseDocumentTx.class);
+    assertEquals(g.getRawGraph().getClass(), ODatabaseDocumentTx.class);
     g.shutdown();
     factory.close();
   }
@@ -109,7 +113,7 @@ public class OrientGraphFactoryTest {
     g.addVertex(null);
     g.commit();
     g.shutdown();
-    assertNull(ODatabaseRecordThreadLocal.instance().getIfDefined());
+    assertNull(ODatabaseRecordThreadLocal.INSTANCE.getIfDefined());
     factory.close();
   }
 

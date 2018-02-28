@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2015 OrientDB LTD (info(-at-)orientdb.com)
+ *  *  Copyright 2015 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
@@ -24,34 +24,32 @@ import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
 import com.orientechnologies.orient.core.command.OCommandResultListener;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.ODatabaseInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.ORecordOperation;
 import com.orientechnologies.orient.core.exception.OSecurityException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.metadata.security.ORestrictedAccessHook;
-import com.orientechnologies.orient.core.metadata.security.ORestrictedOperation;
 import com.orientechnologies.orient.core.metadata.security.ORole;
 import com.orientechnologies.orient.core.metadata.security.ORule;
 import com.orientechnologies.orient.core.query.live.OLiveQueryHook;
 import com.orientechnologies.orient.core.query.live.OLiveQueryListener;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.query.OLegacyResultSet;
 import com.orientechnologies.orient.core.sql.query.OLiveResultListener;
+import com.orientechnologies.orient.core.sql.query.OResultSet;
 
 import java.util.Map;
 import java.util.Random;
 
 /**
- * @author Luigi Dell'Aquila (l.dellaquila-(at)-orientdb.com)
+ * @author Luigi Dell'Aquila
  */
 public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect implements OLiveQueryListener {
-  public static final String KEYWORD_LIVE_SELECT = "LIVE SELECT";
-  private ODatabaseDocument execDb;
-  private int               token;
-  private static final Random random = new Random();
+  public static final String  KEYWORD_LIVE_SELECT = "LIVE SELECT";
+  private ODatabaseDocument   execDb;
+  private int                 token;
+  private static final Random random              = new Random();
 
   public OCommandExecutorSQLLiveSelect() {
 
@@ -59,17 +57,17 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
 
   public Object execute(final Map<Object, Object> iArgs) {
     try {
-      final ODatabaseDocumentInternal db = getDatabase();
       execInSeparateDatabase(new OCallable() {
-        @Override public Object call(Object iArgument) {
-          return execDb = db.copy();
+        @Override
+        public Object call(Object iArgument) {
+          return execDb = ((ODatabaseDocumentTx) getDatabase()).copy();
         }
       });
 
       synchronized (random) {
         token = random.nextInt();// TODO do something better ;-)!
       }
-      subscribeToLiveQuery(token, db);
+      subscribeToLiveQuery(token);
       bindDefaultContextVariables();
 
       if (iArgs != null)
@@ -87,7 +85,7 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
       ODocument result = new ODocument();
       result.field("token", token);// TODO change this name...?
 
-      ((OLegacyResultSet) getResult()).add(result);
+      ((OResultSet) getResult()).add(result);
       return getResult();
     } finally {
       if (request != null && request.getResultListener() != null) {
@@ -96,38 +94,29 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
     }
   }
 
-  private void subscribeToLiveQuery(Integer token, ODatabaseInternal db) {
-    OLiveQueryHook.subscribe(token, this, db);
+  private void subscribeToLiveQuery(Integer token) {
+    OLiveQueryHook.subscribe(token, this);
   }
 
   public void onLiveResult(final ORecordOperation iOp) {
 
-    ODatabaseDocumentInternal oldThreadLocal = ODatabaseRecordThreadLocal.instance().getIfDefined();
-    execDb.activateOnCurrentThread();
+    final OIdentifiable value = iOp.getRecord();
 
-    try {
-      final OIdentifiable value = iOp.getRecord();
-
-      if (!matchesTarget(value)) {
-        return;
-      }
-      if (!matchesFilters(value)) {
-        return;
-      }
-      if (!checkSecurity(value)) {
-        return;
-      }
-    } finally {
-      if (oldThreadLocal == null) {
-        ODatabaseRecordThreadLocal.instance().remove();
-      } else {
-        ODatabaseRecordThreadLocal.instance().set(oldThreadLocal);
-      }
+    if (!matchesTarget(value)) {
+      return;
     }
+    if (!matchesFilters(value)) {
+      return;
+    }
+    if (!checkSecurity(value)) {
+      return;
+    }
+
     final OCommandResultListener listener = request.getResultListener();
     if (listener instanceof OLiveResultListener) {
       execInSeparateDatabase(new OCallable() {
-        @Override public Object call(Object iArgument) {
+        @Override
+        public Object call(Object iArgument) {
           execDb.activateOnCurrentThread();
           ((OLiveResultListener) listener).onLiveResult(token, iOp);
           return null;
@@ -137,14 +126,14 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
   }
 
   protected void execInSeparateDatabase(final OCallable iCallback) {
-    final ODatabaseDocumentInternal prevDb = ODatabaseRecordThreadLocal.instance().getIfDefined();
+    final ODatabaseDocumentInternal prevDb = ODatabaseRecordThreadLocal.INSTANCE.getIfDefined();
     try {
       iCallback.call(null);
     } finally {
       if (prevDb != null) {
-        ODatabaseRecordThreadLocal.instance().set(prevDb);
+        ODatabaseRecordThreadLocal.INSTANCE.set(prevDb);
       } else {
-        ODatabaseRecordThreadLocal.instance().remove();
+        ODatabaseRecordThreadLocal.INSTANCE.remove();
       }
     }
   }
@@ -153,10 +142,10 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
     try {
       // TODO check this!
       execDb.checkSecurity(ORule.ResourceGeneric.CLASS, ORole.PERMISSION_READ, ((ODocument) value.getRecord()).getClassName());
-    } catch (OSecurityException ignore) {
+    } catch (OSecurityException e) {
       return false;
     }
-    return ORestrictedAccessHook.isAllowed(execDb, (ODocument) value.getRecord(), ORestrictedOperation.ALLOW_READ, false);
+    return true;
   }
 
   private boolean matchesFilters(OIdentifiable value) {
@@ -183,7 +172,7 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
     }
 
     if (this.parsedTarget.getTargetClasses() != null) {
-      for (String clazz : parsedTarget.getTargetClasses().keySet()) {
+      for (OClass clazz : parsedTarget.getTargetClasses().keySet()) {
         if (docClass.isSubClassOf(clazz)) {
           return true;
         }
@@ -200,7 +189,7 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
       final String clusterName = execDb.getClusterNameById(value.getIdentity().getClusterId());
       if (clusterName != null) {
         for (String cluster : parsedTarget.getTargetClusters().keySet()) {
-          if (clusterName.equalsIgnoreCase(cluster)) {//make it case insensitive in 3.0?
+          if (clusterName.equals(cluster)) {
             return true;
           }
         }
@@ -210,23 +199,11 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
   }
 
   public void onLiveResultEnd() {
-    if (request.getResultListener() instanceof OLiveResultListener) {
-      ((OLiveResultListener) request.getResultListener()).onUnsubscribe(token);
-    }
-
-    if (execDb != null) {
-      ODatabaseDocumentInternal oldThreadDB = ODatabaseRecordThreadLocal.instance().getIfDefined();
-      execDb.activateOnCurrentThread();
-      execDb.close();
-      if (oldThreadDB == null) {
-        ODatabaseRecordThreadLocal.instance().remove();
-      } else {
-        ODatabaseRecordThreadLocal.instance().set(oldThreadDB);
-      }
-    }
+    execDb.close();
   }
 
-  @Override public OCommandExecutorSQLSelect parse(final OCommandRequest iRequest) {
+  @Override
+  public OCommandExecutorSQLSelect parse(final OCommandRequest iRequest) {
     final OCommandRequestText requestText = (OCommandRequestText) iRequest;
     final String originalText = requestText.getText();
     final String remainingText = requestText.getText().trim().substring(5).trim();
@@ -238,7 +215,8 @@ public class OCommandExecutorSQLLiveSelect extends OCommandExecutorSQLSelect imp
     }
   }
 
-  @Override public QUORUM_TYPE getQuorumType() {
+  @Override
+  public QUORUM_TYPE getQuorumType() {
     return QUORUM_TYPE.NONE;
   }
 

@@ -3,22 +3,23 @@ package com.orientechnologies.orient.core.metadata.schema;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.exception.OSchemaException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static org.junit.Assert.*;
+import static org.testng.Assert.*;
 
 public class OClassImplTest {
 
   private ODatabaseDocumentTx db;
 
-  @Before
+  @BeforeMethod
   public void setUp() {
     db = new ODatabaseDocumentTx("memory:" + OClassImplTest.class.getSimpleName());
     if (db.exists()) {
@@ -27,12 +28,12 @@ public class OClassImplTest {
       db.create();
   }
 
-  @After
+  @AfterMethod
   public void after() {
     db.close();
   }
 
-  @After
+  @AfterClass
   public void afterClass() {
     db.open("admin", "admin");
     db.drop();
@@ -40,7 +41,7 @@ public class OClassImplTest {
 
   /**
    * If class was not abstract and we call {@code setAbstract(false)} clusters should not be changed.
-   *
+   * 
    * @throws Exception
    */
   @Test
@@ -52,12 +53,12 @@ public class OClassImplTest {
 
     oClass.setAbstract(false);
 
-    assertEquals(oClass.getDefaultClusterId(), oldClusterId);
+    Assert.assertEquals(oClass.getDefaultClusterId(), oldClusterId);
   }
 
   /**
    * If class was abstract and we call {@code setAbstract(false)} a new non default cluster should be created.
-   *
+   * 
    * @throws Exception
    */
   @Test
@@ -68,24 +69,11 @@ public class OClassImplTest {
 
     oClass.setAbstract(false);
 
-    assertFalse(oClass.getDefaultClusterId() == -1);
-    assertFalse(oClass.getDefaultClusterId() == db.getDefaultClusterId());
+    Assert.assertFalse(oClass.getDefaultClusterId() == -1);
+    Assert.assertFalse(oClass.getDefaultClusterId() == db.getDefaultClusterId());
   }
 
-  @Test
-  public void testCreateNoLinkedClass() {
-    final OSchema oSchema = db.getMetadata().getSchema();
-
-    OClass oClass = oSchema.createClass("Test21");
-    oClass.createProperty("some", OType.LINKLIST, (OClass) null);
-    oClass.createProperty("some2", OType.LINKLIST, (OClass) null, true);
-
-    assertNotNull(oClass.getProperty("some"));
-    assertNotNull(oClass.getProperty("some2"));
-
-  }
-
-  @Test(expected = OSchemaException.class)
+  @Test(expectedExceptions = OSchemaException.class)
   public void testCreatePropertyFailOnExistingData() {
     final OSchema oSchema = db.getMetadata().getSchema();
     OClass oClass = oSchema.createClass("Test3");
@@ -99,7 +87,7 @@ public class OClassImplTest {
 
   }
 
-  @Test(expected = OSchemaException.class)
+  @Test(expectedExceptions = OSchemaException.class)
   public void testCreatePropertyFailOnExistingDataLinkList() {
     final OSchema oSchema = db.getMetadata().getSchema();
     OClass oClass = oSchema.createClass("Test4");
@@ -114,7 +102,7 @@ public class OClassImplTest {
 
   }
 
-  @Test(expected = OSchemaException.class)
+  @Test(expectedExceptions = OSchemaException.class)
   public void testCreatePropertyFailOnExistingDataLinkSet() {
     final OSchema oSchema = db.getMetadata().getSchema();
     OClass oClass = oSchema.createClass("Test5");
@@ -129,7 +117,7 @@ public class OClassImplTest {
 
   }
 
-  @Test(expected = OSchemaException.class)
+  @Test(expectedExceptions = OSchemaException.class)
   public void testCreatePropertyFailOnExistingDataEmbeddetSet() {
     final OSchema oSchema = db.getMetadata().getSchema();
     OClass oClass = oSchema.createClass("Test6");
@@ -144,7 +132,7 @@ public class OClassImplTest {
 
   }
 
-  @Test(expected = OSchemaException.class)
+  @Test(expectedExceptions = OSchemaException.class)
   public void testCreatePropertyFailOnExistingDataEmbeddedList() {
     final OSchema oSchema = db.getMetadata().getSchema();
     OClass oClass = oSchema.createClass("Test7");
@@ -159,7 +147,7 @@ public class OClassImplTest {
 
   }
 
-  @Test(expected = OSchemaException.class)
+  @Test(expectedExceptions = OSchemaException.class)
   public void testCreatePropertyFailOnExistingDataEmbeddedMap() {
     final OSchema oSchema = db.getMetadata().getSchema();
     OClass oClass = oSchema.createClass("Test8");
@@ -174,7 +162,7 @@ public class OClassImplTest {
 
   }
 
-  @Test(expected = OSchemaException.class)
+  @Test(expectedExceptions = OSchemaException.class)
   public void testCreatePropertyFailOnExistingDataLinkMap() {
     final OSchema oSchema = db.getMetadata().getSchema();
     OClass oClass = oSchema.createClass("Test9");
@@ -300,7 +288,7 @@ public class OClassImplTest {
     assertEquals(id, prop.getId());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expectedExceptions = IllegalArgumentException.class)
   public void testSetUncastableType() {
     final OSchema oSchema = db.getMetadata().getSchema();
     OClass oClass = oSchema.createClass("Test16");
@@ -347,7 +335,7 @@ public class OClassImplTest {
     oClass.createProperty("test6", OType.INTEGER);
 
     ODocument document = new ODocument("Test19");
-    // TODO add boolean and byte
+    // TODO add boolan and byte
     document.field("test1", (short) 1);
     document.field("test2", 1);
     document.field("test3", 4L);
@@ -477,6 +465,34 @@ public class OClassImplTest {
   }
 
   @Test
+  public void testReservedWords() {
+    Set<String> reserved = new HashSet<String>();
+    // reserved.add("select");
+    reserved.add("traverse");
+    reserved.add("insert");
+    reserved.add("update");
+    reserved.add("delete");
+    reserved.add("from");
+    reserved.add("where");
+    reserved.add("skip");
+    reserved.add("limit");
+    reserved.add("timeout");
+
+    final OSchema oSchema = db.getMetadata().getSchema();
+    OClass foo = oSchema.createClass("OClassImplTest_testReservedWords");
+
+    for (String s : reserved) {
+      try {
+        foo.createProperty(s, OType.STRING);
+        fail();
+      } catch (OSchemaException x) {
+        System.out.println(x.getMessage());
+      }
+    }
+
+  }
+
+  @Test
   public void testClassNameSyntax() {
 
     final OSchema oSchema = db.getMetadata().getSchema();
@@ -484,34 +500,20 @@ public class OClassImplTest {
     assertNotNull(oSchema.createClass("_OClassImplTesttestClassNameSyntax"));
     assertNotNull(oSchema.createClass("_OClassImplTesttestClassNameSyntax_"));
     assertNotNull(oSchema.createClass("_OClassImplTestte_stClassNameSyntax_"));
-    assertNotNull(oSchema.createClass("_OClassImplTesttestClassNameSyntax_1"));
     assertNotNull(oSchema.createClass("_OClassImplTesttestClassNameSyntax_12"));
     assertNotNull(oSchema.createClass("_OClassImplTesttestCla23ssNameSyntax_12"));
     assertNotNull(oSchema.createClass("$OClassImplTesttestCla23ssNameSyntax_12"));
     assertNotNull(oSchema.createClass("OClassImplTesttestC$la23ssNameSyntax_12"));
     assertNotNull(oSchema.createClass("oOClassImplTesttestC$la23ssNameSyntax_12"));
-    String[] validClassNamesSince30 = { "foo bar", "12", "#12", "12AAA", ",asdfasdf", "adsf,asdf", "asdf.sadf", ".asdf", "asdfaf.", "asdf:asdf" };
-    for (String s : validClassNamesSince30) {
-      assertNotNull(oSchema.createClass(s));
+    String[] invalidClassNames = { "foo bar", "12", "#12", "12AAA", "%adsf", ",asdfasdf", "adsf,asdf", "asdf.sadf", ".asdf", "asdfaf.", "asdf:asdf" };
+    for (String s : invalidClassNames) {
+      try {
+        oSchema.createClass(s);
+        fail("class with invalid name is incorrectly created: '" + s + "'");
+      } catch (Exception e) {
+
+      }
     }
 
   }
-
-  @Test
-  public void testTypeAny() {
-    String className = "testTypeAny";
-    final OSchema oSchema = db.getMetadata().getSchema();
-
-    OClass oClass = oSchema.createClass(className);
-
-    ODocument record = db.newInstance(className);
-    record.field("name", "foo");
-    record.save();
-
-    oClass.createProperty("name", OType.ANY);
-
-    List<?> result = db.query(new OSQLSynchQuery<Object>("select from " + className + " where name = 'foo'"));
-    assertEquals(result.size(), 1);
-  }
-
 }

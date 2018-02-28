@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,33 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.common.console;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.ServiceLoader;
+import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.orientechnologies.common.console.annotation.ConsoleCommand;
 import com.orientechnologies.common.console.annotation.ConsoleParameter;
@@ -25,33 +48,27 @@ import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.parser.OStringParser;
 import com.orientechnologies.common.util.OArrays;
 
-import java.io.*;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 public class OConsoleApplication {
-  public static final    String              ONLINE_HELP_URL = "https://raw.githubusercontent.com/orientechnologies/orientdb-docs/master/";
-  public static final    String              ONLINE_HELP_EXT = ".md";
-  protected static final String[]            COMMENT_PREFIXS = new String[] { "#", "--", "//" };
-  protected final        StringBuilder       commandBuffer   = new StringBuilder(2048);
-  protected              InputStream         in              = System.in;                                                                  // System.in;
-  protected              PrintStream         out             = System.out;
-  protected              PrintStream         err             = System.err;
-  protected              String              wordSeparator   = " ";
-  protected              String[]            helpCommands    = { "help", "?" };
-  protected              String[]            exitCommands    = { "exit", "bye", "quit" };
-  protected              Map<String, String> properties      = new HashMap<String, String>();
-  protected              OConsoleReader      reader          = new ODefaultConsoleReader();
+  protected static final String[]   COMMENT_PREFIXS = new String[] { "#", "--", "//" };
+  public static final String        ONLINE_HELP_URL = "https://raw.githubusercontent.com/orientechnologies/orientdb-docs/master/";
+  public static final String        ONLINE_HELP_EXT = ".md";
+  protected final StringBuilder     commandBuffer   = new StringBuilder(2048);
+  protected InputStream             in              = System.in;                                                                  // System.in;
+  protected PrintStream             out             = System.out;
+  protected PrintStream             err             = System.err;
+  protected String                  wordSeparator   = " ";
+  protected String[]                helpCommands    = { "help", "?" };
+  protected String[]                exitCommands    = { "exit", "bye", "quit" };
+  protected Map<String, String>     properties      = new HashMap<String, String>();
+  // protected OConsoleReader reader = new TTYConsoleReader();
+  protected OConsoleReader          reader          = new DefaultConsoleReader();
   protected boolean                 interactiveMode;
   protected String[]                args;
   protected TreeMap<Method, Object> methods;
+
+  protected enum RESULT {
+    OK, ERROR, EXIT
+  }
 
   public OConsoleApplication(String[] iArgs) {
     this.args = iArgs;
@@ -63,8 +80,9 @@ public class OConsoleApplication {
     for (int i = 0; i < m.getParameterAnnotations().length; i++) {
       for (int j = 0; j < m.getParameterAnnotations()[i].length; j++) {
         if (m.getParameterAnnotations()[i][j] instanceof com.orientechnologies.common.console.annotation.ConsoleParameter) {
-          buffer.append(
-              " <" + ((com.orientechnologies.common.console.annotation.ConsoleParameter) m.getParameterAnnotations()[i][j]).name()
+          buffer
+              .append(" <"
+                  + ((com.orientechnologies.common.console.annotation.ConsoleParameter) m.getParameterAnnotations()[i][j]).name()
                   + ">");
         }
       }
@@ -125,7 +143,6 @@ public class OConsoleApplication {
             break;
         } catch (Exception e) {
           result = 1;
-          out.print("Error on reading console input: " + e.getMessage());
           OLogManager.instance().error(this, "Error on reading console input: %s", e, consoleInput);
         }
       }
@@ -141,33 +158,20 @@ public class OConsoleApplication {
 
   public void message(final String iMessage, final Object... iArgs) {
     final int verboseLevel = getVerboseLevel();
-    if (verboseLevel > 1) {
-      if (iArgs != null && iArgs.length > 0)
-        out.printf(iMessage, iArgs);
-      else
-        out.print(iMessage);
-    }
+    if (verboseLevel > 1)
+      out.printf(iMessage, iArgs);
   }
 
   public void error(final String iMessage, final Object... iArgs) {
     final int verboseLevel = getVerboseLevel();
-    if (verboseLevel > 0) {
-      if (iArgs != null && iArgs.length > 0)
-        out.printf(iMessage, iArgs);
-      else
-        out.print(iMessage);
-    }
+    if (verboseLevel > 0)
+      out.printf(iMessage, iArgs);
   }
 
   public int getVerboseLevel() {
     final String v = properties.get("verbose");
     final int verboseLevel = v != null ? Integer.parseInt(v) : 2;
     return verboseLevel;
-  }
-
-  protected int getConsoleWidth() {
-    final String width = properties.get("width");
-    return width == null ? reader.getConsoleWidth() : Integer.parseInt(width);
   }
 
   public boolean isEchoEnabled() {
@@ -177,7 +181,7 @@ public class OConsoleApplication {
   protected boolean isPropertyEnabled(final String iPropertyName) {
     String v = properties.get(iPropertyName);
     if (v != null) {
-      v = v.toLowerCase(Locale.ENGLISH);
+      v = v.toLowerCase();
       return v.equals("true") || v.equals("on");
     }
     return false;
@@ -196,15 +200,12 @@ public class OConsoleApplication {
   }
 
   protected boolean executeBatch(final String commandLine) {
-    File commandFile = new File(commandLine);
-    if (!commandFile.isAbsolute()) {
-      commandFile = new File(new File("."), commandLine);
-    }
+    final File commandFile = new File(commandLine);
 
     OCommandStream scanner;
     try {
       scanner = new ODFACommandStream(commandFile);
-    } catch (FileNotFoundException ignore) {
+    } catch (FileNotFoundException e) {
       scanner = new ODFACommandStream(commandLine);
     }
 
@@ -236,44 +237,42 @@ public class OConsoleApplication {
 
         } else if (commandBuffer.length() > 0) {
           // BUFFER IT
-          commandBuffer.append(' ');
+          commandBuffer.append(';');
           commandBuffer.append(commandLine);
-          commandBuffer.append('\n');
           commandLine = null;
         }
 
         if (commandLine != null) {
-          if (isEchoEnabled()) {
+          if (iBatchMode || isEchoEnabled()) {
             out.println();
             out.print(getPrompt());
             out.print(commandLine);
             out.println();
           }
 
-          if (commandLine.endsWith(";")) {
-            commandLine = commandLine.substring(0, commandLine.length() - 1);
-          }
           final RESULT status = execute(commandLine);
           commandLine = null;
 
-          if (status == RESULT.EXIT
-              || (status == RESULT.ERROR && !Boolean.parseBoolean(properties.get("ignoreErrors"))) && iBatchMode)
+          if (status == RESULT.EXIT || (status == RESULT.ERROR && !Boolean.parseBoolean(properties.get("ignoreErrors")))
+              && iBatchMode)
             return false;
         }
       }
 
-      if (commandBuffer.length() > 0) {
-        if (iBatchMode && isEchoEnabled()) {
-          out.println();
-          out.print(getPrompt());
-          out.print(commandBuffer);
-          out.println();
-        }
+      if (commandBuffer.length() == 0) {
+        if (commandBuffer.length() > 0) {
+          if (iBatchMode) {
+            out.println();
+            out.print(getPrompt());
+            out.print(commandBuffer);
+            out.println();
+          }
 
-        final RESULT status = execute(commandBuffer.toString());
-        if (status == RESULT.EXIT
-            || (status == RESULT.ERROR && !Boolean.parseBoolean(properties.get("ignoreErrors"))) && iBatchMode)
-          return false;
+          final RESULT status = execute(commandBuffer.toString());
+          if (status == RESULT.EXIT || (status == RESULT.ERROR && !Boolean.parseBoolean(properties.get("ignoreErrors")))
+              && iBatchMode)
+            return false;
+        }
       }
     } finally {
       commandStream.close();
@@ -316,20 +315,14 @@ public class OConsoleApplication {
       }
 
     for (String cmd : exitCommands)
-      if (cmd.equalsIgnoreCase(commandWords[0])) {
+      if (cmd.equals(commandWords[0])) {
         return RESULT.EXIT;
       }
 
     Method lastMethodInvoked = null;
     final StringBuilder lastCommandInvoked = new StringBuilder(1024);
 
-    String commandLowerCase = "";
-    for (int i = 0; i < commandWords.length; i++) {
-      if (i > 0) {
-        commandLowerCase += " ";
-      }
-      commandLowerCase += commandWords[i].toLowerCase(Locale.ENGLISH);
-    }
+    final String commandLowerCase = iCommand.toLowerCase();
 
     for (Entry<Method, Object> entry : getConsoleMethods().entrySet()) {
       final Method m = entry.getKey();
@@ -398,7 +391,7 @@ public class OConsoleApplication {
       try {
         m.invoke(entry.getValue(), methodArgs);
 
-      } catch (IllegalArgumentException ignore) {
+      } catch (IllegalArgumentException e) {
         lastMethodInvoked = m;
         // GET THE COMMAND NAME
         lastCommandInvoked.setLength(0);
@@ -439,35 +432,9 @@ public class OConsoleApplication {
     Method lastMethodInvoked = null;
     final StringBuilder lastCommandInvoked = new StringBuilder(1024);
 
-    final String commandLowerCase = iCommand.toLowerCase(Locale.ENGLISH);
+    final String commandLowerCase = iCommand.toLowerCase();
 
-    final Map<Method, Object> methodMap = getConsoleMethods();
-
-    final StringBuilder commandSignature = new StringBuilder();
-    boolean separator = false;
-    for (int i = 0; i < iCommand.length(); ++i) {
-      final char ch = iCommand.charAt(i);
-      if (ch == ' ')
-        separator = true;
-      else {
-        if (separator) {
-          separator = false;
-          commandSignature.append(Character.toUpperCase(ch));
-        } else
-          commandSignature.append(ch);
-      }
-    }
-
-    final String commandSignatureToCheck = commandSignature.toString();
-
-    for (Entry<Method, Object> entry : methodMap.entrySet()) {
-      final Method m = entry.getKey();
-      if (m.getName().equals(commandSignatureToCheck))
-        // FOUND EXACT MATCH
-        return m;
-    }
-
-    for (Entry<Method, Object> entry : methodMap.entrySet()) {
+    for (Entry<Method, Object> entry : getConsoleMethods().entrySet()) {
       final Method m = entry.getKey();
       final String methodName = m.getName();
       final ConsoleCommand ann = m.getAnnotation(ConsoleCommand.class);
@@ -509,22 +476,14 @@ public class OConsoleApplication {
 
   protected void syntaxError(String iCommand, Method m) {
     error(
-        "\n!Wrong syntax. If you're running in batch mode make sure all commands are delimited by semicolon (;) or a linefeed (\\n). Expected: \n\r\n\r%s",
-        formatCommandSpecs(iCommand, m));
-  }
-
-  protected String formatCommandSpecs(final String iCommand, final Method m) {
-    final StringBuilder buffer = new StringBuilder();
-    final StringBuilder signature = new StringBuilder();
-
-    signature.append(iCommand);
+        "\n!Wrong syntax. If you're using a file make sure all commands are delimited by semicolon (;) or a linefeed (\\n)\n\r\n\r Expected: %s ",
+        iCommand);
 
     String paramName = null;
     String paramDescription = null;
     boolean paramOptional = false;
 
-    buffer.append("\n\nWHERE:\n\n");
-
+    StringBuilder buffer = new StringBuilder("\n\nWhere:\n\n");
     for (Annotation[] annotations : m.getParameterAnnotations()) {
       for (Annotation ann : annotations) {
         if (ann instanceof com.orientechnologies.common.console.annotation.ConsoleParameter) {
@@ -539,25 +498,19 @@ public class OConsoleApplication {
         paramName = "?";
 
       if (paramOptional)
-        signature.append(" [<" + paramName + ">]");
+        message("[<%s>] ", paramName);
       else
-        signature.append(" <" + paramName + ">");
+        message("<%s> ", paramName);
 
       buffer.append("* ");
-      buffer.append(String.format("%-18s", paramName));
+      buffer.append(String.format("%-15s", paramName));
 
       if (paramDescription != null)
-        buffer.append(paramDescription);
-
-      if (paramOptional)
-        buffer.append(" (optional)");
-
+        buffer.append(String.format("%-15s", paramDescription));
       buffer.append("\n");
     }
 
-    signature.append(buffer);
-
-    return signature.toString();
+    message(buffer.toString());
   }
 
   /**
@@ -656,23 +609,69 @@ public class OConsoleApplication {
       if (ann != null) {
         // FETCH ONLINE CONTENT
         if (onlineMode && !ann.onlineHelp().isEmpty()) {
-          // try {
-          final String text = getOnlineHelp(ONLINE_HELP_URL + ann.onlineHelp() + ONLINE_HELP_EXT);
-          if (text != null && !text.isEmpty()) {
-            message(text);
-            // ONLINE FETCHING SUCCEED: RETURN
-            return;
+          try {
+            final String text = getOnlineHelp(ONLINE_HELP_URL + ann.onlineHelp() + ONLINE_HELP_EXT);
+            if (text != null && !text.isEmpty()) {
+              message(text);
+              // ONLINE FETCHING SUCCEED: RETURN
+              return;
+            }
+          } catch (Exception e) {
           }
-          // } catch (Exception e) {
-          // }
-          error("!CANNOT FETCH ONLINE DOCUMENTATION, CHECK IF COMPUTER IS CONNECTED TO THE INTERNET.");
+          error("!CANNOT FETCH ONLINE DOCUMENTATION, CHECK COMPUTER IS CONNECTED TO THE INTERNET.");
           return;
         }
 
-        message(ann.description() + "." + "\r\n\r\nSYNTAX: ");
-
         // IN ANY CASE DISPLAY INFORMATION BY READING ANNOTATIONS
-        message(formatCommandSpecs(iCommand, m));
+        message(ann.description() + ".");
+
+        final StringBuilder syntax = new StringBuilder();
+        final StringBuilder notes = new StringBuilder();
+        syntax.append(m.getName());
+
+        int paramCounter = 0;
+        for (Annotation[] paramAnnotations : m.getParameterAnnotations()) {
+          ConsoleParameter pAnn = null;
+
+          for (Annotation a : paramAnnotations) {
+            if (a instanceof ConsoleParameter) {
+              pAnn = (ConsoleParameter) a;
+              break;
+            }
+          }
+
+          syntax.append(" ");
+
+          if (pAnn != null && pAnn.optional())
+            syntax.append("[");
+
+          syntax.append("<");
+          notes.append("\n- <");
+
+          if (pAnn != null) {
+            syntax.append(pAnn.name());
+            notes.append(pAnn.name());
+          } else {
+            syntax.append("param" + paramCounter++);
+            notes.append("param" + paramCounter++);
+          }
+
+          syntax.append(">");
+          notes.append(">: ");
+
+          if (pAnn != null && pAnn.optional()) {
+            syntax.append("]");
+            notes.append("(optional) ");
+          }
+
+          if (pAnn != null)
+            notes.append(pAnn.description());
+        }
+
+        message("\n\nSYNTAX: " + syntax + "\n");
+
+        if (notes.length() > 0)
+          message("\nWHERE:" + notes + "\n");
 
       } else
         message("No description available");
@@ -728,12 +727,8 @@ public class OConsoleApplication {
         result.append(line);
       }
       rd.close();
-    } catch (Exception ignore) {
+    } catch (Exception e) {
     }
     return result.toString();
-  }
-
-  protected enum RESULT {
-    OK, ERROR, EXIT
   }
 }

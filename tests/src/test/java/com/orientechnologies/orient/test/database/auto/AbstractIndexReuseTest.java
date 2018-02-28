@@ -6,6 +6,8 @@ import com.orientechnologies.common.profiler.OProfiler;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
+import com.orientechnologies.orient.client.remote.OStorageRemote;
+import com.orientechnologies.orient.client.remote.OStorageRemoteThread;
 import com.orientechnologies.orient.core.Orient;
 
 public abstract class AbstractIndexReuseTest extends DocumentDBBaseTest {
@@ -34,6 +36,10 @@ public abstract class AbstractIndexReuseTest extends DocumentDBBaseTest {
 //    if (isRemoteStorage()) {
 //      jmxConnector.close();
 //    }
+  }
+
+  private boolean isRemoteStorage() {
+    return database.getStorage() instanceof OStorageRemote || database.getStorage() instanceof OStorageRemoteThread;
   }
 
   private OProfiler getProfilerInstance() throws Exception {

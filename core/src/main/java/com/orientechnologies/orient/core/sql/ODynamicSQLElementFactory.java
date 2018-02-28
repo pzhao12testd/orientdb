@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Orient Technologies.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.sql.functions.OSQLFunction;
 import com.orientechnologies.orient.core.sql.functions.OSQLFunctionFactory;
@@ -64,8 +63,8 @@ public class ODynamicSQLElementFactory implements OCommandExecutorSQLFactory, OQ
       try {
         return (OSQLFunction) clazz.newInstance();
       } catch (Exception e) {
-        throw OException.wrapException(new OCommandExecutionException("Error in creation of function " + name
-            + "(). Probably there is not an empty constructor or the constructor generates errors"), e);
+        throw new OCommandExecutionException("Error in creation of function " + name
+            + "(). Probably there is not an empty constructor or the constructor generates errors", e);
       }
     }
   }
@@ -83,8 +82,8 @@ public class ODynamicSQLElementFactory implements OCommandExecutorSQLFactory, OQ
     try {
       return clazz.newInstance();
     } catch (Exception e) {
-      throw OException.wrapException(new OCommandExecutionException("Error in creation of command " + name
-          + "(). Probably there is not an empty constructor or the constructor generates errors"), e);
+      throw new OCommandExecutionException("Error in creation of command " + name
+          + "(). Probably there is not an empty constructor or the constructor generates errors", e);
     }
   }
 

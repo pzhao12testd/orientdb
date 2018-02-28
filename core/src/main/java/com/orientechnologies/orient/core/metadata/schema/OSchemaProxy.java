@@ -1,7 +1,7 @@
 /*
  *
  *  *  Co
- *  yright 2014 OrientDB LTD (info(-at-)orientdb.com)
+ *  yright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.metadata.schema;
@@ -28,14 +28,14 @@ import com.orientechnologies.orient.core.type.ODocumentWrapper;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 /**
  * Proxy class to use the shared OSchemaShared instance. Before to delegate each operations it sets the current database in the
  * thread local.
- *
+ * 
  * @author Luca
+ * 
  */
 @SuppressWarnings("unchecked")
 public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSchema {
@@ -50,15 +50,25 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
   }
 
   public void create() {
-    delegate.create(database);
+    delegate.create();
   }
 
   public int countClasses() {
-    return delegate.countClasses(database);
+    return delegate.countClasses();
+  }
+
+  public OClass createClass(final Class<?> iClass) {
+    return delegate.createClass(iClass);
+  }
+
+  public OClass createClass(final Class<?> iClass, final int iDefaultClusterId) {
+
+    return delegate.createClass(iClass, iDefaultClusterId);
   }
 
   public OClass createClass(final String iClassName) {
-    return delegate.createClass(database, iClassName);
+
+    return delegate.createClass(iClassName);
   }
 
   public OClass getOrCreateClass(final String iClassName) {
@@ -69,63 +79,88 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
     if (iClassName == null)
       return null;
 
-    OClass cls = delegate.getClass(iClassName.toLowerCase(Locale.ENGLISH));
+    OClass cls = delegate.getClass(iClassName.toLowerCase());
     if (cls != null)
       return cls;
 
-    cls = delegate.getOrCreateClass(database, iClassName, iSuperClass);
+    cls = delegate.getOrCreateClass(iClassName, iSuperClass);
 
     return cls;
   }
 
   @Override
   public OClass getOrCreateClass(String iClassName, OClass... superClasses) {
-    return delegate.getOrCreateClass(database, iClassName, superClasses);
+
+    return delegate.getOrCreateClass(iClassName, superClasses);
   }
 
   @Override
   public OClass createClass(final String iClassName, final OClass iSuperClass) {
-    return delegate.createClass(database, iClassName, iSuperClass, (int[]) null);
+
+    return delegate.createClass(iClassName, iSuperClass, (int[]) null);
   }
 
   @Override
   public OClass createClass(String iClassName, OClass... superClasses) {
-    return delegate.createClass(database, iClassName, superClasses);
+
+    return delegate.createClass(iClassName, superClasses);
+  }
+
+  public OClass createClass(final String iClassName, final int iDefaultClusterId) {
+
+    return delegate.createClass(iClassName, iDefaultClusterId);
+  }
+
+  public OClass createClass(final String iClassName, final OClass iSuperClass, final int iDefaultClusterId) {
+
+    return delegate.createClass(iClassName, iSuperClass, iDefaultClusterId);
   }
 
   public OClass createClass(final String iClassName, final OClass iSuperClass, final int[] iClusterIds) {
-    return delegate.createClass(database, iClassName, iSuperClass, iClusterIds);
+
+    return delegate.createClass(iClassName, iSuperClass, iClusterIds);
   }
 
   @Override
   public OClass createClass(String className, int[] clusterIds, OClass... superClasses) {
-    return delegate.createClass(database, className, clusterIds, superClasses);
+
+    return delegate.createClass(className, clusterIds, superClasses);
+  }
+
+  @Override
+  public OClass createAbstractClass(final Class<?> iClass) {
+
+    return delegate.createAbstractClass(iClass);
   }
 
   @Override
   public OClass createAbstractClass(final String iClassName) {
-    return delegate.createAbstractClass(database, iClassName);
+
+    return delegate.createAbstractClass(iClassName);
   }
 
   @Override
   public OClass createAbstractClass(final String iClassName, final OClass iSuperClass) {
-    return delegate.createAbstractClass(database, iClassName, iSuperClass);
+
+    return delegate.createAbstractClass(iClassName, iSuperClass);
   }
 
   @Override
   public OClass createAbstractClass(String iClassName, OClass... superClasses) {
-    return delegate.createAbstractClass(database, iClassName, superClasses);
+
+    return delegate.createAbstractClass(iClassName, superClasses);
   }
 
   public void dropClass(final String iClassName) {
-    delegate.dropClass(database, iClassName);
+
+    delegate.dropClass(iClassName);
   }
 
   public boolean existsClass(final String iClassName) {
     if (iClassName == null)
       return false;
 
-    return delegate.existsClass(iClassName.toLowerCase(Locale.ENGLISH));
+    return delegate.existsClass(iClassName.toLowerCase());
   }
 
   public OClass getClass(final Class<?> iClass) {
@@ -143,13 +178,12 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
   }
 
   public Collection<OClass> getClasses() {
-    return delegate.getClasses(database);
+    return delegate.getClasses();
   }
 
-  @Deprecated
   public void load() {
 
-    delegate.load(database);
+    delegate.load();
 
   }
 
@@ -160,7 +194,6 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
     return (RET) delegate;
   }
 
-  @Deprecated
   public <RET extends ODocumentWrapper> RET save() {
 
     return (RET) delegate.save();
@@ -176,9 +209,7 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
     return delegate.getIdentity();
   }
 
-  @Deprecated
   public void close() {
-    // DO NOTHING THE DELEGATE CLOSE IS MANAGED IN A DIFFERENT CONTEXT
   }
 
   public String toString() {
@@ -188,12 +219,7 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
 
   @Override
   public Set<OClass> getClassesRelyOnCluster(final String iClusterName) {
-    return delegate.getClassesRelyOnCluster(database, iClusterName);
-  }
-
-  @Override
-  public OClass createClass(String className, int clusters, OClass... superClasses) {
-    return delegate.createClass(database, className, clusters, superClasses);
+    return delegate.getClassesRelyOnCluster(iClusterName);
   }
 
   @Override
@@ -216,20 +242,17 @@ public class OSchemaProxy extends OProxedResource<OSchemaShared> implements OSch
   }
 
   @Override
+  public boolean isFullCheckpointOnChange() {
+    return delegate.isFullCheckpointOnChange();
+  }
+
+  @Override
+  public void setFullCheckpointOnChange(boolean fullCheckpointOnChange) {
+    delegate.setFullCheckpointOnChange(fullCheckpointOnChange);
+  }
+
+  @Override
   public OClusterSelectionFactory getClusterSelectionFactory() {
     return delegate.getClusterSelectionFactory();
   }
-
-  public Set<Integer> getBlobClusters() {
-    return delegate.getBlobClusters();
-  }
-
-  public int addBlobCluster(final int clusterId) {
-    return delegate.addBlobCluster(database, clusterId);
-  }
-
-  public void removeBlobCluster(String clusterName) {
-    delegate.removeBlobCluster(database, clusterName);
-  }
-
 }

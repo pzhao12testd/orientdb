@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,54 +14,48 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.tx;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.orientechnologies.common.concur.lock.OLockException;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.cache.OLocalRecordCache;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.ORecordOperation;
-import com.orientechnologies.orient.core.exception.OSchemaException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
-import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
 import com.orientechnologies.orient.core.storage.OStorage;
 import com.orientechnologies.orient.core.storage.OStorageProxy;
 import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public abstract class OTransactionAbstract implements OTransaction {
-  protected final ODatabaseDocumentInternal database;
+  protected final ODatabaseDocumentTx           database;
   protected TXSTATUS                            status         = TXSTATUS.INVALID;
   protected ISOLATION_LEVEL                     isolationLevel = ISOLATION_LEVEL.READ_COMMITTED;
   protected HashMap<ORID, LockedRecordMetadata> locks          = new HashMap<ORID, LockedRecordMetadata>();
 
   private static final class LockedRecordMetadata {
     private final OStorage.LOCKING_STRATEGY strategy;
-    private       int                       locksCount;
+    private int                             locksCount;
 
     public LockedRecordMetadata(OStorage.LOCKING_STRATEGY strategy) {
       this.strategy = strategy;
     }
   }
 
-  protected OTransactionAbstract(final ODatabaseDocumentInternal iDatabase) {
+  protected OTransactionAbstract(final ODatabaseDocumentTx iDatabase) {
     database = iDatabase;
   }
 
-  public static void updateCacheFromEntries(final ODatabaseDocumentInternal database, final Iterable<? extends ORecordOperation> entries,
+  public static void updateCacheFromEntries(final OTransaction tx, final Iterable<? extends ORecordOperation> entries,
       final boolean updateStrategy) {
-    final OLocalRecordCache dbCache = database.getLocalCache();
+    final OLocalRecordCache dbCache = tx.getDatabase().getLocalCache();
 
     for (ORecordOperation txEntry : entries) {
       if (!updateStrategy)
@@ -98,7 +92,7 @@ public abstract class OTransactionAbstract implements OTransaction {
     return status;
   }
 
-  public ODatabaseDocumentInternal getDatabase() {
+  public ODatabaseDocumentTx getDatabase() {
     return database;
   }
 
@@ -113,11 +107,11 @@ public abstract class OTransactionAbstract implements OTransaction {
 
         if (lockedRecordMetadata.strategy.equals(OStorage.LOCKING_STRATEGY.EXCLUSIVE_LOCK)) {
           for (int i = 0; i < lockedRecordMetadata.locksCount; i++) {
-            ((OAbstractPaginatedStorage) getDatabase().getStorage().getUnderlying()).releaseWriteLock(lock.getKey());
+            ((OAbstractPaginatedStorage) getDatabase().getStorage()).releaseWriteLock(lock.getKey());
           }
         } else if (lockedRecordMetadata.strategy.equals(OStorage.LOCKING_STRATEGY.SHARED_LOCK)) {
           for (int i = 0; i < lockedRecordMetadata.locksCount; i++) {
-            ((OAbstractPaginatedStorage) getDatabase().getStorage().getUnderlying()).releaseReadLock(lock.getKey());
+            ((OAbstractPaginatedStorage) getDatabase().getStorage()).releaseReadLock(lock.getKey());
           }
         }
       } catch (Exception e) {
@@ -223,33 +217,4 @@ public abstract class OTransactionAbstract implements OTransaction {
 
     return lockedRecords;
   }
-
-  public String getClusterName(final ORecord record) {
-    if (ODatabaseRecordThreadLocal.instance().get().getStorage().isRemote())
-      // DON'T ASSIGN CLUSTER WITH REMOTE: SERVER KNOWS THE RIGHT CLUSTER BASED ON LOCALITY
-      return null;
-
-    int clusterId = record.getIdentity().getClusterId();
-    if (clusterId == ORID.CLUSTER_ID_INVALID) {
-      // COMPUTE THE CLUSTER ID
-      OClass schemaClass = null;
-      if (record instanceof ODocument)
-        schemaClass = ODocumentInternal.getImmutableSchemaClass((ODocument) record);
-      if (schemaClass != null) {
-        // FIND THE RIGHT CLUSTER AS CONFIGURED IN CLASS
-        if (schemaClass.isAbstract())
-          throw new OSchemaException("Document belongs to abstract class '" + schemaClass.getName() + "' and cannot be saved");
-        clusterId = schemaClass.getClusterForNewInstance((ODocument) record);
-        return database.getClusterNameById(clusterId);
-      } else {
-        return database.getClusterNameById(database.getStorage().getDefaultClusterId());
-      }
-
-    } else {
-      return database.getClusterNameById(clusterId);
-    }
-  }
-
-  public abstract void internalRollback();
-
 }

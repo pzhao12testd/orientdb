@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 
@@ -22,7 +22,11 @@ package com.orientechnologies.orient.object.jpa;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 import javax.persistence.PersistenceException;
 import javax.persistence.SharedCacheMode;
@@ -324,7 +328,7 @@ public class OJPAPersistenceUnitInfo implements PersistenceUnitInfo {
 		}
 
 		try {
-			return PersistenceUnitTransactionType.valueOf(elementContent.toUpperCase(Locale.ENGLISH));
+			return PersistenceUnitTransactionType.valueOf(elementContent.toUpperCase());
 		} catch (IllegalArgumentException ex) {
 			throw new PersistenceException("Unknown TransactionType: " + elementContent, ex);
 		}
@@ -337,7 +341,7 @@ public class OJPAPersistenceUnitInfo implements PersistenceUnitInfo {
 		}
 
 		try {
-			return ValidationMode.valueOf(validationMode.toUpperCase(Locale.ENGLISH));
+			return ValidationMode.valueOf(validationMode.toUpperCase());
 		} catch (IllegalArgumentException ex) {
 			throw new PersistenceException("Unknown ValidationMode: " + validationMode, ex);
 		}
@@ -349,7 +353,7 @@ public class OJPAPersistenceUnitInfo implements PersistenceUnitInfo {
 		}
 
 		try {
-			return SharedCacheMode.valueOf(sharedCacheMode.toUpperCase(Locale.ENGLISH));
+			return SharedCacheMode.valueOf(sharedCacheMode.toUpperCase());
 		} catch (IllegalArgumentException ex) {
 			throw new PersistenceException("Unknown ValidationMode: " + sharedCacheMode, ex);
 		}

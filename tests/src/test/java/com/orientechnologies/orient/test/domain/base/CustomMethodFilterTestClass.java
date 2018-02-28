@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package com.orientechnologies.orient.test.domain.base;
 import java.util.List;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class CustomMethodFilterTestClass {

@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.sql.operator;
@@ -35,7 +35,7 @@ import com.orientechnologies.orient.core.sql.filter.OSQLFilterCondition;
 /**
  * EQUALS operator.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public class OQueryOperatorInstanceof extends OQueryOperatorEqualityNotNulls {
@@ -48,7 +48,7 @@ public class OQueryOperatorInstanceof extends OQueryOperatorEqualityNotNulls {
 	protected boolean evaluateExpression(final OIdentifiable iRecord, final OSQLFilterCondition iCondition, final Object iLeft,
 			final Object iRight, OCommandContext iContext) {
 
-		final OSchema schema = ((OMetadataInternal)ODatabaseRecordThreadLocal.instance().get().getMetadata()).getImmutableSchemaSnapshot();
+		final OSchema schema = ((OMetadataInternal)ODatabaseRecordThreadLocal.INSTANCE.get().getMetadata()).getImmutableSchemaSnapshot();
 
 		final String baseClassName = iRight.toString();
 		final OClass baseClass = schema.getClass(baseClassName);

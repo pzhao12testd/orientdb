@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.iterator;
@@ -30,7 +30,7 @@ import java.util.NoSuchElementException;
 /**
  * Iterator that created wrapped objects during browsing.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  */
 public abstract class OLazyWrapperIterator<T> implements OAutoConvertToRecord, Iterator<T>, Iterable<T>, OResettable, OSizeable {
   protected final Iterator<?> iterator;
@@ -38,22 +38,18 @@ public abstract class OLazyWrapperIterator<T> implements OAutoConvertToRecord, I
   protected T                 nextElement;
   protected final int         size;                      // -1 = UNKNOWN
   protected boolean           autoConvertToRecord = true;
-  protected Object            multiValue;
 
   public OLazyWrapperIterator(final Iterator<?> iterator) {
     this.iterator = iterator;
     this.size = -1;
   }
 
-  public OLazyWrapperIterator(final Iterator<?> iterator, final int iSize, final Object iOriginalValue) {
+  public OLazyWrapperIterator(final Iterator<?> iterator, final int iSize) {
     this.iterator = iterator;
     this.size = iSize;
-    this.multiValue = iOriginalValue;
   }
 
   public abstract boolean filter(T iObject);
-
-  public abstract boolean canUseMultiValueDirectly();
 
   public abstract T createGraphElement(Object iObject);
 
@@ -142,9 +138,5 @@ public abstract class OLazyWrapperIterator<T> implements OAutoConvertToRecord, I
   @Override
   public boolean isAutoConvertToRecord() {
     return autoConvertToRecord;
-  }
-
-  public Object getMultiValue() {
-    return multiValue;
   }
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -24,12 +24,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 25.04.13
  */
 public class OWALRecordsFactory {
-  private final Map<Byte, Class> idToTypeMap = new HashMap<>();
-  private final Map<Class, Byte> typeToIdMap = new HashMap<>();
+  private Map<Byte, Class>               idToTypeMap = new HashMap<Byte, Class>();
+  private Map<Class, Byte>               typeToIdMap = new HashMap<Class, Byte>();
 
   public static final OWALRecordsFactory INSTANCE    = new OWALRecordsFactory();
 
@@ -109,7 +109,9 @@ public class OWALRecordsFactory {
       if (idToTypeMap.containsKey(content[0]))
         try {
           walRecord = (OWALRecord) idToTypeMap.get(content[0]).newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
+        } catch (InstantiationException e) {
+          throw new IllegalStateException("Cannot deserialize passed in record", e);
+        } catch (IllegalAccessException e) {
           throw new IllegalStateException("Cannot deserialize passed in record", e);
         }
       else

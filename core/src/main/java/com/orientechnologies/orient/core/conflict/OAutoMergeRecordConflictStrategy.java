@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
 package com.orientechnologies.orient.core.conflict;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -28,22 +26,23 @@ import com.orientechnologies.orient.core.serialization.serializer.record.ORecord
 import com.orientechnologies.orient.core.storage.ORawBuffer;
 import com.orientechnologies.orient.core.storage.OStorage;
 import com.orientechnologies.orient.core.storage.OStorageOperationResult;
+import com.orientechnologies.orient.core.version.ORecordVersion;
 
 /**
  * Auto merges new record with the existent. Collections are also merged, item by item.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OAutoMergeRecordConflictStrategy extends OVersionRecordConflictStrategy {
   public static final String NAME = "automerge";
 
   @Override
-  public byte[] onUpdate(OStorage storage, byte iRecordType, final ORecordId rid, final int iRecordVersion,
-      final byte[] iRecordContent, final AtomicInteger iDatabaseVersion) {
+  public byte[] onUpdate(OStorage storage, byte iRecordType, final ORecordId rid, final ORecordVersion iRecordVersion,
+      final byte[] iRecordContent, final ORecordVersion iDatabaseVersion) {
 
     if (iRecordType == ODocument.RECORD_TYPE) {
       // No need lock, is already inside a lock. Use database to read temporary objects too
-      OStorageOperationResult<ORawBuffer> res = storage.readRecord(rid, null, false, false, null);
+      OStorageOperationResult<ORawBuffer> res = storage.readRecord(rid, null, false, null);
       final ODocument storedRecord = new ODocument(rid).fromStream(res.getResult().getBuffer());
 
       ODocument newRecord = (ODocument) ORecordSaveThreadLocal.getLast();
@@ -52,12 +51,12 @@ public class OAutoMergeRecordConflictStrategy extends OVersionRecordConflictStra
 
       storedRecord.merge(newRecord, true, true);
 
-      iDatabaseVersion.set(Math.max(iDatabaseVersion.get(), iRecordVersion) + 1);
+      iDatabaseVersion.setCounter(Math.max(iDatabaseVersion.getCounter(), iRecordVersion.getCounter()) + 1);
 
       return storedRecord.toStream();
     } else
       // NO DOCUMENT, CANNOT MERGE SO RELY TO THE VERSION CHECK
-      checkVersions(rid, iRecordVersion, iDatabaseVersion.get());
+      checkVersions(rid, iRecordVersion, iDatabaseVersion);
 
     return null;
   }

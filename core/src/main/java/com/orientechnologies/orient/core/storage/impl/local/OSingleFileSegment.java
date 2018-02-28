@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,42 +14,55 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.storage.impl.local;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 
+import com.orientechnologies.common.io.OFileUtils;
+import com.orientechnologies.common.log.OLogManager;
+import com.orientechnologies.common.parser.OSystemVariableResolver;
 import com.orientechnologies.orient.core.config.OStorageFileConfiguration;
 import com.orientechnologies.orient.core.storage.fs.OFile;
 import com.orientechnologies.orient.core.storage.fs.OFileClassic;
 import com.orientechnologies.orient.core.storage.impl.local.paginated.OLocalPaginatedStorage;
 
 public class OSingleFileSegment {
-  private final OFile                     file;
-  private final OStorageFileConfiguration config;
+  protected OLocalPaginatedStorage    storage;
+  protected OFile                     file;
+  protected OStorageFileConfiguration config;
+  private boolean                     wasSoftlyClosedAtPreviousTime = true;
 
-  public OSingleFileSegment(final OLocalPaginatedStorage iStorage, final OStorageFileConfiguration iConfig) {
+  public OSingleFileSegment(final OLocalPaginatedStorage iStorage, final OStorageFileConfiguration iConfig) throws IOException {
     this(iStorage, iConfig, iConfig.type);
   }
 
   public OSingleFileSegment(final OLocalPaginatedStorage iStorage, final OStorageFileConfiguration iConfig, final String iType)
-       {
+      throws IOException {
     config = iConfig;
-         file = new OFileClassic(Paths.get(iStorage.getVariableParser().resolveVariables(iConfig.path)));
+    storage = iStorage;
+    file = new OFileClassic(iStorage.getVariableParser().resolveVariables(iConfig.path), iStorage.getMode());
   }
 
-  public void open() {
-    file.open();
+  public boolean open() throws IOException {
+    boolean softClosed = file.open();
+    if (!softClosed) {
+      // LAST TIME THE FILE WAS NOT CLOSED IN SOFT WAY
+      OLogManager.instance().warn(this, "segment file '%s' was not closed correctly last time", OFileUtils.getPath(file.getName()));
+      wasSoftlyClosedAtPreviousTime = false;
+    }
+
+    return softClosed;
   }
 
   public void create(final int iStartSize) throws IOException {
     file.create();
   }
 
-  public void close() {
+  public void close() throws IOException {
     if (file != null)
       file.close();
   }
@@ -86,5 +99,25 @@ public class OSingleFileSegment {
 
   public void synch() throws IOException {
     file.synch();
+  }
+
+  public void setSoftlyClosed(boolean softlyClosed) throws IOException {
+    file.setSoftlyClosed(softlyClosed);
+  }
+
+  public boolean wasSoftlyClosedAtPreviousTime() {
+    return wasSoftlyClosedAtPreviousTime;
+  }
+
+  public void rename(String iOldName, String iNewName) throws IOException {
+    final String osFileName = file.getName();
+    if (osFileName.startsWith(iOldName)) {
+      final File newFile = new File(storage.getStoragePath() + "/" + iNewName
+          + osFileName.substring(osFileName.lastIndexOf(iOldName) + iOldName.length()));
+      boolean renamed = file.renameTo(newFile);
+      while (!renamed) {
+        renamed = file.renameTo(newFile);
+      }
+    }
   }
 }

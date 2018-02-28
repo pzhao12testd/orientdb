@@ -11,8 +11,5 @@ public class OSelectWithoutTargetStatement extends OSelectStatement {
     super(p, id);
   }
 
-  @Override public OSelectStatement copy() {
-    return super.copy();
-  }
 }
 /* JavaCC - OriginalChecksum=2b0c73e32d84e559188b75251a4d262c (do not edit this line) */

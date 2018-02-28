@@ -1,27 +1,32 @@
 package com.orientechnologies.orient.core.index;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
 import com.orientechnologies.orient.core.db.record.OMultiValueChangeEvent;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.util.*;
 
 /**
  * @author LomakiA <a href="mailto:a.lomakin@orientechnologies.com">Andrey Lomakin</a>
  * @since 20.12.11
  */
+@Test
 public class OPropertyListIndexDefinitionTest {
   private OPropertyListIndexDefinition propertyIndex;
 
-  @Before
+  @BeforeMethod
   public void beforeMethod() {
     propertyIndex = new OPropertyListIndexDefinition("testClass", "fOne", OType.INTEGER);
   }
 
-  @Test
   public void testCreateValueSingleParameter() {
     final Object result = propertyIndex.createValue(Collections.singletonList(Arrays.asList("12", "23")));
 
@@ -34,7 +39,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(23));
   }
 
-  @Test
   public void testCreateValueTwoParameters() {
     final Object result = propertyIndex.createValue(Arrays.asList(Arrays.asList("12", "23"), "25"));
 
@@ -47,18 +51,10 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(23));
   }
 
-  @Test
   public void testCreateValueWrongParameter() {
-    try {
-      propertyIndex.createValue(Collections.singletonList("tt"));
-      Assert.fail();
-    } catch (OIndexException x) {
-
-    }
-
+    Assert.assertNull(propertyIndex.createValue(Collections.singletonList("tt")));
   }
 
-  @Test
   public void testCreateValueSingleParameterArrayParams() {
     final Object result = propertyIndex.createValue((Object) Arrays.asList("12", "23"));
 
@@ -71,7 +67,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(23));
   }
 
-  @Test
   public void testCreateValueTwoParametersArrayParams() {
     final Object result = propertyIndex.createValue(Arrays.asList("12", "23"), "25");
 
@@ -84,12 +79,10 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(23));
   }
 
-  @Test
   public void testCreateValueWrongParameterArrayParams() {
     Assert.assertNull(propertyIndex.createValue("tt"));
   }
 
-  @Test
   public void testGetDocumentValueToIndex() {
     final ODocument document = new ODocument();
 
@@ -106,19 +99,16 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertTrue(collectionResult.contains(23));
   }
 
-  @Test
   public void testCreateSingleValue() {
     final Object result = propertyIndex.createSingleValue("12");
     Assert.assertEquals(result, 12);
   }
 
-  @Test(expected = OIndexException.class)
-
+  @Test(expectedExceptions = NumberFormatException.class)
   public void testCreateSingleValueWrongParameter() {
     propertyIndex.createSingleValue("tt");
   }
 
-  @Test
   public void testProcessChangeEventAddOnce() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -135,7 +125,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddOnceWithConversion() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -152,7 +141,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddTwoTimes() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -173,7 +161,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddTwoValues() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -195,7 +182,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventRemoveOnce() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -213,7 +199,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventRemoveOnceWithConversion() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -231,7 +216,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventRemoveTwoTimes() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -252,7 +236,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddTwoTimesInvValue() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -274,7 +257,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddRemove() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -293,7 +275,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddRemoveInvValue() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -314,7 +295,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddTwiceRemoveOnce() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -338,7 +318,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventAddOnceRemoveTwice() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -362,7 +341,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventRemoveTwoTimesAddOnce() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -386,7 +364,6 @@ public class OPropertyListIndexDefinitionTest {
     Assert.assertEquals(keysToRemove, removedKeys);
   }
 
-  @Test
   public void testProcessChangeEventUpdate() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();
@@ -406,7 +383,6 @@ public class OPropertyListIndexDefinitionTest {
 
   }
 
-  @Test
   public void testProcessChangeEventUpdateConvertValues() {
     final Map<Object, Integer> keysToAdd = new HashMap<Object, Integer>();
     final Map<Object, Integer> keysToRemove = new HashMap<Object, Integer>();

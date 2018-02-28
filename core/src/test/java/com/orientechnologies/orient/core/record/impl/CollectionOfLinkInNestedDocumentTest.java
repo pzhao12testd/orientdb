@@ -1,5 +1,15 @@
 package com.orientechnologies.orient.core.record.impl;
 
+import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertNotNull;
+
+import java.util.Collections;
+
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
@@ -7,23 +17,18 @@ import com.orientechnologies.orient.core.db.record.ORecordLazyList;
 import com.orientechnologies.orient.core.db.record.ORecordLazyMap;
 import com.orientechnologies.orient.core.db.record.ORecordLazySet;
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class CollectionOfLinkInNestedDocumentTest {
 
   private ODatabaseDocument db;
 
-  @Before
+  @BeforeMethod
   public void before() {
     db = new ODatabaseDocumentTx("memory:" + CollectionOfLinkInNestedDocumentTest.class);
     db.create();
   }
 
-  @After
+  @AfterMethod
   public void after() {
     try {
       db.drop();
@@ -47,7 +52,7 @@ public class CollectionOfLinkInNestedDocumentTest {
 
     ODocument base = new ODocument();
     base.field("nested", nested, OType.EMBEDDED);
-    OIdentifiable id = db.save(base, db.getClusterNameById(db.getDefaultClusterId()));
+    OIdentifiable id = db.save(base);
     db.getLocalCache().clear();
     ODocument base1 = db.load(id.getIdentity());
     ODocument nest1 = base1.field("nested");
@@ -71,12 +76,12 @@ public class CollectionOfLinkInNestedDocumentTest {
 
     ODocument base = new ODocument();
     base.field("nested", nested, OType.EMBEDDED);
-    OIdentifiable id = db.save(base, db.getClusterNameById(db.getDefaultClusterId()));
+    OIdentifiable id = db.save(base);
     db.getLocalCache().clear();
     ODocument base1 = db.load(id.getIdentity());
     ODocument nest1 = base1.field("nested");
     assertNotNull(nest1);
-    assertEquals(nest1.<Object>field("list"), nested.field("list"));
+    assertEquals(nest1.field("list"), nested.field("list"));
   }
 
   @Test
@@ -94,11 +99,11 @@ public class CollectionOfLinkInNestedDocumentTest {
 
     ODocument base = new ODocument();
     base.field("nested", nested, OType.EMBEDDED);
-    OIdentifiable id = db.save(base, db.getClusterNameById(db.getDefaultClusterId()));
+    OIdentifiable id = db.save(base);
     db.getLocalCache().clear();
     ODocument base1 = db.load(id.getIdentity());
     ODocument nest1 = base1.field("nested");
     assertNotNull(nest1);
-    assertEquals(nest1.<Object>field("map"), nested.field("map"));
+    assertEquals(nest1.field("map"), nested.field("map"));
   }
 }

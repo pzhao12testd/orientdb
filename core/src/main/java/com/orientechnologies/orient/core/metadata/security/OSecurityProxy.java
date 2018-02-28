@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,10 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.metadata.security;
+
+import java.util.List;
+import java.util.Set;
 
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
@@ -25,13 +28,10 @@ import com.orientechnologies.orient.core.db.record.OProxedResource;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
-import java.util.List;
-import java.util.Set;
-
 /**
  * Proxy class for user management
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public class OSecurityProxy extends OProxedResource<OSecurity> implements OSecurity {
@@ -42,26 +42,6 @@ public class OSecurityProxy extends OProxedResource<OSecurity> implements OSecur
   @Override
   public boolean isAllowed(final Set<OIdentifiable> iAllowAll, final Set<OIdentifiable> iAllowOperation) {
     return delegate.isAllowed(iAllowAll, iAllowOperation);
-  }
-
-  @Override
-  public OIdentifiable allowUser(ODocument iDocument, ORestrictedOperation iOperationType, String iUserName) {
-    return delegate.allowUser(iDocument, iOperationType, iUserName);
-  }
-
-  @Override
-  public OIdentifiable allowRole(ODocument iDocument, ORestrictedOperation iOperationType, String iRoleName) {
-    return delegate.allowRole(iDocument, iOperationType, iRoleName);
-  }
-
-  @Override
-  public OIdentifiable denyUser(ODocument iDocument, ORestrictedOperation iOperationType, String iUserName) {
-    return delegate.denyUser(iDocument, iOperationType, iUserName);
-  }
-
-  @Override
-  public OIdentifiable denyRole(ODocument iDocument, ORestrictedOperation iOperationType, String iRoleName) {
-    return delegate.denyRole(iDocument, iOperationType, iRoleName);
   }
 
   public OIdentifiable allowUser(final ODocument iDocument, final String iAllowFieldName, final String iUserName) {

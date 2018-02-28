@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,20 +15,19 @@
  */
 package com.orientechnologies.orient.core.sql.functions.text;
 
-import java.io.UnsupportedEncodingException;
-import java.security.NoSuchAlgorithmException;
-
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.security.OSecurityManager;
 import com.orientechnologies.orient.core.sql.method.misc.OAbstractSQLMethod;
 
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+
 /**
  * Hash a string supporting multiple algorithm, all those supported by JVM
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  */
 public class OSQLMethodHash extends OAbstractSQLMethod {
 
@@ -49,14 +48,14 @@ public class OSQLMethodHash extends OAbstractSQLMethod {
     if (iThis == null)
       return null;
 
-    final String algorithm = iParams.length > 0 ? iParams[0].toString() : OSecurityManager.HASH_ALGORITHM;
+    final String algorithm = iParams.length > 0 ? iParams[0].toString() : OSecurityManager.ALGORITHM;
     try {
-      return OSecurityManager.createHash(iThis.toString(), algorithm);
+      return OSecurityManager.digest2String(iThis.toString(), algorithm);
 
     } catch (NoSuchAlgorithmException e) {
-      throw OException.wrapException(new OCommandExecutionException("hash(): algorithm '" + algorithm + "' is not supported"), e);
+      throw new OCommandExecutionException("hash(): algorithm '" + algorithm + "' is not supported", e);
     } catch (UnsupportedEncodingException e) {
-      throw OException.wrapException(new OCommandExecutionException("hash(): encoding 'UTF-8' is not supported"), e);
+      throw new OCommandExecutionException("hash(): encoding 'UTF-8' is not supported", e);
     }
   }
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,21 +14,34 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.serialization.serializer.record.string;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.text.ParseException;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.orientechnologies.common.collection.OMultiValue;
-import com.orientechnologies.common.exception.OException;
-import com.orientechnologies.common.io.OIOUtils;
-import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.parser.OStringParser;
 import com.orientechnologies.common.util.OCommonConst;
 import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.OUserObject2RecordHandler;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.record.*;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.db.record.ORecordLazyList;
+import com.orientechnologies.orient.core.db.record.ORecordLazyMultiValue;
+import com.orientechnologies.orient.core.db.record.ORecordLazySet;
+import com.orientechnologies.orient.core.db.record.OTrackedList;
+import com.orientechnologies.orient.core.db.record.OTrackedSet;
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
 import com.orientechnologies.orient.core.exception.OSerializationException;
 import com.orientechnologies.orient.core.fetch.OFetchHelper;
@@ -43,20 +56,14 @@ import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.ORecordInternal;
 import com.orientechnologies.orient.core.record.ORecordStringable;
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ODocumentHelper;
 import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
+import com.orientechnologies.orient.core.serialization.OBase64Utils;
 import com.orientechnologies.orient.core.serialization.serializer.OJSONWriter;
 import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
 import com.orientechnologies.orient.core.util.ODateHelper;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.StringWriter;
-import java.text.ParseException;
-import java.util.*;
 
 @SuppressWarnings("serial")
 public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
@@ -95,7 +102,7 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
         includeId = true;
         includeClazz = true;
         attribSameRow = true;
-        indentLevel = 0;
+        indentLevel = 1;
         fetchPlan = "";
         keepTypes = true;
         alwaysFetchEmbeddedDocuments = true;
@@ -106,7 +113,7 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
         includeClazz = false;
         attribSameRow = false;
         alwaysFetchEmbeddedDocuments = false;
-        indentLevel = 0;
+        indentLevel = 1;
         keepTypes = false;
 
         if (iFormat != null && !iFormat.isEmpty()) {
@@ -166,7 +173,6 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
   public ORecord fromString(String iSource, ORecord iRecord, final String[] iFields, final String iOptions, boolean needReload) {
     iSource = unwrapSource(iSource);
 
-    String className = null;
     boolean noMap = false;
     if (iOptions != null) {
       final String[] format = iOptions.split(",");
@@ -183,35 +189,33 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
         ' ', '\n', '\r', '\t');
 
     if (fields.size() % 2 != 0)
-      throw new OSerializationException(
-          "Error on unmarshalling JSON content: wrong format \"" + iSource + "\". Use <field> : <value>");
+      throw new OSerializationException("Error on unmarshalling JSON content: wrong format \"" + iSource
+          + "\". Use <field> : <value>");
 
     Map<String, Character> fieldTypes = null;
 
     if (fields != null && fields.size() > 0) {
       // SEARCH FOR FIELD TYPES IF ANY
       for (int i = 0; i < fields.size(); i += 2) {
-        final String fieldName = OIOUtils.getStringContent(fields.get(i));
+        final String fieldName = OStringSerializerHelper.getStringContent(fields.get(i));
         final String fieldValue = fields.get(i + 1);
-        final String fieldValueAsString = OIOUtils.getStringContent(fieldValue);
+        final String fieldValueAsString = OStringSerializerHelper.getStringContent(fieldValue);
 
         if (fieldName.equals(ATTRIBUTE_FIELD_TYPES) && iRecord instanceof ODocument) {
           fieldTypes = loadFieldTypes(fieldTypes, fieldValueAsString);
         } else if (fieldName.equals(ODocumentHelper.ATTRIBUTE_TYPE)) {
           if (iRecord == null || ORecordInternal.getRecordType(iRecord) != fieldValueAsString.charAt(0)) {
             // CREATE THE RIGHT RECORD INSTANCE
-            iRecord = Orient.instance().getRecordFactoryManager().newInstance((byte) fieldValueAsString.charAt(0), -1, ODatabaseRecordThreadLocal.instance().getIfDefined());
+            iRecord = Orient.instance().getRecordFactoryManager().newInstance((byte) fieldValueAsString.charAt(0));
           }
         } else if (needReload && fieldName.equals(ODocumentHelper.ATTRIBUTE_RID) && iRecord instanceof ODocument) {
           if (fieldValue != null && fieldValue.length() > 0) {
-            ORecord localRecord = ODatabaseRecordThreadLocal.instance().get().load(new ORecordId(fieldValueAsString));
+            ORecord localRecord = ODatabaseRecordThreadLocal.INSTANCE.get().load(new ORecordId(fieldValueAsString));
             if (localRecord != null)
               iRecord = localRecord;
           }
         } else if (fieldName.equals(ODocumentHelper.ATTRIBUTE_CLASS) && iRecord instanceof ODocument) {
-          className = "null".equals(fieldValueAsString) ? null : fieldValueAsString;
-          ODocumentInternal.fillClassNameIfNeeded(((ODocument) iRecord),className);
-
+          ((ODocument) iRecord).setClassNameIfExists("null".equals(fieldValueAsString) ? null : fieldValueAsString);
         }
       }
 
@@ -220,18 +224,16 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
 
       try {
         for (int i = 0; i < fields.size(); i += 2) {
-          final String fieldName = OIOUtils.getStringContent(fields.get(i));
+          final String fieldName = OStringSerializerHelper.getStringContent(fields.get(i));
           final String fieldValue = fields.get(i + 1);
-          final String fieldValueAsString = OIOUtils.getStringContent(fieldValue);
+          final String fieldValueAsString = OStringSerializerHelper.getStringContent(fieldValue);
 
           // RECORD ATTRIBUTES
           if (fieldName.equals(ODocumentHelper.ATTRIBUTE_RID))
             ORecordInternal.setIdentity(iRecord, new ORecordId(fieldValueAsString));
           else if (fieldName.equals(ODocumentHelper.ATTRIBUTE_VERSION))
-            ORecordInternal.setVersion(iRecord, Integer.parseInt(fieldValue));
-          else if (fieldName.equals(ODocumentHelper.ATTRIBUTE_CLASS)) {
-            continue;
-          } else if (fieldName.equals(ODocumentHelper.ATTRIBUTE_TYPE)) {
+            iRecord.getRecordVersion().setCounter(Integer.parseInt(fieldValue));
+          else if (fieldName.equals(ODocumentHelper.ATTRIBUTE_TYPE)) {
             continue;
           } else if (fieldName.equals(ATTRIBUTE_FIELD_TYPES) && iRecord instanceof ODocument) {
             continue;
@@ -239,9 +241,9 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
             // RECORD VALUE(S)
             if ("null".equals(fieldValue))
               iRecord.fromStream(OCommonConst.EMPTY_BYTE_ARRAY);
-            else if (iRecord instanceof OBlob) {
+            else if (iRecord instanceof ORecordBytes) {
               // BYTES
-              iRecord.fromStream(Base64.getDecoder().decode(fieldValueAsString));
+              iRecord.fromStream(OBase64Utils.decode(fieldValueAsString));
             } else if (iRecord instanceof ORecordStringable) {
               ((ORecordStringable) iRecord).value(fieldValueAsString);
             } else
@@ -280,8 +282,8 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
                   continue;
                 }
               } else if (v instanceof ODocument && type != null && type.isLink()) {
-                String className1 = ((ODocument) v).getClassName();
-                if (className1 != null && className1.length() > 0)
+                String className = ((ODocument) v).getClassName();
+                if (className != null && className.length() > 0)
                   ((ODocument) v).save();
               }
 
@@ -303,31 +305,20 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
           }
 
         }
-        if (className != null) {
-          //Trigger the default value
-          ((ODocument) iRecord).setClassName(className);
-        }
       } catch (Exception e) {
         if (iRecord.getIdentity().isValid())
-          throw OException.wrapException(
-              new OSerializationException("Error on unmarshalling JSON content for record " + iRecord.getIdentity()), e);
+          throw new OSerializationException("Error on unmarshalling JSON content for record " + iRecord.getIdentity(), e);
         else
-          throw OException.wrapException(new OSerializationException("Error on unmarshalling JSON content for record: " + iSource),
-              e);
+          throw new OSerializationException("Error on unmarshalling JSON content for record: " + iSource, e);
       }
-
     }
 
     return iRecord;
   }
 
   @Override
-  public byte[] writeClassOnly(ORecord iSource) {
-    return new byte[] {};
-  }
-
-  @Override
-  public StringBuilder toString(final ORecord iRecord, final StringBuilder iOutput, final String iFormat, boolean iOnlyDelta,
+  public StringBuilder toString(final ORecord iRecord, final StringBuilder iOutput, final String iFormat,
+      final OUserObject2RecordHandler iObjHandler, final Map<ODocument, Boolean> iMarshalledRecords, boolean iOnlyDelta,
       boolean autoDetectCollectionType) {
     try {
       final StringWriter buffer = new StringWriter(INITIAL_SIZE);
@@ -335,7 +326,6 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
       final FormatSettings settings = new FormatSettings(iFormat);
 
       json.beginObject();
-
       OJSONFetchContext context = new OJSONFetchContext(json, settings);
       context.writeSignature(json, iRecord);
 
@@ -347,23 +337,23 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
 
         // STRINGABLE
         final ORecordStringable record = (ORecordStringable) iRecord;
-        json.writeAttribute(settings.indentLevel, true, "value", record.value());
+        json.writeAttribute(settings.indentLevel + 1, true, "value", record.value());
 
-      } else if (iRecord instanceof OBlob) {
+      } else if (iRecord instanceof ORecordBytes) {
         // BYTES
-        final OBlob record = (OBlob) iRecord;
-        json.writeAttribute(settings.indentLevel, true, "value", Base64.getEncoder().encodeToString(record.toStream()));
+        final ORecordBytes record = (ORecordBytes) iRecord;
+        json.writeAttribute(settings.indentLevel + 1, true, "value", OBase64Utils.encodeBytes(record.toStream()));
       } else
 
-        throw new OSerializationException(
-            "Error on marshalling record of type '" + iRecord.getClass() + "' to JSON. The record type cannot be exported to JSON");
+        throw new OSerializationException("Error on marshalling record of type '" + iRecord.getClass()
+            + "' to JSON. The record type cannot be exported to JSON");
 
-      json.endObject(settings.indentLevel, true);
+      json.endObject(0, true);
 
       iOutput.append(buffer);
       return iOutput;
     } catch (IOException e) {
-      throw OException.wrapException(new OSerializationException("Error on marshalling of record to JSON"), e);
+      throw new OSerializationException("Error on marshalling of record to JSON", e);
     }
   }
 
@@ -433,7 +423,7 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
       return getValueAsCollection(iRecord, iFieldValue, iType, iLinkedType, iFieldTypes, iNoMap, iOptions);
     }
 
-    if (iType == null || iType == OType.ANY)
+    if (iType == null)
       // TRY TO DETERMINE THE CONTAINED TYPE from THE FIRST VALUE
       if (iFieldValue.charAt(0) != '\"' && iFieldValue.charAt(0) != '\'') {
         if (iFieldValue.equalsIgnoreCase("false") || iFieldValue.equalsIgnoreCase("true"))
@@ -452,16 +442,14 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
               iType = OType.LINK;
             else if (iFieldValue.matches(".*[\\.Ee].*")) {
               // DECIMAL FORMAT: DETERMINE IF DOUBLE OR FLOAT
-              final Double v = new Double(OIOUtils.getStringContent(iFieldValue));
+              final Double v = new Double(OStringSerializerHelper.getStringContent(iFieldValue));
 
-              return v;
-              // REMOVED TRUNK to float
-              // if (canBeTrunkedToFloat(v))
-              // return v.floatValue();
-              // else
-              // return v;
+              if (canBeTrunkedToFloat(v))
+                return v.floatValue();
+              else
+                return v;
             } else {
-              final Long v = new Long(OIOUtils.getStringContent(iFieldValue));
+              final Long v = new Long(OStringSerializerHelper.getStringContent(iFieldValue));
               // INTEGER FORMAT: DETERMINE IF DOUBLE OR FLOAT
 
               if (canBeTrunkedToInt(v))
@@ -516,9 +504,8 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
             // TRY TO PARSE AS DATE
             return ODateHelper.getDateFormatInstance().parseObject(iFieldValueAsString);
           } catch (ParseException ex) {
-            OLogManager.instance().error(this, "Exception is suppressed, original exception is ", e);
-            throw OException.wrapException(new OSerializationException(
-                "Unable to unmarshall date (format=" + ODateHelper.getDateFormat() + ") : " + iFieldValueAsString), ex);
+            throw new OSerializationException("Unable to unmarshall date (format=" + ODateHelper.getDateFormat() + ") : "
+                + iFieldValueAsString, e);
           }
         }
 
@@ -533,27 +520,12 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
             // TRY TO PARSE AS DATETIME
             return ODateHelper.getDateTimeFormatInstance().parseObject(iFieldValueAsString);
           } catch (ParseException ex) {
-            OLogManager.instance().error(this, "Exception is suppressed, original exception is ", e);
-            throw OException
-                .wrapException(
-                    new OSerializationException(
-                        "Unable to unmarshall datetime (format=" + ODateHelper.getDateTimeFormat() + ") : " + iFieldValueAsString),
-                    ex);
+            throw new OSerializationException("Unable to unmarshall datetime (format=" + ODateHelper.getDateTimeFormat() + ") : "
+                + iFieldValueAsString, e);
           }
         }
       case BINARY:
         return OStringSerializerHelper.fieldTypeFromStream(iRecord, iType, iFieldValueAsString);
-      case CUSTOM: {
-        try {
-          ByteArrayInputStream bais = new ByteArrayInputStream(Base64.getDecoder().decode(iFieldValueAsString));
-          ObjectInputStream input = new ObjectInputStream(bais);
-          return input.readObject();
-        } catch (IOException e) {
-          throw OException.wrapException(new OSerializationException("Error on custom field deserialization"), e);
-        } catch (ClassNotFoundException e) {
-          throw OException.wrapException(new OSerializationException("Error on custom field deserialization"), e);
-        }
-      }
       default:
         return OStringSerializerHelper.fieldTypeFromStream(iRecord, iType, iFieldValue);
       }
@@ -605,7 +577,7 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
       if (iFieldName.length() >= 2)
         iFieldName = iFieldName.substring(1, iFieldName.length() - 1);
       iFieldValue = fields[i + 1];
-      final String valueAsString = OIOUtils.getStringContent(iFieldValue);
+      final String valueAsString = OStringSerializerHelper.getStringContent(iFieldValue);
 
       embeddedMap.put(iFieldName,
           getValue(iRecord, null, iFieldValue, valueAsString, iLinkedType, null, iFieldTypes, iNoMap, iOptions));
@@ -614,7 +586,7 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
   }
 
   private Object getValueAsRecord(ODocument iRecord, String iFieldValue, OType iType, String iOptions, String[] fields) {
-    ORID rid = new ORecordId(OIOUtils.getStringContent(getFieldValue("@rid", fields)));
+    ORID rid = new ORecordId(OStringSerializerHelper.getStringContent(getFieldValue("@rid", fields)));
     boolean shouldReload = rid.isTemporary();
 
     final ODocument recordInternal = (ODocument) fromString(iFieldValue, new ODocument(), null, iOptions, shouldReload);
@@ -622,7 +594,7 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
     if (shouldBeDeserializedAsEmbedded(recordInternal, iType))
       ODocumentInternal.addOwner(recordInternal, iRecord);
     else {
-      ODatabaseDocument database = ODatabaseRecordThreadLocal.instance().getIfDefined();
+      ODatabaseDocument database = ODatabaseRecordThreadLocal.INSTANCE.getIfDefined();
 
       if (rid.isPersistent() && database != null) {
         ODocument documentToMerge = database.load(rid);
@@ -654,8 +626,8 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
       return getValueAsLinkedCollection(new ORecordLazySet(iRecord), iRecord, iFieldValue, iType, iLinkedType, iFieldTypes, iNoMap,
           iOptions);
     } else if (iType == OType.LINKLIST) {
-      return getValueAsLinkedCollection(new ORecordLazyList(iRecord), iRecord, iFieldValue, iType, iLinkedType, iFieldTypes, iNoMap,
-          iOptions);
+      return getValueAsLinkedCollection(new ORecordLazyList(iRecord), iRecord, iFieldValue, iType, iLinkedType, iFieldTypes,
+          iNoMap, iOptions);
     } else if (iType == OType.EMBEDDEDSET) {
       return getValueAsEmbeddedCollection(new OTrackedSet<Object>(iRecord), iRecord, iFieldValue, iType, iLinkedType, iFieldTypes,
           iNoMap, iOptions);
@@ -699,8 +671,8 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
         if (itemValue.length() == 0)
           continue;
 
-        final Object collectionItem = getValue(iRecord, null, itemValue, OIOUtils.getStringContent(itemValue), iLinkedType, null,
-            iFieldTypes, iNoMap, iOptions);
+        final Object collectionItem = getValue(iRecord, null, itemValue, OStringSerializerHelper.getStringContent(itemValue),
+            iLinkedType, null, iFieldTypes, iNoMap, iOptions);
 
         // TODO redundant in some cases, owner is already added by getValue in some cases
         if (shouldBeDeserializedAsEmbedded(collectionItem, iType))
@@ -766,10 +738,5 @@ public class ORecordSerializerJSON extends ORecordSerializerStringAbstract {
       }
     }
     return null;
-  }
-
-  @Override
-  public String getName() {
-    return NAME;
   }
 }

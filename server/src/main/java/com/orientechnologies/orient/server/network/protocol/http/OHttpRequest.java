@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,30 +14,29 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http;
-
-import com.orientechnologies.orient.core.config.OContextConfiguration;
-import com.orientechnologies.orient.core.metadata.security.OToken;
-import com.orientechnologies.orient.server.network.protocol.ONetworkProtocolData;
-import com.orientechnologies.orient.server.network.protocol.http.multipart.OHttpMultipartBaseInputStream;
 
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.orientechnologies.orient.core.config.OContextConfiguration;
+import com.orientechnologies.orient.core.metadata.security.OToken;
+import com.orientechnologies.orient.server.network.protocol.ONetworkProtocolData;
+import com.orientechnologies.orient.server.network.protocol.http.multipart.OHttpMultipartBaseInputStream;
+
 /**
  * Maintains information about current HTTP request.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  *
  */
 public class OHttpRequest {
@@ -86,17 +85,13 @@ public class OHttpRequest {
     return parameters != null ? parameters.get(iName) : null;
   }
 
-  public Map<String, String> getParameters() {
-    return parameters;
-  }
-
   public void addHeader(final String h) {
     if (headers == null)
       headers = new HashMap<String, String>();
 
     final int pos = h.indexOf(':');
     if (pos > -1) {
-      headers.put(h.substring(0, pos).trim().toLowerCase(Locale.ENGLISH), h.substring(pos + 1).trim());
+      headers.put(h.substring(0, pos).trim().toLowerCase(), h.substring(pos + 1).trim());
     }
   }
 
@@ -123,7 +118,7 @@ public class OHttpRequest {
   }
 
   public String getHeader(final String iName) {
-    return headers.get(iName.toLowerCase(Locale.ENGLISH));
+    return headers.get(iName.toLowerCase());
   }
 
   public Set<Entry<String, String>> getHeaders() {

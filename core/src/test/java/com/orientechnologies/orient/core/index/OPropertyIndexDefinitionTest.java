@@ -1,20 +1,22 @@
 package com.orientechnologies.orient.core.index;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.metadata.schema.OType;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+
+@Test
 public class OPropertyIndexDefinitionTest {
   private OPropertyIndexDefinition propertyIndex;
 
-  @Before
+  @BeforeMethod
   public void beforeMethod() {
     propertyIndex = new OPropertyIndexDefinition("testClass", "fOne", OType.INTEGER);
   }
@@ -31,7 +33,7 @@ public class OPropertyIndexDefinitionTest {
     Assert.assertEquals(result, 12);
   }
 
-  @Test(expected = NumberFormatException.class)
+  @Test(expectedExceptions = NumberFormatException.class)
   public void testCreateValueWrongParameter() {
     propertyIndex.createValue(Collections.singletonList("tt"));
   }
@@ -48,7 +50,7 @@ public class OPropertyIndexDefinitionTest {
     Assert.assertEquals(result, 12);
   }
 
-  @Test(expected = NumberFormatException.class)
+  @Test(expectedExceptions = NumberFormatException.class)
   public void testCreateValueWrongParameterArrayParams() {
     propertyIndex.createValue("tt");
   }
@@ -86,7 +88,7 @@ public class OPropertyIndexDefinitionTest {
     propertyIndex = new OPropertyIndexDefinition("tesClass", "fOne", OType.INTEGER);
 
     final ODocument docToStore = propertyIndex.toStream();
-    database.save(docToStore, database.getClusterNameById(database.getDefaultClusterId()));
+    database.save(docToStore);
 
     final ODocument docToLoad = database.load(docToStore.getIdentity());
 

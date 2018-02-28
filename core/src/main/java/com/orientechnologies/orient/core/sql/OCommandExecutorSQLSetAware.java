@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,20 +19,21 @@ package com.orientechnologies.orient.core.sql;
 import com.orientechnologies.common.collection.OMultiValue;
 import com.orientechnologies.common.util.OPair;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OProperty;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.storage.OCluster;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
- *
+ * @author luca.molino
+ * 
  */
 public abstract class OCommandExecutorSQLSetAware extends OCommandExecutorSQLAbstract {
 
@@ -77,47 +78,14 @@ public abstract class OCommandExecutorSQLSetAware extends OCommandExecutorSQLAbs
 
   protected OClass extractClassFromTarget(String iTarget) {
     // CLASS
-    if (!iTarget.toUpperCase(Locale.ENGLISH).startsWith(OCommandExecutorSQLAbstract.CLUSTER_PREFIX)
+    if (!iTarget.startsWith(OCommandExecutorSQLAbstract.CLUSTER_PREFIX)
         && !iTarget.startsWith(OCommandExecutorSQLAbstract.INDEX_PREFIX)) {
 
-      if (iTarget.toUpperCase(Locale.ENGLISH).startsWith(OCommandExecutorSQLAbstract.CLASS_PREFIX))
+      if (iTarget.startsWith(OCommandExecutorSQLAbstract.CLASS_PREFIX))
         // REMOVE CLASS PREFIX
         iTarget = iTarget.substring(OCommandExecutorSQLAbstract.CLASS_PREFIX.length());
 
-      if (iTarget.charAt(0) == ORID.PREFIX)
-        return getDatabase().getMetadata().getSchema().getClassByClusterId(new ORecordId(iTarget).getClusterId());
-
       return getDatabase().getMetadata().getSchema().getClass(iTarget);
-    }
-    //CLUSTER
-    if (iTarget.toUpperCase(Locale.ENGLISH).startsWith(OCommandExecutorSQLAbstract.CLUSTER_PREFIX)) {
-      String clusterName = iTarget.substring(OCommandExecutorSQLAbstract.CLUSTER_PREFIX.length()).trim();
-      ODatabaseDocumentInternal db = getDatabase();
-      if(clusterName.startsWith("[") && clusterName.endsWith("]")) {
-        String[] clusterNames = clusterName.substring(1, clusterName.length()-1).split(",");
-        OClass candidateClass = null;
-        for(String cName:clusterNames){
-          OCluster aCluster = db.getStorage().getClusterByName(cName.trim());
-          if(aCluster == null){
-            return null;
-          }
-          OClass aClass = db.getMetadata().getSchema().getClassByClusterId(aCluster.getId());
-          if(aClass == null){
-            return null;
-          }
-          if(candidateClass == null || candidateClass.equals(aClass) || candidateClass.isSubClassOf(aClass)){
-            candidateClass = aClass;
-          }else if(!candidateClass.isSuperClassOf(aClass)){
-            return null;
-          }
-        }
-        return candidateClass;
-      } else {
-        OCluster cluster = db.getStorage().getClusterByName(clusterName);
-        if (cluster != null) {
-          return db.getMetadata().getSchema().getClassByClusterId(cluster.getId());
-        }
-      }
     }
     return null;
   }
@@ -132,20 +100,30 @@ public abstract class OCommandExecutorSQLSetAware extends OCommandExecutorSQLAbs
         switch (p.getType()) {
         case EMBEDDED:
           // CONVERT MAP IN DOCUMENTS ASSIGNING THE CLASS TAKEN FROM SCHEMA
-          if (v instanceof Map)
-            v = createDocumentFromMap(embeddedType, (Map<String, Object>) v);
+          if (v instanceof Map) {
+
+            final ODocument doc = new ODocument();
+            if (embeddedType != null)
+              doc.setClassName(embeddedType.getName());
+
+            doc.fromMap((Map<String, Object>) v);
+            v = doc;
+          }
           break;
 
         case EMBEDDEDSET:
           // CONVERT MAPS IN DOCUMENTS ASSIGNING THE CLASS TAKEN FROM SCHEMA
-          if (v instanceof Map)
-            return createDocumentFromMap(embeddedType, (Map<String, Object>) v);
-          else if (OMultiValue.isMultiValue(v)) {
+          if (!(v instanceof Map) && OMultiValue.isMultiValue(v)) {
             final Set set = new HashSet();
 
             for (Object o : OMultiValue.getMultiValueIterable(v)) {
               if (o instanceof Map) {
-                final ODocument doc = createDocumentFromMap(embeddedType, (Map<String, Object>) o);
+                final ODocument doc = new ODocument();
+                if (embeddedType != null)
+                  doc.setClassName(embeddedType.getName());
+
+                doc.fromMap((Map<String, Object>) o);
+
                 set.add(doc);
               } else if (o instanceof OIdentifiable)
                 set.add(((OIdentifiable) o).getRecord());
@@ -159,14 +137,17 @@ public abstract class OCommandExecutorSQLSetAware extends OCommandExecutorSQLAbs
 
         case EMBEDDEDLIST:
           // CONVERT MAPS IN DOCUMENTS ASSIGNING THE CLASS TAKEN FROM SCHEMA
-          if (v instanceof Map)
-            return createDocumentFromMap(embeddedType, (Map<String, Object>) v);
-          else if (OMultiValue.isMultiValue(v)) {
+          if (!(v instanceof Map) && OMultiValue.isMultiValue(v)) {
             final List set = new ArrayList();
 
             for (Object o : OMultiValue.getMultiValueIterable(v)) {
               if (o instanceof Map) {
-                final ODocument doc = createDocumentFromMap(embeddedType, (Map<String, Object>) o);
+                final ODocument doc = new ODocument();
+                if (embeddedType != null)
+                  doc.setClassName(embeddedType.getName());
+
+                doc.fromMap((Map<String, Object>) o);
+
                 set.add(doc);
               } else if (o instanceof OIdentifiable)
                 set.add(((OIdentifiable) o).getRecord());
@@ -185,7 +166,12 @@ public abstract class OCommandExecutorSQLSetAware extends OCommandExecutorSQLAbs
 
             for (Map.Entry<String, Object> entry : ((Map<String, Object>) v).entrySet()) {
               if (entry.getValue() instanceof Map) {
-                final ODocument doc = createDocumentFromMap(embeddedType, (Map<String, Object>) entry.getValue());
+                final ODocument doc = new ODocument();
+                if (embeddedType != null)
+                  doc.setClassName(embeddedType.getName());
+
+                doc.fromMap((Map<String, Object>) entry.getValue());
+
                 map.put(entry.getKey(), doc);
               } else if (entry.getValue() instanceof OIdentifiable)
                 map.put(entry.getKey(), ((OIdentifiable) entry.getValue()).getRecord());
@@ -202,24 +188,15 @@ public abstract class OCommandExecutorSQLSetAware extends OCommandExecutorSQLAbs
     return v;
   }
 
-  private ODocument createDocumentFromMap(OClass embeddedType, Map<String, Object> o) {
-    final ODocument doc = new ODocument();
-    if (embeddedType != null)
-      doc.setClassName(embeddedType.getName());
-
-    doc.fromMap(o);
-    return doc;
-  }
-
   @Override
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   protected Object getFieldValueCountingParameters(String fieldValue) {
     if (fieldValue.trim().equals("?"))
       parameterCounter++;
-    return OSQLHelper.parseValue(this, fieldValue, context, true);
+    return OSQLHelper.parseValue(this, fieldValue, context);
   }
 
   protected ODocument parseJSON() {

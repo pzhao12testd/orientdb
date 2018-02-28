@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,18 +14,16 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
 
-import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.util.OPair;
 import com.orientechnologies.orient.core.command.OCommandDistributedReplicateRequest;
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
 import com.orientechnologies.orient.core.command.OCommandResultListener;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
@@ -33,21 +31,25 @@ import com.orientechnologies.orient.core.exception.OQueryParsingException;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.metadata.OMetadataInternal;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
 import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemField;
 import com.orientechnologies.orient.core.sql.query.OSQLAsynchQuery;
-import com.orientechnologies.orient.core.storage.OCluster;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * SQL INSERT command.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
  * @author Johann Sorel (Geomatys)
  */
 public class OCommandExecutorSQLInsert extends OCommandExecutorSQLSetAware implements OCommandDistributedReplicateRequest,
@@ -95,19 +97,18 @@ public class OCommandExecutorSQLInsert extends OCommandExecutorSQLSetAware imple
       parserRequiredKeyword("INSERT");
       parserRequiredKeyword("INTO");
 
-      String subjectName = parserRequiredWord(false, "Invalid subject name. Expected cluster, class or index");
-      String subjectNameUpper = subjectName.toUpperCase(Locale.ENGLISH);
-      if (subjectNameUpper.startsWith(OCommandExecutorSQLAbstract.CLUSTER_PREFIX))
+      String subjectName = parserRequiredWord(true, "Invalid subject name. Expected cluster, class or index");
+      if (subjectName.startsWith(OCommandExecutorSQLAbstract.CLUSTER_PREFIX))
         // CLUSTER
         clusterName = subjectName.substring(OCommandExecutorSQLAbstract.CLUSTER_PREFIX.length());
 
-      else if (subjectNameUpper.startsWith(OCommandExecutorSQLAbstract.INDEX_PREFIX))
+      else if (subjectName.startsWith(OCommandExecutorSQLAbstract.INDEX_PREFIX))
         // INDEX
         indexName = subjectName.substring(OCommandExecutorSQLAbstract.INDEX_PREFIX.length());
 
       else {
         // CLASS
-        if (subjectNameUpper.startsWith(OCommandExecutorSQLAbstract.CLASS_PREFIX))
+        if (subjectName.startsWith(OCommandExecutorSQLAbstract.CLASS_PREFIX))
           subjectName = subjectName.substring(OCommandExecutorSQLAbstract.CLASS_PREFIX.length());
 
         final OClass cls = ((OMetadataInternal) database.getMetadata()).getImmutableSchemaSnapshot().getClass(subjectName);
@@ -125,23 +126,12 @@ public class OCommandExecutorSQLInsert extends OCommandExecutorSQLSetAware imple
           throw new OQueryParsingException("Class '" + className + "' was not found");
       }
 
-      if(clusterName != null && className == null){
-        ODatabaseDocumentInternal db = getDatabase();
-        OCluster cluster = db.getStorage().getClusterByName(clusterName);
-        if(cluster != null){
-          clazz = db.getMetadata().getSchema().getClassByClusterId(cluster.getId());
-          if(clazz != null){
-            className = clazz.getName();
-          }
-        }
-      }
-
       parserSkipWhiteSpaces();
       if (parserIsEnded())
         throwSyntaxErrorException("Set of fields is missed. Example: (name, surname) or SET name = 'Bill'");
 
       final String temp = parseOptionalWord(true);
-      if (parserGetLastWord().equalsIgnoreCase("cluster")) {
+      if (temp.equals("CLUSTER")) {
         clusterName = parserRequiredWord(false);
 
         parserSkipWhiteSpaces();
@@ -278,55 +268,14 @@ public class OCommandExecutorSQLInsert extends OCommandExecutorSQLSetAware imple
 
   @Override
   public boolean result(final Object iRecord) {
-    OClass oldClass = null;
-    ORecord oldRecord = ((OIdentifiable) iRecord).getRecord();
-    if (oldRecord instanceof ODocument) {
-      oldClass = ((ODocument) oldRecord).getSchemaClass();
-    }
-    final ORecord rec = oldRecord.copy();
+    final ORecord rec = ((OIdentifiable) iRecord).getRecord().copy();
 
     // RESET THE IDENTITY TO AVOID UPDATE
     rec.getIdentity().reset();
 
-    if (rec instanceof ODocument) {
+    if (rec instanceof ODocument && className != null)
+      ((ODocument) rec).setClassName(className);
 
-      ODocument doc = (ODocument) rec;
-      if (className != null) {
-        doc.setClassName(className);
-        doc.setTrackingChanges(true);
-      }
-    }
-
-    if(rec instanceof OElement){
-      OElement doc = (OElement) rec;
-
-      if (oldClass!=null && oldClass.isSubClassOf("V")) {
-        OLogManager.instance()
-            .warn(this, "WARNING: copying vertex record " + doc + " with INSERT/SELECT, the edge pointers won't be copied");
-        String[] fields = ((ODocument) rec).fieldNames();
-        for (String field : fields) {
-          if (field.startsWith("out_") || field.startsWith("in_")) {
-            Object edges = doc.getProperty(field);
-            if (edges instanceof OIdentifiable) {
-              ODocument edgeRec = ((OIdentifiable) edges).getRecord();
-              if (edgeRec.getSchemaClass() != null && edgeRec.getSchemaClass().isSubClassOf("E")) {
-                doc.removeProperty(field);
-              }
-            } else if (edges instanceof Iterable) {
-              for (Object edge : (Iterable) edges) {
-                if (edge instanceof OIdentifiable) {
-                  OElement edgeRec = ((OIdentifiable) edge).getRecord();
-                  if (edgeRec.getSchemaType().isPresent() && edgeRec.getSchemaType().get().isSubClassOf("E")) {
-                    doc.removeProperty(field);
-                    break;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
     rec.setDirty();
     synchronized (this) {
       saveRecord(rec);
@@ -382,13 +331,8 @@ public class OCommandExecutorSQLInsert extends OCommandExecutorSQLSetAware imple
     if (endFields == -1)
       throwSyntaxErrorException("Missed closed brace");
 
-    final ArrayList<String> fieldNamesQuoted = new ArrayList<String>();
-    parserSetCurrentPosition(OStringSerializerHelper.getParameters(parserText, beginFields, endFields, fieldNamesQuoted));
     final ArrayList<String> fieldNames = new ArrayList<String>();
-    for(String fieldName:fieldNamesQuoted){
-      fieldNames.add(decodeClassName(fieldName));
-    }
-
+    parserSetCurrentPosition(OStringSerializerHelper.getParameters(parserText, beginFields, endFields, fieldNames));
     if (fieldNames.size() == 0)
       throwSyntaxErrorException("Set of fields is empty. Example: (name, surname)");
 
@@ -481,8 +425,4 @@ public class OCommandExecutorSQLInsert extends OCommandExecutorSQLSetAware imple
     return QUORUM_TYPE.WRITE;
   }
 
-  @Override
-  public Object getResult() {
-    return null;
-  }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2013 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
  */
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.exception.ODatabaseException;
-import org.junit.Assert;
 import org.junit.Test;
+
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 
 /**
  * Distributed test on drop database.
@@ -37,24 +36,13 @@ public class DistributedDbDropTest extends AbstractServerClusterTxTest {
 
   @Override
   protected void onAfterExecution() throws Exception {
-    ServerRun s = serverInstance.get(0);
+    for (ServerRun s : serverInstance) {
+      final ODatabaseDocumentTx db = new ODatabaseDocumentTx(getDatabaseURL(s));
+      db.open("admin", "admin");
 
-    final ODatabaseDocumentTx db = new ODatabaseDocumentTx(getDatabaseURL(s));
-    db.open("admin", "admin");
-
-    banner("DROPPING DATABASE ON SERVER " + s.getServerId());
-    db.drop();
-
-    for (int i = 1; i < serverInstance.size(); ++i) {
-      try {
-        final ODatabaseDocumentTx database = new ODatabaseDocumentTx(getDatabaseURL(s));
-        database.open("admin", "admin");
-        Assert.fail("The database was not deleted on server " + i);
-      } catch (ODatabaseException e) {
-        Assert.assertTrue(e.getCause().getMessage().contains("it does not exist"));
-      }
+      banner("DROPPING DATABASE ON SERVER " + s.getServerId());
+      db.drop();
     }
-
   }
 
   protected String getDatabaseURL(final ServerRun server) {

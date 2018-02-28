@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2011 Luca Molino (molino.luca--AT--gmail.com *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,7 +24,7 @@ import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class OHttpMultipartFileToDiskContentParser implements OHttpMultipartContentParser<InputStream> {

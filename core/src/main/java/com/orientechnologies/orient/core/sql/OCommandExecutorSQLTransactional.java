@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
 
 import java.util.Map;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
@@ -29,7 +28,7 @@ import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 /**
  * Acts as a delegate to the real command inserting the execution of the command inside a new transaction if not yet begun.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OCommandExecutorSQLTransactional extends OCommandExecutorSQLDelegate {
   public static final String KEYWORD_TRANSACTIONAL = "TRANSACTIONAL";
@@ -60,7 +59,7 @@ public class OCommandExecutorSQLTransactional extends OCommandExecutorSQLDelegat
     } catch (Exception e) {
       if (txbegun)
         database.rollback();
-      throw OException.wrapException(new OCommandExecutionException("Transactional command failed"), e);
+      throw new OCommandExecutionException("Transactional command failed", e);
     }
   }
 }

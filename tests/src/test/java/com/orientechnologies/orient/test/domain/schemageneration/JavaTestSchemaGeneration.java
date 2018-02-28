@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,12 +29,12 @@ import javax.persistence.Id;
 import javax.persistence.Transient;
 import javax.persistence.Version;
 
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 import com.orientechnologies.orient.test.domain.base.EnumTest;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class JavaTestSchemaGeneration {
@@ -56,7 +56,7 @@ public class JavaTestSchemaGeneration {
   @Embedded
   private ODocument                              embeddedDocument;
   private ODocument                              document;
-  private OBlob                                  byteArray;
+  private ORecordBytes                           byteArray;
   private TestSchemaGenerationChild              child;
   @Embedded
   private TestSchemaGenerationChild              embeddedChild;
@@ -194,11 +194,11 @@ public class JavaTestSchemaGeneration {
     this.document = document;
   }
 
-  public OBlob getByteArray() {
+  public ORecordBytes getByteArray() {
     return byteArray;
   }
 
-  public void setByteArray(OBlob byteArray) {
+  public void setByteArray(ORecordBytes byteArray) {
     this.byteArray = byteArray;
   }
 

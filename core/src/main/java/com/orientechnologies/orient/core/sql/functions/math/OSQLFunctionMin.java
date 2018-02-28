@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.sql.functions.math;
@@ -30,7 +30,7 @@ import java.util.List;
  * Compute the minimum value for a field. Uses the context to save the last minimum number. When different Number class are used,
  * take the class with most precision.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public class OSQLFunctionMin extends OSQLFunctionMathAbstract {
@@ -56,11 +56,6 @@ public class OSQLFunctionMin extends OSQLFunctionMathAbstract {
             min = subitem;
         }
       } else {
-        if ((item instanceof Number) && (min instanceof Number)) {
-          Number[] converted = OType.castComparableNumber((Number) item, (Number) min);
-          item = converted[0];
-          min = converted[1];
-        }
         if (min == null || item != null && ((Comparable) item).compareTo(min) < 0)
           min = item;
       }

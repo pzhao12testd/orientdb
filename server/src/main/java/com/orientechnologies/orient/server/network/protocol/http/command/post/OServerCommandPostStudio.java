@@ -1,6 +1,6 @@
 /*
    *
-   *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+   *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
    *  *
    *  *  Licensed under the Apache License, Version 2.0 (the "License");
    *  *  you may not use this file except in compliance with the License.
@@ -14,40 +14,39 @@
    *  *  See the License for the specific language governing permissions and
    *  *  limitations under the License.
    *  *
-   *  * For more information: http://orientdb.com
+   *  * For more information: http://www.orientechnologies.com
    *
    */
 package com.orientechnologies.orient.server.network.protocol.http.command.post;
 
-import com.orientechnologies.common.util.OPatternConst;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.id.ORecordId;
-import com.orientechnologies.orient.core.index.OIndex;
-import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.metadata.schema.OPropertyImpl;
-import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.record.impl.ODocumentHelper;
-import com.orientechnologies.orient.core.serialization.serializer.record.string.ORecordSerializerStringAbstract;
-import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
-import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
-import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
-import com.orientechnologies.orient.server.network.protocol.http.command.OServerCommandAuthenticatedDbAbstract;
-
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
+ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Map.Entry;
+
+import com.orientechnologies.common.util.OPatternConst;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+ import com.orientechnologies.orient.core.id.ORecordId;
+ import com.orientechnologies.orient.core.index.OIndex;
+ import com.orientechnologies.orient.core.metadata.schema.OClass;
+ import com.orientechnologies.orient.core.metadata.schema.OPropertyImpl;
+ import com.orientechnologies.orient.core.metadata.schema.OType;
+ import com.orientechnologies.orient.core.record.impl.ODocument;
+ import com.orientechnologies.orient.core.record.impl.ODocumentHelper;
+ import com.orientechnologies.orient.core.serialization.serializer.record.string.ORecordSerializerStringAbstract;
+ import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
+ import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
+ import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
+ import com.orientechnologies.orient.server.network.protocol.http.command.OServerCommandAuthenticatedDbAbstract;
 
 @SuppressWarnings("unchecked")
  public class OServerCommandPostStudio extends OServerCommandAuthenticatedDbAbstract {
    private static final String[] NAMES = { "POST|studio/*" };
 
   public boolean execute(final OHttpRequest iRequest, OHttpResponse iResponse) throws Exception {
-     ODatabaseDocument db = null;
+     ODatabaseDocumentTx db = null;
 
      try {
        final String[] urlParts = checkSyntax(iRequest.url, 3, "Syntax error: studio/<database>/<context>");
@@ -104,7 +103,7 @@ import java.util.Map.Entry;
      return false;
    }
 
-   private void executeClassProperties(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocument db,
+   private void executeClassProperties(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocumentTx db,
        final String operation, final String rid, final String className, final Map<String, String> fields) throws IOException {
      // GET THE TARGET CLASS
      final OClass cls = db.getMetadata().getSchema().getClass(rid);
@@ -140,7 +139,7 @@ import java.util.Map.Entry;
          if (fields.get("max") != null)
            prop.setMax(fields.get("max"));
 
-         iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Property " + fields.get("name")
+         iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Property " + fields.get("name")
              + " created successfully", null);
 
        } catch (Exception e) {
@@ -152,12 +151,12 @@ import java.util.Map.Entry;
 
        cls.dropProperty(className);
 
-       iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Property " + fields.get("name")
+       iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Property " + fields.get("name")
            + " deleted successfully.", null);
      }
    }
 
-   private void executeClasses(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocument db,
+   private void executeClasses(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocumentTx db,
        final String operation, final String rid, final String className, final Map<String, String> fields) throws IOException {
      if ("add".equals(operation)) {
        iRequest.data.commandInfo = "Studio add class";
@@ -179,7 +178,7 @@ import java.util.Map.Entry;
          if (alias != null)
            cls.setShortName(alias);
 
-         iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Class '" + rid
+         iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Class '" + rid
              + "' created successfully with id=" + db.getMetadata().getSchema().getClasses().size(), null);
 
        } catch (Exception e) {
@@ -191,32 +190,32 @@ import java.util.Map.Entry;
 
        db.getMetadata().getSchema().dropClass(rid);
 
-       iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Class '" + rid + "' deleted successfully.",
+       iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Class '" + rid + "' deleted successfully.",
            null);
      }
    }
 
-   private void executeClusters(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocument db,
+   private void executeClusters(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocumentTx db,
        final String operation, final String rid, final String iClusterName, final Map<String, String> fields) throws IOException {
      if ("add".equals(operation)) {
        iRequest.data.commandInfo = "Studio add cluster";
 
        int clusterId = db.addCluster(fields.get("name"));
 
-       iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Cluster " + fields.get("name")
+       iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Cluster " + fields.get("name")
            + "' created successfully with id=" + clusterId, null);
 
      } else if ("del".equals(operation)) {
        iRequest.data.commandInfo = "Studio delete cluster";
 
-       db.dropCluster(rid, false);
+       db.dropCluster(rid, true);
 
-       iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Cluster " + fields.get("name")
+       iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Cluster " + fields.get("name")
            + "' deleted successfully", null);
      }
    }
 
-   private void executeDocument(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocument db,
+   private void executeDocument(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocumentTx db,
        final String operation, final String rid, final String className, final Map<String, String> fields) throws IOException {
      if ("edit".equals(operation)) {
        iRequest.data.commandInfo = "Studio edit document";
@@ -257,7 +256,7 @@ import java.util.Map.Entry;
        }
 
        doc.save();
-       iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Record " + rid + " updated successfully.",
+       iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Record " + rid + " updated successfully.",
            null);
      } else if ("add".equals(operation)) {
        iRequest.data.commandInfo = "Studio create document";
@@ -280,14 +279,14 @@ import java.util.Map.Entry;
        final ODocument doc = new ODocument(new ORecordId(rid));
        doc.load();
        doc.delete();
-       iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Record " + rid + " deleted successfully.",
+       iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Record " + rid + " deleted successfully.",
            null);
 
      } else
        iResponse.send(500, "Error", OHttpUtils.CONTENT_TEXT_PLAIN, "Operation not supported", null);
    }
 
-   private void executeClassIndexes(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocument db,
+   private void executeClassIndexes(final OHttpRequest iRequest, final OHttpResponse iResponse, final ODatabaseDocumentTx db,
        final String operation, final String rid, final String className, final Map<String, String> fields) throws IOException {
      // GET THE TARGET CLASS
      final OClass cls = db.getMetadata().getSchema().getClass(rid);
@@ -306,7 +305,7 @@ import java.util.Map.Entry;
 
          cls.createIndex(fields.get("name"), indexType, fieldNames);
 
-         iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Index " + fields.get("name")
+         iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Index " + fields.get("name")
              + " created successfully", null);
 
        } catch (Exception e) {
@@ -326,7 +325,7 @@ import java.util.Map.Entry;
 
          db.getMetadata().getIndexManager().dropIndex(index.getName());
 
-         iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, "Index " + className
+         iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, "Index " + className
              + " deleted successfully.", null);
        } catch (Exception e) {
          iResponse.send(OHttpUtils.STATUS_INTERNALERROR_CODE, "Error on deletion index '" + className + "' for class " + rid + ": "

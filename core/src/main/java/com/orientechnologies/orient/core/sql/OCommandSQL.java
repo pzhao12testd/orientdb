@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,19 +14,18 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.sql;
 
 import com.orientechnologies.orient.core.command.OCommandRequestTextAbstract;
-import com.orientechnologies.orient.core.replication.OAsyncReplicationError;
-import com.orientechnologies.orient.core.replication.OAsyncReplicationOk;
 
 /**
  * SQL command request implementation. It just stores the request and delegated the execution to the configured OCommandExecutor.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 @SuppressWarnings("serial")
 public class OCommandSQL extends OCommandRequestTextAbstract {
@@ -46,19 +45,4 @@ public class OCommandSQL extends OCommandRequestTextAbstract {
     return "sql." + text;// OIOUtils.getStringMaxLength(text, 50, "...");
   }
 
-  /**
-   * Defines a callback to call in case of the asynchronous replication succeed.
-   */
-  @Override
-  public OCommandSQL onAsyncReplicationOk(final OAsyncReplicationOk iCallback) {
-    return (OCommandSQL) super.onAsyncReplicationOk(iCallback);
-  }
-
-  /**
-   * Defines a callback to call in case of error during the asynchronous replication.
-   */
-  @Override
-  public OCommandSQL onAsyncReplicationError(final OAsyncReplicationError iCallback) {
-    return (OCommandSQL) super.onAsyncReplicationError(iCallback);
-  }
 }

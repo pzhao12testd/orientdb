@@ -15,16 +15,15 @@
  */
 package com.orientechnologies.orient.core.sql.functions.misc;
 
+import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.record.impl.OBlob;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
+import com.orientechnologies.orient.core.serialization.OBase64Utils;
 import com.orientechnologies.orient.core.serialization.OSerializableStream;
 import com.orientechnologies.orient.core.sql.functions.OSQLFunctionAbstract;
-
-import java.util.Base64;
 
 /**
  * Encode a string in various format (only base64 for now)
@@ -54,8 +53,8 @@ public class OSQLFunctionEncode extends OSQLFunctionAbstract {
       data = (byte[]) candidate;
     } else if (candidate instanceof ORecordId) {
       final ORecord rec = ((ORecordId) candidate).getRecord();
-      if (rec instanceof OBlob) {
-        data = ((OBlob) rec).toStream();
+      if (rec instanceof ORecordBytes) {
+        data = ((ORecordBytes) rec).toStream();
       }
     } else if (candidate instanceof OSerializableStream) {
       data = ((OSerializableStream) candidate).toStream();
@@ -66,9 +65,9 @@ public class OSQLFunctionEncode extends OSQLFunctionAbstract {
     }
 
     if (FORMAT_BASE64.equalsIgnoreCase(format)) {
-      return Base64.getEncoder().encodeToString(data);
+      return OBase64Utils.encodeBytes(data);
     } else {
-      throw new ODatabaseException("unknowned format :" + format);
+      throw new OException("unknowned format :" + format);
     }
   }
 

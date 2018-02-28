@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.storage;
@@ -22,6 +22,8 @@ package com.orientechnologies.orient.core.storage;
 import com.orientechnologies.orient.core.exception.OSerializationException;
 import com.orientechnologies.orient.core.serialization.OBinaryProtocol;
 import com.orientechnologies.orient.core.serialization.OSerializableStream;
+import com.orientechnologies.orient.core.version.ORecordVersion;
+import com.orientechnologies.orient.core.version.OVersionFactory;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -29,12 +31,16 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 public class OPhysicalPosition implements OSerializableStream, Externalizable {
-  private static final int binarySize = OBinaryProtocol.SIZE_LONG + OBinaryProtocol.SIZE_BYTE + OBinaryProtocol.SIZE_INT
-      + OBinaryProtocol.SIZE_INT;
-  public long             clusterPosition;
-  public byte             recordType;
-  public int              recordVersion = 0;
-  public int              recordSize;
+  public static int      binarySize;
+  private static boolean binarySizeKnown = false;
+  // POSITION IN THE CLUSTER
+  public long            clusterPosition;
+  // TYPE
+  public byte            recordType;
+  // VERSION
+  public ORecordVersion  recordVersion   = OVersionFactory.instance().createVersion();
+  // SIZE IN BYTES OF THE RECORD. USED ONLY IN MEMORY
+  public int             recordSize;
 
   public OPhysicalPosition() {
   }
@@ -47,12 +53,23 @@ public class OPhysicalPosition implements OSerializableStream, Externalizable {
     recordType = iRecordType;
   }
 
-  public OPhysicalPosition(final long iClusterPosition, final int iVersion) {
+  public OPhysicalPosition(final long iClusterPosition, final ORecordVersion iVersion) {
     clusterPosition = iClusterPosition;
-    recordVersion = iVersion;
+    recordVersion.copyFrom(iVersion);
   }
 
-  private void copyTo(final OPhysicalPosition iDest) {
+  public static int binarySize() {
+    if (binarySizeKnown)
+      return binarySize;
+
+    binarySizeKnown = true;
+    binarySize = OBinaryProtocol.SIZE_LONG + OBinaryProtocol.SIZE_BYTE + OVersionFactory.instance().getVersionSize()
+        + OBinaryProtocol.SIZE_INT;
+
+    return binarySize;
+  }
+
+  public void copyTo(final OPhysicalPosition iDest) {
     iDest.clusterPosition = clusterPosition;
     iDest.recordType = recordType;
     iDest.recordVersion = recordVersion;
@@ -68,7 +85,6 @@ public class OPhysicalPosition implements OSerializableStream, Externalizable {
     return "rid(?:" + clusterPosition + ") record(type:" + recordType + " size:" + recordSize + " v:" + recordVersion + ")";
   }
 
-  @Override
   public OSerializableStream fromStream(final byte[] iStream) throws OSerializationException {
     int pos = 0;
 
@@ -81,14 +97,13 @@ public class OPhysicalPosition implements OSerializableStream, Externalizable {
     recordSize = OBinaryProtocol.bytes2int(iStream, pos);
     pos += OBinaryProtocol.SIZE_INT;
 
-    recordVersion = OBinaryProtocol.bytes2int(iStream, pos);
+    recordVersion.getSerializer().readFrom(iStream, pos, recordVersion);
 
     return this;
   }
 
-  @Override
   public byte[] toStream() throws OSerializationException {
-    final byte[] buffer = new byte[binarySize];
+    byte[] buffer = new byte[binarySize()];
     int pos = 0;
 
     OBinaryProtocol.long2bytes(clusterPosition, buffer, pos);
@@ -100,7 +115,7 @@ public class OPhysicalPosition implements OSerializableStream, Externalizable {
     OBinaryProtocol.int2bytes(recordSize, buffer, pos);
     pos += OBinaryProtocol.SIZE_INT;
 
-    OBinaryProtocol.int2bytes(recordVersion, buffer, pos);
+    recordVersion.getSerializer().writeTo(buffer, pos, recordVersion);
     return buffer;
   }
 
@@ -111,7 +126,7 @@ public class OPhysicalPosition implements OSerializableStream, Externalizable {
 
     final OPhysicalPosition other = (OPhysicalPosition) obj;
 
-    return clusterPosition == other.clusterPosition && recordType == other.recordType && recordVersion == other.recordVersion
+    return clusterPosition == other.clusterPosition && recordType == other.recordType && recordVersion.equals(other.recordVersion)
         && recordSize == other.recordSize;
   }
 
@@ -119,24 +134,22 @@ public class OPhysicalPosition implements OSerializableStream, Externalizable {
   public int hashCode() {
     int result = (int) (31 * clusterPosition);
     result = 31 * result + (int) recordType;
-    result = 31 * result + recordVersion;
+    result = 31 * result + (recordVersion != null ? recordVersion.hashCode() : 0);
     result = 31 * result + recordSize;
     return result;
   }
 
-  @Override
   public void writeExternal(final ObjectOutput out) throws IOException {
     out.writeLong(clusterPosition);
     out.writeByte(recordType);
     out.writeInt(recordSize);
-    out.writeInt(recordVersion);
+    recordVersion.getSerializer().writeTo(out, recordVersion);
   }
 
-  @Override
   public void readExternal(final ObjectInput in) throws IOException, ClassNotFoundException {
     clusterPosition = in.readLong();
     recordType = in.readByte();
     recordSize = in.readInt();
-    recordVersion = in.readInt();
+    recordVersion.getSerializer().readFrom(in, recordVersion);
   }
 }

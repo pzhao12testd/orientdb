@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
@@ -25,29 +25,14 @@ import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
-import java.util.ArrayList;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.Map.Entry;
 
 @SuppressWarnings("restriction")
 public class OSignalHandler implements SignalHandler {
   private Hashtable<Signal, SignalHandler> redefinedHandlers = new Hashtable(4);
-  private List<OSignalListener>            listeners         = new ArrayList<OSignalListener>();
-
-  public interface OSignalListener {
-    void onSignal(Signal signal);
-  }
 
   public OSignalHandler() {
-  }
-
-  public void registerListener(final OSignalListener listener) {
-    listeners.add(listener);
-  }
-
-  public void unregisterListener(final OSignalListener listener) {
-    listeners.remove(listener);
   }
 
   public void listenTo(final String name, final SignalHandler iListener) {
@@ -58,13 +43,13 @@ public class OSignalHandler implements SignalHandler {
     }
   }
 
-  public void handle(final Signal signal) {
-    OLogManager.instance().warn(this, "Received signal: %s", signal);
+  public void handle(Signal signal) {
+    OLogManager.instance().info(this, "Received signal: %s", signal);
 
     final String s = signal.toString().trim();
 
-    if (Orient.instance().isSelfManagedShutdown() && (s.equals("SIGKILL") || s.equals("SIGHUP") || s.equals("SIGINT") || s
-        .equals("SIGTERM"))) {
+    if (Orient.instance().isSelfManagedShutdown()
+        && (s.equals("SIGKILL") || s.equals("SIGHUP") || s.equals("SIGINT") || s.equals("SIGTERM"))) {
       Orient.instance().shutdown();
       System.exit(1);
     } else if (s.equals("SIGTRAP")) {
@@ -73,16 +58,12 @@ public class OSignalHandler implements SignalHandler {
       System.out.println();
       Orient.instance().getProfiler().dump(System.out);
       System.out.println();
-      System.out.println(Orient.instance().getProfiler().threadDump());
     } else {
       SignalHandler redefinedHandler = redefinedHandlers.get(signal);
       if (redefinedHandler != null) {
         redefinedHandler.handle(signal);
       }
     }
-
-    for (OSignalListener l : listeners)
-      l.onSignal(signal);
   }
 
   public void installDefaultSignals() {
@@ -95,17 +76,17 @@ public class OSignalHandler implements SignalHandler {
 
     try {
       listenTo("INT", iListener);
-    } catch (IllegalArgumentException ignore) {
+    } catch (IllegalArgumentException e) {
       // NOT AVAILABLE
     }
     try {
       listenTo("TERM", iListener);
-    } catch (IllegalArgumentException ignore) {
+    } catch (IllegalArgumentException e) {
       // NOT AVAILABLE
     }
     try {
       listenTo("TRAP", iListener);
-    } catch (IllegalArgumentException ignore) {
+    } catch (IllegalArgumentException e) {
       // NOT AVAILABLE
     }
   }
@@ -116,7 +97,6 @@ public class OSignalHandler implements SignalHandler {
         // re-install the original handler we replaced
         Signal.handle(entry.getKey(), entry.getValue());
       } catch (IllegalStateException e) {
-        OLogManager.instance().error(this, "Error during reverting signal handlers to default ones", e);
         // not expected as we were able to redefine it earlier, but just in case
       }
     }

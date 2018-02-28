@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,9 +22,9 @@ import com.orientechnologies.orient.core.sql.method.misc.OAbstractSQLMethod;
 
 /**
  * Extracts a sub string from the original.
- *
+ * 
  * @author Johann Sorel (Geomatys)
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodSubString extends OAbstractSQLMethod {
 
@@ -34,44 +34,21 @@ public class OSQLMethodSubString extends OAbstractSQLMethod {
     super(NAME, 1, 2);
   }
 
-  @Override public String getSyntax() {
+  @Override
+  public String getSyntax() {
     return "subString(<from-index> [,<to-index>])";
   }
 
-  @Override public Object execute(Object iThis, OIdentifiable iCurrentRecord, OCommandContext iContext, Object ioResult,
-      Object[] iParams) {
+  @Override
+  public Object execute(Object iThis, OIdentifiable iCurrentRecord, OCommandContext iContext, Object ioResult, Object[] iParams) {
     if (iThis == null || iParams[0] == null) {
       return null;
     }
 
-    if (iParams.length > 1) {
-      int from = Integer.parseInt(iParams[0].toString());
-      int to = Integer.parseInt(iParams[1].toString());
-      String thisString = iThis.toString();
-      if (from < 0) {
-        from = 0;
-      }
-      if (from >= thisString.length()) {
-        return "";
-      }
-      if (to > thisString.length()) {
-        to = thisString.length();
-      }
-      if (to <= from) {
-        return "";
-      }
-
-      return thisString.substring(from, to);
+    if (iParams.length>1) {
+      return iThis.toString().substring(Integer.parseInt(iParams[0].toString()), Integer.parseInt(iParams[1].toString()));
     } else {
-      int from = Integer.parseInt(iParams[0].toString());
-      String thisString = iThis.toString();
-      if (from < 0) {
-        from = 0;
-      }
-      if (from >= thisString.length()) {
-        return "";
-      }
-      return thisString.substring(from);
+      return iThis.toString().substring(Integer.parseInt(iParams[0].toString()));
     }
   }
 }

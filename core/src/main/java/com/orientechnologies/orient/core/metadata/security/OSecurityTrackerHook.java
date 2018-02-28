@@ -6,12 +6,10 @@ import com.orientechnologies.orient.core.metadata.schema.OImmutableClass;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
 
-import com.orientechnologies.orient.core.Orient;
-
 import java.lang.ref.WeakReference;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 04/11/14
  */
 public class OSecurityTrackerHook extends ODocumentHookAbstract {
@@ -20,11 +18,6 @@ public class OSecurityTrackerHook extends ODocumentHookAbstract {
   public OSecurityTrackerHook(OSecurity security, ODatabaseDocument database) {
     super(database);
     this.security = new WeakReference<OSecurity>(security);
-  }
-
-  @Override
-  public SCOPE[] getScopes() {
-    return new SCOPE[] { SCOPE.CREATE, SCOPE.UPDATE, SCOPE.DELETE };
   }
 
   @Override
@@ -70,13 +63,9 @@ public class OSecurityTrackerHook extends ODocumentHookAbstract {
     final String className = immutableClass.getName();
 
     if (className.equalsIgnoreCase(OUser.CLASS_NAME) || className.equalsIgnoreCase(ORole.CLASS_NAME)) {
-    	
       final OSecurity scr = security.get();
       if (scr != null)
         scr.incrementVersion();
-
-      if(Orient.instance().getSecurity() != null && database != null)
-        Orient.instance().getSecurity().securityRecordChange(database.getURL(), doc);
     }
   }
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  Copyright 2010-2014 OrientDB LTD (info(-at-)orientdb.com)
+ *  Copyright 2010-2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 package com.orientechnologies.common.factory;
 
 import com.orientechnologies.common.exception.OException;
-import com.orientechnologies.common.exception.OSystemException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -49,9 +48,8 @@ public class OConfigurableStatefulFactory<K, V> {
       try {
         return cls.newInstance();
       } catch (Exception e) {
-        final OSystemException exception = new OSystemException(String.format(
-            "Error on creating new instance of class '%s' registered in factory with key '%s'", cls, iKey));
-        throw OException.wrapException(exception, e);
+        throw new OException(String.format("Error on creating new instance of class '%s' registered in factory with key '%s'", cls,
+            iKey), e);
       }
     }
 
@@ -63,15 +61,15 @@ public class OConfigurableStatefulFactory<K, V> {
       try {
         return defaultClass.newInstance();
       } catch (Exception e) {
-        throw OException.wrapException(
-            new OSystemException(String.format("Error on creating new instance of default class '%s'", defaultClass)), e);
+        throw new OException(String.format("Error on creating new instance of default class '%s'", defaultClass), e);
       }
     }
     return null;
   }
-
-  public Set<K> getRegisteredNames() {
-    return registry.keySet();
+  
+  public Set<K> getKeys()
+  {
+	  return registry.keySet();
   }
 
   public OConfigurableStatefulFactory<K, V> register(final K iKey, final Class<? extends V> iValue) {

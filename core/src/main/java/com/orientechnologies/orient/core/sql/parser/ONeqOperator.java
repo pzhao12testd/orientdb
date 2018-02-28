@@ -2,9 +2,8 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import com.orientechnologies.orient.core.sql.operator.OQueryOperatorEquals;
-
-public class ONeqOperator extends SimpleNode implements OBinaryCompareOperator {
+public
+class ONeqOperator extends SimpleNode  implements OBinaryCompareOperator{
   public ONeqOperator(int id) {
     super(id);
   }
@@ -13,18 +12,17 @@ public class ONeqOperator extends SimpleNode implements OBinaryCompareOperator {
     super(p, id);
   }
 
+
   /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
   }
 
-  @Override
-  public boolean execute(Object left, Object right) {
-    return !OQueryOperatorEquals.equals(left, right);
+  @Override public boolean execute(Object left, Object right) {
+    return false;
   }
 
-  @Override
-  public String toString() {
+  @Override public String toString() {
     return "<>";
   }
 
@@ -32,16 +30,6 @@ public class ONeqOperator extends SimpleNode implements OBinaryCompareOperator {
     return true;
   }
 
-  @Override public ONeqOperator copy() {
-    return this;
-  }
 
-  @Override public boolean equals(Object obj) {
-    return obj != null && obj.getClass().equals(this.getClass());
-  }
-
-  @Override public int hashCode() {
-    return getClass().hashCode();
-  }
 }
 /* JavaCC - OriginalChecksum=588c4112ae7d2c83239f97ab0d2d5989 (do not edit this line) */

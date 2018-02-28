@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.command;
@@ -24,10 +24,10 @@ import com.orientechnologies.orient.core.command.OCommandContext.TIMEOUT_STRATEG
 /**
  * Generic GOF command pattern implementation. Execute a command passing the optional arguments "iArgs" and returns an Object.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public interface OCommandRequest {
-  <RET> RET execute(Object... iArgs);
+  public <RET> RET execute(Object... iArgs);
 
   /**
    * This api is deprecated use sql keyword "LIMIT" instead
@@ -35,8 +35,8 @@ public interface OCommandRequest {
    * Returns the limit of result set. -1 means no limits.
    * 
    */
-
-  int getLimit();
+  @Deprecated
+  public int getLimit();
 
   /**
    * This api is deprecated use sql keyword "LIMIT" instead
@@ -48,7 +48,7 @@ public interface OCommandRequest {
    * @return
    */
   @Deprecated
-  OCommandRequest setLimit(int iLimit);
+  public OCommandRequest setLimit(int iLimit);
 
   /**
    * This api is deprecated use sql keyword "TIMEOUT" instead
@@ -58,7 +58,7 @@ public interface OCommandRequest {
    * @return
    */
   @Deprecated
-  long getTimeoutTime();
+  public long getTimeoutTime();
 
   /**
    * This api is deprecated use sql keyword "TIMEOUT" instead
@@ -68,7 +68,7 @@ public interface OCommandRequest {
    * @return
    */
   @Deprecated
-  TIMEOUT_STRATEGY getTimeoutStrategy();
+  public TIMEOUT_STRATEGY getTimeoutStrategy();
 
   /**
    * This api is deprecated use sql keyword "TIMEOUT" instead
@@ -78,12 +78,12 @@ public interface OCommandRequest {
    * @param timeout
    */
   @Deprecated
-  void setTimeout(long timeout, TIMEOUT_STRATEGY strategy);
+  public void setTimeout(long timeout, TIMEOUT_STRATEGY strategy);
 
   /**
    * Returns true if the command doesn't change the database, otherwise false.
    */
-  boolean isIdempotent();
+  public boolean isIdempotent();
 
   /**
    * This api is deprecated use sql keyword "FETCHPLAN" instead
@@ -93,7 +93,7 @@ public interface OCommandRequest {
    * @return Fetch plan as unique string or null if it was not defined.
    */
   @Deprecated
-  String getFetchPlan();
+  public String getFetchPlan();
 
   /**
    * This api is deprecated use sql keyword "FETCHPLAN" instead
@@ -122,11 +122,11 @@ public interface OCommandRequest {
    * @return
    */
   @Deprecated
-  <RET extends OCommandRequest> RET setFetchPlan(String iFetchPlan);
+  public <RET extends OCommandRequest> RET setFetchPlan(String iFetchPlan);
 
-  void setUseCache(boolean iUseCache);
+  public void setUseCache(boolean iUseCache);
 
-  OCommandContext getContext();
+  public OCommandContext getContext();
 
-  OCommandRequest setContext(final OCommandContext iContext);
+  public OCommandRequest setContext(final OCommandContext iContext);
 }

@@ -12,14 +12,14 @@
     ~ */ -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>com.orientechnologies</groupId>
         <artifactId>orientdb-parent</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
+        <version>2.1.1</version>
         <relativePath>../</relativePath>
     </parent>
 
@@ -28,7 +28,6 @@
     <name>OrientDB Core</name>
 
     <properties>
-        <executeFindBugs>true</executeFindBugs>
         <osgi.import>
             com.orientechnologies.orient.graph.console;resolution:=optional,
             com.orientechnologies.orient.graph.gremlin;resolution:=optional,
@@ -37,20 +36,15 @@
             javax.imageio.spi,sun.misc;resolution:=optional,
             com.orientechnologies.orient.client.remote;resolution:=optional,
             com.sun.jna;resolution:=optional,
-            sun.nio.ch;resolution:=optional,
-            com.orientechnologies.orient.server.distributed.impl;resolution:=optional,
-            com.orientechnologies.orient.server.distributed.impl.task;resolution:=optional,
+            org.xerial.snappy;resolution:=optional,
             *
         </osgi.import>
         <osgi.export>com.orientechnologies.orient.core.*,
-            com.orientechnologies.common.*,com.orientechnologies.nio.*,
-            com.orientechnologies.orient.enterprise.*
+            com.orientechnologies.common.*,com.orientechnologies.nio.*
         </osgi.export>
         <jna.version>4.0.0</jna.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <argLine>-ea
-            -Xmx${heapSize}
-            -Dstorage.diskCache.bufferSize=4096
+        <argLine>-ea -Xmx2048m
             -Dindex.flushAfterCreate=false
             -Dstorage.makeFullCheckpointAfterCreate=false
             -Dstorage.makeFullCheckpointAfterOpen=false
@@ -59,10 +53,6 @@
             -Dstorage.configuration.syncOnUpdate=false
             -Ddb.makeFullCheckpointOnIndexChange=false
             -Ddb.makeFullCheckpointOnSchemaChange=false
-            -Dsecurity.userPasswordSaltIterations=10
-            -Dmemory.directMemory.trackMode=true
-            -Djava.util.logging.manager=com.orientechnologies.common.log.ShutdownLogManager
-            -Dstorage.diskCache.checksumMode=storeAndThrow
         </argLine>
     </properties>
 
@@ -73,8 +63,12 @@
                 <activeByDefault>true</activeByDefault>
             </activation>
             <properties>
-                <exclude.test.1>**/SBTreeTestBigValues.java</exclude.test.1>
-                <exclude.test.2>**/WOWCacheTest.java</exclude.test.2>
+                <exclude.test.1>**/LocalHashTableIterationTest.java</exclude.test.1>
+                <exclude.test.2>**/OLocalHashTableTest.java</exclude.test.2>
+                <exclude.test.3>**/SBTreeTest.java</exclude.test.3>
+                <exclude.test.4>**/SBTreeTestBigValues.java</exclude.test.4>
+                <exclude.test.5>**/OSBTreeBonsaiLocalTest.java</exclude.test.5>
+                <exclude.test.6>**/LocalPaginatedClusterTest.java</exclude.test.6>
             </properties>
         </profile>
 
@@ -89,8 +83,11 @@
             <properties>
                 <exclude.test.1>empty.java</exclude.test.1>
                 <exclude.test.2>empty.java</exclude.test.2>
+                <exclude.test.3>empty.java</exclude.test.3>
+                <exclude.test.4>empty.java</exclude.test.4>
+                <exclude.test.5>empty.java</exclude.test.5>
+                <exclude.test.6>empty.java</exclude.test.6>
             </properties>
-
         </profile>
         <profile>
             <id>release</id>
@@ -103,56 +100,16 @@
             <properties>
                 <exclude.test.1>empty.java</exclude.test.1>
                 <exclude.test.2>empty.java</exclude.test.2>
+                <exclude.test.3>empty.java</exclude.test.3>
+                <exclude.test.4>empty.java</exclude.test.4>
+                <exclude.test.5>empty.java</exclude.test.5>
+                <exclude.test.6>empty.java</exclude.test.6>
             </properties>
-
-        </profile>
-        <profile>
-            <id>localDeploy</id>
-            <activation>
-                <property>
-                    <name>localDeploy</name>
-                </property>
-            </activation>
-        </profile>
-
-        <profile>
-            <id>crash-tests</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${surefire.version}</version>
-                        <configuration>
-                            <skipTests>true</skipTests>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
 
     <build>
-        <resources>
-            <resource>
-                <directory>${basedir}/src/main/resources</directory>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
         <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>buildnumber-maven-plugin</artifactId>
-                <version>1.4</version>
-                <executions>
-                    <execution>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>create</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>javacc-maven-plugin</artifactId>
@@ -182,29 +139,11 @@
                     <excludes>
                         <exclude>${exclude.test.1}</exclude>
                         <exclude>${exclude.test.2}</exclude>
+                        <exclude>${exclude.test.3}</exclude>
+                        <exclude>${exclude.test.4}</exclude>
+                        <exclude>${exclude.test.5}</exclude>
+                        <exclude>${exclude.test.6}</exclude>
                     </excludes>
-                    <properties>
-                        <property>
-                            <name>listener</name>
-                            <value>com.orientechnologies.OJUnitTestListener</value>
-                        </property>
-                    </properties>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <version>${surefire.version}</version>
-                <configuration>
-                    <systemPropertyVariables>
-                        <buildDirectory>${project.build.directory}</buildDirectory>
-                    </systemPropertyVariables>
-                    <properties>
-                        <property>
-                            <name>listener</name>
-                            <value>com.orientechnologies.OJUnitTestListener</value>
-                        </property>
-                    </properties>
                 </configuration>
             </plugin>
             <plugin>
@@ -226,17 +165,10 @@
     </build>
 
     <dependencies>
-
         <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna</artifactId>
-            <version>4.5.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna-platform</artifactId>
-            <version>4.5.0</version>
+            <groupId>org.xerial.snappy</groupId>
+            <artifactId>snappy-java</artifactId>
+            <version>1.1.0.1</version>
         </dependency>
 
         <dependency>
@@ -252,24 +184,35 @@
         </dependency>
 
         <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>${jna.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>${jna.version}</version>
+        </dependency>
+
+
+        <dependency>
             <groupId>com.orientechnologies</groupId>
             <artifactId>orientdb-test-commons</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
-            <groupId>com.google.code.findbugs</groupId>
-            <artifactId>findbugs</artifactId>
-            <version>3.0.1</version>
-            <scope>provided</scope>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>6.8.8</version>
+            <scope>test</scope>
         </dependency>
-
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>3.0.1</version>
-            <scope>provided</scope>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <version>1.9.5</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

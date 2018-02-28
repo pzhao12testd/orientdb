@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -192,40 +192,36 @@ public class DbListenerTest extends DocumentDBBaseTest {
       ODatabaseHelper.deleteDatabase(database, getStorageType());
 
     database.registerListener(new DbListener());
-    final int baseOnClose = onClose;
-    final int baseOnCreate = onCreate;
-    final int baseOnDelete = onDelete;
+    int curOnclose = onClose;
+    int curCreate = onCreate;
+    int curDelete = onDelete;
 
     ODatabaseHelper.createDatabase(database, url, getStorageType());
 
-    final int baseOnBeforeTxBegin = onBeforeTxBegin;
-    final int baseOnBeforeTxCommit = onBeforeTxCommit;
-    final int baseOnAfterTxCommit = onAfterTxCommit;
-
-    Assert.assertEquals(onCreate, baseOnCreate + 1);
+    Assert.assertEquals(onCreate, curCreate + 1);
 
     database.open("admin", "admin");
     Assert.assertEquals(onOpen, 1);
 
     database.begin(TXTYPE.OPTIMISTIC);
-    Assert.assertEquals(onBeforeTxBegin, baseOnBeforeTxBegin + 1);
+    Assert.assertEquals(onBeforeTxBegin, 1);
 
-    database.newInstance().save(database.getClusterNameById(database.getDefaultClusterId()));
+    database.newInstance().save();
     database.commit();
-    Assert.assertEquals(onBeforeTxCommit, baseOnBeforeTxCommit + 1);
-    Assert.assertEquals(onAfterTxCommit, baseOnAfterTxCommit + 1);
+    Assert.assertEquals(onBeforeTxCommit, 1);
+    Assert.assertEquals(onAfterTxCommit, 1);
 
     database.begin(TXTYPE.OPTIMISTIC);
-    Assert.assertEquals(onBeforeTxBegin, baseOnBeforeTxBegin + 2);
+    Assert.assertEquals(onBeforeTxBegin, 2);
 
-    database.newInstance().save(database.getClusterNameById(database.getDefaultClusterId()));
+    database.newInstance().save();
     database.rollback();
     Assert.assertEquals(onBeforeTxRollback, 1);
     Assert.assertEquals(onAfterTxRollback, 1);
 
     ODatabaseHelper.deleteDatabase(database, getStorageType());
-    Assert.assertEquals(onClose, baseOnClose + 1);
-    Assert.assertEquals(onDelete, baseOnDelete + 1);
+    Assert.assertEquals(onClose, curOnclose + 1);
+    Assert.assertEquals(onDelete, curDelete + 1);
 
     ODatabaseHelper.createDatabase(database, url, getStorageType());
   }
@@ -246,7 +242,7 @@ public class DbListenerTest extends DocumentDBBaseTest {
     database.begin(TXTYPE.OPTIMISTIC);
     Assert.assertEquals(onBeforeTxBegin, 1);
 
-    database.newInstance().save(database.getClusterNameById(database.getDefaultClusterId()));
+    database.newInstance().save();
     database.commit();
     Assert.assertEquals(onBeforeTxCommit, 1);
     Assert.assertEquals(onAfterTxCommit, 1);
@@ -254,7 +250,7 @@ public class DbListenerTest extends DocumentDBBaseTest {
     database.begin(TXTYPE.OPTIMISTIC);
     Assert.assertEquals(onBeforeTxBegin, 2);
 
-    database.newInstance().save(database.getClusterNameById(database.getDefaultClusterId()));
+    database.newInstance().save();
     database.rollback();
     Assert.assertEquals(onBeforeTxRollback, 1);
     Assert.assertEquals(onAfterTxRollback, 1);
@@ -277,7 +273,7 @@ public class DbListenerTest extends DocumentDBBaseTest {
     database.open("admin", "admin");
 
     database.begin(TXTYPE.OPTIMISTIC);
-    ODocument rec = database.newInstance().field("name", "Jay").save(database.getClusterNameById(database.getDefaultClusterId()));
+    ODocument rec = database.newInstance().field("name", "Jay").save();
     database.commit();
 
     final DocumentChangeListener cl = new DocumentChangeListener(database);

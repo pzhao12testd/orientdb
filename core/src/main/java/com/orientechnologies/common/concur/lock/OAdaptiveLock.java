@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,12 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.common.concur.lock;
 
 import com.orientechnologies.common.concur.OTimeoutException;
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.log.OLogManager;
 
 import java.io.PrintWriter;
@@ -36,7 +35,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * Adaptive class to handle shared resources. It's configurable specifying if it's running in a concurrent environment and allow o
  * specify a maximum timeout to avoid deadlocks.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public class OAdaptiveLock extends OAbstractLock {
@@ -85,13 +84,13 @@ public class OAdaptiveLock extends OAbstractLock {
                 Thread.currentThread().interrupt();
                 return;
               }
-            } catch (InterruptedException ignore) {
+            } catch (InterruptedException e2) {
               Thread.currentThread().interrupt();
             }
           }
 
-          throw OException.wrapException(new OLockException("Thread interrupted while waiting for resource of class '" + getClass()
-              + "' with timeout=" + timeout), e);
+          throw new OLockException("Thread interrupted while waiting for resource of class '" + getClass() + "' with timeout="
+              + timeout, e);
         }
 
         throwTimeoutException(lock);
@@ -110,8 +109,8 @@ public class OAdaptiveLock extends OAbstractLock {
         try {
           return lock.tryLock(iTimeout, iUnit);
         } catch (InterruptedException e) {
-          throw OException.wrapException(new OLockException("Thread interrupted while waiting for resource of class '" + getClass()
-              + "' with timeout=" + timeout), e);
+          throw new OLockException("Thread interrupted while waiting for resource of class '" + getClass() + "' with timeout="
+              + timeout, e);
         }
       else
         return lock.tryLock();
@@ -165,7 +164,15 @@ public class OAdaptiveLock extends OAbstractLock {
 
       printWriter.flush();
       return stringWriter.toString();
-    } catch (RuntimeException | NoSuchFieldException | IllegalAccessException | InvocationTargetException | NoSuchMethodException ignore) {
+    } catch (RuntimeException e) {
+      return null;
+    } catch (NoSuchFieldException e) {
+      return null;
+    } catch (IllegalAccessException e) {
+      return null;
+    } catch (NoSuchMethodException e) {
+      return null;
+    } catch (InvocationTargetException e) {
       return null;
     }
 

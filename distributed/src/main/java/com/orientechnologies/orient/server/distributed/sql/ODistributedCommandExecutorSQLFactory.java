@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Orient Technologies.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package com.orientechnologies.orient.server.distributed.sql;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.sql.OCommandExecutorSQLAbstract;
 import com.orientechnologies.orient.core.sql.OCommandExecutorSQLFactory;
@@ -26,9 +25,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Distributed related command operator executor factory. It's auto-discovered.
+ * Graph related command operator executor factory. It's auto-discovered.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class ODistributedCommandExecutorSQLFactory implements OCommandExecutorSQLFactory {
 
@@ -39,10 +38,8 @@ public class ODistributedCommandExecutorSQLFactory implements OCommandExecutorSQ
     // COMMANDS
     final Map<String, Class<? extends OCommandExecutorSQLAbstract>> commands = new HashMap<String, Class<? extends OCommandExecutorSQLAbstract>>();
 
-    commands.put(OCommandExecutorSQLHASyncDatabase.NAME, OCommandExecutorSQLHASyncDatabase.class);
-    commands.put(OCommandExecutorSQLHASyncCluster.NAME, OCommandExecutorSQLHASyncCluster.class);
-    commands.put(OCommandExecutorSQLHARemoveServer.NAME, OCommandExecutorSQLHARemoveServer.class);
-    commands.put(OCommandExecutorSQLHAStatus.NAME, OCommandExecutorSQLHAStatus.class);
+    commands.put(OCommandExecutorSQLSyncDatabase.NAME, OCommandExecutorSQLSyncDatabase.class);
+    commands.put(OCommandExecutorSQLSyncCluster.NAME, OCommandExecutorSQLSyncCluster.class);
 
     COMMANDS = Collections.unmodifiableMap(commands);
   }
@@ -67,8 +64,8 @@ public class ODistributedCommandExecutorSQLFactory implements OCommandExecutorSQ
     try {
       return clazz.newInstance();
     } catch (Exception e) {
-      throw OException.wrapException(new OCommandExecutionException("Error in creation of command " + name
-          + "(). Probably there is not an empty constructor or the constructor generates errors"), e);
+      throw new OCommandExecutionException("Error in creation of command " + name
+          + "(). Probably there is not an empty constructor or the constructor generates errors", e);
     }
   }
 }

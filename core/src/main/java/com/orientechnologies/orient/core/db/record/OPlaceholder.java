@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.db.record;
@@ -23,22 +23,23 @@ import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.serialization.OStreamable;
 import com.orientechnologies.orient.core.storage.OStorage;
+import com.orientechnologies.orient.core.version.ORecordVersion;
 
-import java.io.DataInput;
-import java.io.DataOutput;
+import java.io.Externalizable;
 import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 
 /**
  * Base interface for identifiable objects. This abstraction is required to use ORID and ORecord in many points.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
-public class OPlaceholder implements OIdentifiable, OStreamable {
-  private ORecordId rid;
-  private int       recordVersion;
+public class OPlaceholder implements OIdentifiable, Externalizable {
+  private ORecordId      rid;
+  private ORecordVersion recordVersion;
 
   /**
    * Empty constructor used by serialization
@@ -46,14 +47,14 @@ public class OPlaceholder implements OIdentifiable, OStreamable {
   public OPlaceholder() {
   }
 
-  public OPlaceholder(final ORecordId rid, final int version) {
+  public OPlaceholder(final ORecordId rid, final ORecordVersion version) {
     this.rid = rid;
     this.recordVersion = version;
   }
 
   public OPlaceholder(final ORecord iRecord) {
     rid = (ORecordId) iRecord.getIdentity().copy();
-    recordVersion = iRecord.getVersion();
+    recordVersion = iRecord.getRecordVersion().copy();
   }
 
   @Override
@@ -73,12 +74,12 @@ public class OPlaceholder implements OIdentifiable, OStreamable {
 
     final OPlaceholder other = (OPlaceholder) obj;
 
-    return rid.equals(other.rid) && recordVersion == other.recordVersion;
+    return rid.equals(other.rid) && recordVersion.equals(other.recordVersion);
   }
 
   @Override
   public int hashCode() {
-    return rid.hashCode() + recordVersion;
+    return rid.hashCode() + recordVersion.hashCode();
   }
 
   @Override
@@ -91,46 +92,45 @@ public class OPlaceholder implements OIdentifiable, OStreamable {
     return rid.compare(o1, o2);
   }
 
-  public int getVersion() {
+  public ORecordVersion getRecordVersion() {
     return recordVersion;
   }
 
   @Override
   public String toString() {
-    return rid.toString() + " v." + recordVersion;
+    return rid.toString() + " v." + recordVersion.toString();
   }
 
   @Override
-  public void toStream(final DataOutput out) throws IOException {
-    rid.toStream(out);
-    out.writeInt(recordVersion);
+  public void writeExternal(ObjectOutput out) throws IOException {
+    out.writeObject(rid);
+    out.writeObject(recordVersion);
   }
 
   @Override
-  public void fromStream(final DataInput in) throws IOException {
-    rid = new ORecordId();
-    rid.fromStream(in);
-    recordVersion = in.readInt();
+  public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+    rid = (ORecordId) in.readObject();
+    recordVersion = (ORecordVersion) in.readObject();
   }
 
   @Override
   public void lock(final boolean iExclusive) {
-    ODatabaseRecordThreadLocal.instance().get().getTransaction().lockRecord(this,
-        iExclusive ? OStorage.LOCKING_STRATEGY.EXCLUSIVE_LOCK : OStorage.LOCKING_STRATEGY.SHARED_LOCK);
+    ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction()
+        .lockRecord(this, iExclusive ? OStorage.LOCKING_STRATEGY.EXCLUSIVE_LOCK : OStorage.LOCKING_STRATEGY.SHARED_LOCK);
   }
 
   @Override
   public boolean isLocked() {
-    return ODatabaseRecordThreadLocal.instance().get().getTransaction().isLockedRecord(this);
+    return ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().isLockedRecord(this);
   }
 
   @Override
   public OStorage.LOCKING_STRATEGY lockingStrategy() {
-    return ODatabaseRecordThreadLocal.instance().get().getTransaction().lockingStrategy(this);
+    return ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().lockingStrategy(this);
   }
 
   @Override
   public void unlock() {
-    ODatabaseRecordThreadLocal.instance().get().getTransaction().unlockRecord(this);
+    ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().unlockRecord(this);
   }
 }

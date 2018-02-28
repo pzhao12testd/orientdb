@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,24 +14,21 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql.filter;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.command.OCommandPredicate;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OQueryParsingException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
-import java.util.Locale;
-
 /**
  * Parsed query. It's built once a query is parsed.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLFilter extends OSQLPredicate implements OCommandPredicate {
   public OSQLFilter(final String iText, final OCommandContext iContext, final String iFilterKeyword) {
@@ -43,7 +40,7 @@ public class OSQLFilter extends OSQLPredicate implements OCommandPredicate {
 
     context = iContext;
     parserText = iText;
-    parserTextUpperCase = iText.toUpperCase(Locale.ENGLISH);
+    parserTextUpperCase = iText.toUpperCase();
 
     try {
       final int lastPos = parserGetCurrentPosition();
@@ -60,14 +57,12 @@ public class OSQLFilter extends OSQLPredicate implements OCommandPredicate {
       if (e.getText() == null)
       // QUERY EXCEPTION BUT WITHOUT TEXT: NEST IT
       {
-        throw OException.wrapException(
-            new OQueryParsingException("Error on parsing query", parserText, parserGetCurrentPosition()), e);
+        throw new OQueryParsingException("Error on parsing query", parserText, parserGetCurrentPosition(), e);
       }
 
       throw e;
-    } catch (Exception e) {
-      throw OException.wrapException(new OQueryParsingException("Error on parsing query", parserText, parserGetCurrentPosition()),
-          e);
+    } catch (Throwable t) {
+      throw new OQueryParsingException("Error on parsing query", parserText, parserGetCurrentPosition(), t);
     }
 
     this.rootCondition = resetOperatorPrecedence(rootCondition);

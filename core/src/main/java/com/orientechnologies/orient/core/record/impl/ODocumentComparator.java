@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.record.impl;
@@ -39,7 +39,7 @@ import com.orientechnologies.orient.core.sql.OCommandExecutorSQLSelect;
 /**
  * Comparator implementation class used by ODocumentSorter class to sort documents following dynamic criteria.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  *
  */
 public class ODocumentComparator implements Comparator<OIdentifiable> {
@@ -50,7 +50,7 @@ public class ODocumentComparator implements Comparator<OIdentifiable> {
   public ODocumentComparator(final List<OPair<String, String>> iOrderCriteria, OCommandContext iContext) {
     this.orderCriteria = iOrderCriteria;
     this.context = iContext;
-    ODatabaseDocumentInternal internal = ODatabaseRecordThreadLocal.instance().get();
+    ODatabaseDocumentInternal internal = ODatabaseRecordThreadLocal.INSTANCE.get();
     collator = Collator.getInstance(new Locale(internal.get(ATTRIBUTES.LOCALECOUNTRY) + "_"
         + internal.get(ATTRIBUTES.LOCALELANGUAGE)));
   }
@@ -91,7 +91,7 @@ public class ODocumentComparator implements Comparator<OIdentifiable> {
             partialResult = collator.compare(fieldValue1, fieldValue2);
           else
             partialResult = ((Comparable<Object>) fieldValue1).compareTo(fieldValue2);
-        } catch (Exception ignore) {
+        } catch (Exception x) {
           context.incrementVariable(OBasicCommandContext.INVALID_COMPARE_COUNT);
           partialResult = collator.compare("" + fieldValue1, "" + fieldValue2);
         }

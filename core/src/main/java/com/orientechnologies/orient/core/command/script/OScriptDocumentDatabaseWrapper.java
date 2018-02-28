@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,19 +14,25 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.command.script;
+
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import com.orientechnologies.common.util.OCommonConst;
 import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.ODatabase.ATTRIBUTES;
 import com.orientechnologies.orient.core.db.ODatabase.OPERATION_MODE;
 import com.orientechnologies.orient.core.db.ODatabase.STATUS;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.dictionary.ODictionary;
 import com.orientechnologies.orient.core.id.ORID;
@@ -45,27 +51,24 @@ import com.orientechnologies.orient.core.sql.query.OSQLQuery;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.orientechnologies.orient.core.storage.ORecordCallback;
 import com.orientechnologies.orient.core.tx.OTransaction;
-
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import com.orientechnologies.orient.core.version.ORecordVersion;
 
 /**
  * Document Database wrapper class to use from scripts.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 @SuppressWarnings("unchecked")
-
-@Deprecated
 public class OScriptDocumentDatabaseWrapper {
-  protected ODatabaseDocumentInternal database;
+  protected ODatabaseDocumentTx database;
 
-  public OScriptDocumentDatabaseWrapper(final ODatabaseDocumentInternal database) {
+  public OScriptDocumentDatabaseWrapper(final ODatabaseDocumentTx database) {
     this.database = database;
+  }
+
+  public OScriptDocumentDatabaseWrapper(final String iURL) {
+    this.database = new ODatabaseDocumentTx(iURL);
   }
 
   public void switchUser(final String iUserName, final String iUserPassword) {
@@ -262,7 +265,7 @@ public class OScriptDocumentDatabaseWrapper {
   }
 
   public ODocument save(ORecord iRecord, OPERATION_MODE iMode, boolean iForceCreate,
-      final ORecordCallback<? extends Number> iRecordCreatedCallback, ORecordCallback<Integer> iRecordUpdatedCallback) {
+      final ORecordCallback<? extends Number> iRecordCreatedCallback, ORecordCallback<ORecordVersion> iRecordUpdatedCallback) {
     return database.save(iRecord, iMode, iForceCreate, iRecordCreatedCallback, iRecordUpdatedCallback);
   }
 
@@ -327,7 +330,7 @@ public class OScriptDocumentDatabaseWrapper {
   }
 
   public void reload(ORecord iRecord) {
-    database.reload(iRecord, null, false);
+    database.reload(iRecord);
   }
 
   public void reload(ORecord iRecord, String iFetchPlan, boolean iIgnoreCache) {
@@ -374,13 +377,17 @@ public class OScriptDocumentDatabaseWrapper {
     return database.getSize();
   }
 
+  public ORecord getRecordByUserObject(Object iUserObject, boolean iCreateIfNotAvailable) {
+    return database.getRecordByUserObject(iUserObject, iCreateIfNotAvailable);
+  }
+
   public ODocument save(ORecord iRecord, String iClusterName, OPERATION_MODE iMode, boolean iForceCreate,
-      final ORecordCallback<? extends Number> iRecordCreatedCallback, ORecordCallback<Integer> iRecordUpdatedCallback) {
+      final ORecordCallback<? extends Number> iRecordCreatedCallback, ORecordCallback<ORecordVersion> iRecordUpdatedCallback) {
     return database.save(iRecord, iClusterName, iMode, iForceCreate, iRecordCreatedCallback, iRecordUpdatedCallback);
   }
 
-  public ODatabaseDocument delete(ODocument iRecord) {
-    return (ODatabaseDocument) database.delete(iRecord);
+  public ODatabaseDocumentTx delete(ODocument iRecord) {
+    return database.delete(iRecord);
   }
 
   public long countClass(String iClassName) {

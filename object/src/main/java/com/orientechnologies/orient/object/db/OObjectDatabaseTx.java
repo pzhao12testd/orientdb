@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,27 +14,22 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.object.db;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import com.orientechnologies.common.collection.OMultiValue;
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.util.OCommonConst;
 import com.orientechnologies.orient.core.Orient;
-import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.conflict.ORecordConflictStrategy;
-import com.orientechnologies.orient.core.db.*;
+import com.orientechnologies.orient.core.db.ODatabase;
+import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
+import com.orientechnologies.orient.core.db.ODatabaseInternal;
+import com.orientechnologies.orient.core.db.ODatabaseListener;
+import com.orientechnologies.orient.core.db.OUserObject2RecordHandler;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.object.ODatabaseObject;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
@@ -45,20 +40,20 @@ import com.orientechnologies.orient.core.entity.OEntityManager;
 import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.exception.OSerializationException;
 import com.orientechnologies.orient.core.exception.OTransactionException;
-import com.orientechnologies.orient.core.hook.ORecordHook;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.OMetadataInternal;
-import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.metadata.security.*;
-import com.orientechnologies.orient.core.query.OQuery;
-import com.orientechnologies.orient.core.record.*;
+import com.orientechnologies.orient.core.metadata.security.ORole;
+import com.orientechnologies.orient.core.metadata.security.ORule;
+import com.orientechnologies.orient.core.metadata.security.OToken;
+import com.orientechnologies.orient.core.metadata.security.OUser;
+import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.serialization.serializer.record.OSerializationThreadLocal;
 import com.orientechnologies.orient.core.storage.ORecordCallback;
 import com.orientechnologies.orient.core.storage.OStorage;
-import com.orientechnologies.orient.core.tx.OTransaction;
 import com.orientechnologies.orient.core.tx.OTransactionNoTx;
+import com.orientechnologies.orient.core.version.ORecordVersion;
 import com.orientechnologies.orient.object.dictionary.ODictionaryWrapper;
 import com.orientechnologies.orient.object.enhancement.OObjectEntityEnhancer;
 import com.orientechnologies.orient.object.enhancement.OObjectEntitySerializer;
@@ -69,21 +64,27 @@ import com.orientechnologies.orient.object.iterator.OObjectIteratorClass;
 import com.orientechnologies.orient.object.iterator.OObjectIteratorCluster;
 import com.orientechnologies.orient.object.metadata.OMetadataObject;
 import com.orientechnologies.orient.object.serialization.OObjectSerializerHelper;
-
 import javassist.util.proxy.Proxy;
 import javassist.util.proxy.ProxyObject;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Object Database instance. It's a wrapper to the class ODatabaseDocumentTx that handles conversion between ODocument instances and
  * POJOs using javassist APIs.
- *
- * @author Luca Molino
+ * 
  * @see ODatabaseDocumentTx
+ * @author Luca Molino
  */
 @SuppressWarnings("unchecked")
-public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumentInternal, Object> implements ODatabaseObject {
+public class OObjectDatabaseTx extends ODatabasePojoAbstract<Object> implements ODatabaseObject, ODatabaseInternal<Object>,
+    OUserObject2RecordHandler {
 
-  public static final String TYPE = "object";
+  public static final String    TYPE = "object";
   protected ODictionary<Object> dictionary;
   protected OEntityManager      entityManager;
   protected boolean             saveOnlyDirty;
@@ -99,10 +100,11 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
 
   /**
    * Constructor to wrap an existing database connect for object connections
-   *
-   * @param iDatabase an open database connection
+   * 
+   * @param iDatabase
+   *          an open database connection
    */
-  public OObjectDatabaseTx(ODatabaseDocumentInternal iDatabase) {
+  public OObjectDatabaseTx(ODatabaseDocumentTx iDatabase) {
     super(iDatabase);
     underlying.setDatabaseOwner(this);
     init();
@@ -123,12 +125,9 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   @Override
   public <THISDB extends ODatabase> THISDB open(String iUserName, String iUserPassword) {
     super.open(iUserName, iUserPassword);
-    saveOnlyDirty = getConfiguration().getValueAsBoolean(OGlobalConfiguration.OBJECT_SAVE_ONLY_DIRTY);
-
     entityManager.registerEntityClass(OUser.class);
     entityManager.registerEntityClass(ORole.class);
     metadata = new OMetadataObject((OMetadataInternal) underlying.getMetadata());
-    this.registerFieldMappingStrategy();
     return (THISDB) this;
   }
 
@@ -138,28 +137,15 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     entityManager.registerEntityClass(OUser.class);
     entityManager.registerEntityClass(ORole.class);
     metadata = new OMetadataObject((OMetadataInternal) underlying.getMetadata());
-    this.registerFieldMappingStrategy();
     return (THISDB) this;
-  }
-
-  public OSecurityUser getUser() {
-    return underlying.getUser();
-  }
-
-  public void setUser(OSecurityUser user) {
-    underlying.setUser(user);
   }
 
   @Override
   public OMetadataObject getMetadata() {
-    checkOpenness();
+    checkOpeness();
     if (metadata == null)
       metadata = new OMetadataObject((OMetadataInternal) underlying.getMetadata());
     return metadata;
-  }
-
-  public void setInternal(final ATTRIBUTES attribute, final Object iValue) {
-    underlying.setInternal(attribute, iValue);
   }
 
   @Override
@@ -167,33 +153,10 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     return underlying.getListeners();
   }
 
-  public <DBTYPE extends ODatabase<?>> DBTYPE registerHook(final ORecordHook iHookImpl) {
-    underlying.registerHook(iHookImpl);
-    return (DBTYPE) this;
-  }
-
-  public <DBTYPE extends ODatabase<?>> DBTYPE registerHook(final ORecordHook iHookImpl, ORecordHook.HOOK_POSITION iPosition) {
-    underlying.registerHook(iHookImpl, iPosition);
-    return (DBTYPE) this;
-  }
-
-  public ORecordHook.RESULT callbackHooks(final ORecordHook.TYPE iType, final OIdentifiable iObject) {
-    return underlying.callbackHooks(iType, iObject);
-  }
-
-  public Map<ORecordHook, ORecordHook.HOOK_POSITION> getHooks() {
-    return underlying.getHooks();
-  }
-
-  public <DBTYPE extends ODatabase<?>> DBTYPE unregisterHook(final ORecordHook iHookImpl) {
-    underlying.unregisterHook(iHookImpl);
-    return (DBTYPE) this;
-  }
-
   /**
    * Create a new POJO by its class name. Assure to have called the registerEntityClasses() declaring the packages that are part of
    * entity classes.
-   *
+   * 
    * @see OEntityManager#registerEntityClasses(String)
    */
   public <RET extends Object> RET newInstance(final String iClassName, final Object iEnclosingClass, Object... iArgs) {
@@ -204,26 +167,23 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     try {
       Class<?> entityClass = entityManager.getEntityClass(iClassName);
       if (entityClass != null) {
-        RET enhanced = (RET) OObjectEntityEnhancer.getInstance()
-            .getProxiedInstance(entityManager.getEntityClass(iClassName), iEnclosingClass, underlying.newInstance(iClassName), null,
-                iArgs);
+        RET enhanced = (RET) OObjectEntityEnhancer.getInstance().getProxiedInstance(entityManager.getEntityClass(iClassName),
+            iEnclosingClass, underlying.newInstance(iClassName), null, iArgs);
         return (RET) enhanced;
       } else {
         throw new OSerializationException("Type " + iClassName
             + " cannot be serialized because is not part of registered entities. To fix this error register this class");
       }
     } catch (Exception e) {
-      final String message = "Error on creating object of class " + iClassName;
-      OLogManager.instance().error(this, message, e);
-
-      throw OException.wrapException(new ODatabaseException(message), e);
+      OLogManager.instance().error(this, "Error on creating object of class " + iClassName, e, ODatabaseException.class);
     }
+    return null;
   }
 
   /**
    * Create a new POJO by its class name. Assure to have called the registerEntityClasses() declaring the packages that are part of
    * entity classes.
-   *
+   * 
    * @see OEntityManager#registerEntityClasses(String)
    */
   public <RET extends Object> RET newInstance(final String iClassName, final Object iEnclosingClass, ODocument iDocument,
@@ -233,19 +193,17 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     try {
       Class<?> entityClass = entityManager.getEntityClass(iClassName);
       if (entityClass != null) {
-        RET enhanced = (RET) OObjectEntityEnhancer.getInstance()
-            .getProxiedInstance(entityManager.getEntityClass(iClassName), iEnclosingClass, iDocument, null, iArgs);
+        RET enhanced = (RET) OObjectEntityEnhancer.getInstance().getProxiedInstance(entityManager.getEntityClass(iClassName),
+            iEnclosingClass, iDocument, null, iArgs);
         return (RET) enhanced;
       } else {
         throw new OSerializationException("Type " + iClassName
             + " cannot be serialized because is not part of registered entities. To fix this error register this class");
       }
     } catch (Exception e) {
-      final String message = "Error on creating object of class " + iClassName;
-      OLogManager.instance().error(this, message, e);
-
-      throw OException.wrapException(new ODatabaseException(message), e);
+      OLogManager.instance().error(this, "Error on creating object of class " + iClassName, e, ODatabaseException.class);
     }
+    return null;
   }
 
   public <RET> OObjectIteratorClass<RET> browseClass(final Class<RET> iClusterClass) {
@@ -264,17 +222,17 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   }
 
   public <RET> OObjectIteratorClass<RET> browseClass(final String iClassName, final boolean iPolymorphic) {
-    checkOpenness();
+    checkOpeness();
     checkSecurity(ORule.ResourceGeneric.CLASS, ORole.PERMISSION_READ, iClassName);
 
-    return new OObjectIteratorClass<RET>(this, getUnderlying(), iClassName, iPolymorphic);
+    return new OObjectIteratorClass<RET>(this, (ODatabaseDocumentTx) getUnderlying(), iClassName, iPolymorphic);
   }
 
   public <RET> OObjectIteratorCluster<RET> browseCluster(final String iClusterName) {
-    checkOpenness();
+    checkOpeness();
     checkSecurity(ORule.ResourceGeneric.CLUSTER, ORole.PERMISSION_READ, iClusterName);
 
-    return (OObjectIteratorCluster<RET>) new OObjectIteratorCluster<Object>(this, getUnderlying(),
+    return (OObjectIteratorCluster<RET>) new OObjectIteratorCluster<Object>(this, (ODatabaseDocumentTx) getUnderlying(),
         getClusterIdByName(iClusterName));
   }
 
@@ -296,7 +254,7 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
 
   @Override
   public <RET> RET reload(Object iObject, String iFetchPlan, boolean iIgnoreCache, boolean force) {
-    checkOpenness();
+    checkOpeness();
     if (iObject == null)
       return null;
 
@@ -313,6 +271,7 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     return (RET) load(iPojo, iFetchPlan, false);
   }
 
+  @Override
   public void attach(final Object iPojo) {
     OObjectEntitySerializer.attach(iPojo, this);
   }
@@ -322,12 +281,15 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     return (RET) save(iPojo);
   }
 
+  @Override
   /**
    * Method that detaches all fields contained in the document to the given object. It returns by default a proxied instance. To get
-   * a detached non proxied instance @see {@link OObjectEntitySerializer.detach(T, ODatabaseObject)}
-   *
-   * @param iPojo :- the object to detach
-   *
+   * a detached non proxied instance @see {@link OObjectEntitySerializer.detach(T o, ODatabaseObject db, boolean
+   * returnNonProxiedInstance)}
+   * 
+   * @param <T>
+   * @param o
+   *          :- the object to detach
    * @return the detached object
    */
   public <RET> RET detach(final Object iPojo) {
@@ -336,12 +298,13 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
 
   /**
    * Method that detaches all fields contained in the document to the given object.
-   *
+   * 
    * @param <RET>
-   * @param iPojo                    :- the object to detach
-   * @param returnNonProxiedInstance :- defines if the return object will be a proxied instance or not. If set to TRUE and the
-   *                                 object does not contains @Id and @Version fields it could procude data replication
-   *
+   * @param iPojo
+   *          :- the object to detach
+   * @param returnNonProxiedInstance
+   *          :- defines if the return object will be a proxied instance or not. If set to TRUE and the object does not contains @Id
+   *          and @Version fields it could procude data replication
    * @return the object serialized or with detached data
    */
   public <RET> RET detach(final Object iPojo, boolean returnNonProxiedInstance) {
@@ -351,16 +314,17 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   /**
    * Method that detaches all fields contained in the document to the given object and recursively all object tree. This may throw a
    * {@link StackOverflowError} with big objects tree. To avoid it set the stack size with -Xss java option
-   *
+   * 
    * @param <RET>
-   * @param iPojo                    :- the object to detach
-   * @param returnNonProxiedInstance :- defines if the return object will be a proxied instance or not. If set to TRUE and the
-   *                                 object does not contains @Id and @Version fields it could procude data replication
-   *
+   * @param iPojo
+   *          :- the object to detach
+   * @param returnNonProxiedInstance
+   *          :- defines if the return object will be a proxied instance or not. If set to TRUE and the object does not contains @Id
+   *          and @Version fields it could procude data replication
    * @return the object serialized or with detached data
    */
   public <RET> RET detachAll(final Object iPojo, boolean returnNonProxiedInstance) {
-    return detachAll(iPojo, returnNonProxiedInstance, new HashMap<Object, Object>(), new HashMap<Object, Object>());
+    return detachAll(iPojo, returnNonProxiedInstance, new HashMap<Object, Object>());
   }
 
   public <RET> RET load(final Object iPojo, final String iFetchPlan, final boolean iIgnoreCache) {
@@ -371,14 +335,14 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   @Deprecated
   public <RET> RET load(Object iPojo, String iFetchPlan, boolean iIgnoreCache, boolean loadTombstone,
       OStorage.LOCKING_STRATEGY iLockingStrategy) {
-    return load(iPojo, iFetchPlan, iIgnoreCache, !iIgnoreCache, loadTombstone, iLockingStrategy);
+    return load(iPojo, iFetchPlan, iIgnoreCache, loadTombstone, iLockingStrategy);
   }
 
   @Override
   @Deprecated
   public <RET> RET load(Object iPojo, String iFetchPlan, boolean iIgnoreCache, final boolean iUpdateCache, boolean loadTombstone,
       OStorage.LOCKING_STRATEGY iLockingStrategy) {
-    checkOpenness();
+    checkOpeness();
     if (iPojo == null)
       return null;
 
@@ -418,13 +382,13 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   @Deprecated
   public <RET> RET load(ORID iRecordId, String iFetchPlan, boolean iIgnoreCache, final boolean iUpdateCache, boolean loadTombstone,
       OStorage.LOCKING_STRATEGY iLockingStrategy) {
-    checkOpenness();
+    checkOpeness();
     if (iRecordId == null)
       return null;
 
     // GET THE ASSOCIATED DOCUMENT
-    final ODocument record = (ODocument) underlying
-        .load(iRecordId, iFetchPlan, iIgnoreCache, iUpdateCache, loadTombstone, OStorage.LOCKING_STRATEGY.DEFAULT);
+    final ODocument record = (ODocument) underlying.load(iRecordId, iFetchPlan, iIgnoreCache, iUpdateCache, loadTombstone,
+        OStorage.LOCKING_STRATEGY.DEFAULT);
     if (record == null)
       return null;
 
@@ -448,7 +412,7 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
    * If a multi value (array, collection or map of objects) is passed, then each single object is stored separately.
    */
   public <RET> RET save(final Object iContent, OPERATION_MODE iMode, boolean iForceCreate,
-      final ORecordCallback<? extends Number> iRecordCreatedCallback, ORecordCallback<Integer> iRecordUpdatedCallback) {
+      final ORecordCallback<? extends Number> iRecordCreatedCallback, ORecordCallback<ORecordVersion> iRecordUpdatedCallback) {
     return (RET) save(iContent, null, iMode, false, iRecordCreatedCallback, iRecordUpdatedCallback);
   }
 
@@ -457,10 +421,10 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
    * new or not. In case it's new a new ODocument is created and bound to the object, otherwise the ODocument is retrieved and
    * updated. The object is introspected using the Java Reflection to extract the field values. <br>
    * If a multi value (array, collection or map of objects) is passed, then each single object is stored separately.
-   * <p>
+   * 
    * Before to use the specified cluster a check is made to know if is allowed and figures in the configured and the record is valid
    * following the constraints declared in the schema.
-   *
+   * 
    * @see ODocument#validate()
    */
   public <RET> RET save(final Object iPojo, final String iClusterName) {
@@ -472,15 +436,15 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
    * it's new a new ODocument is created and bound to the object, otherwise the ODocument is retrieved and updated. The object is
    * introspected using the Java Reflection to extract the field values. <br>
    * If a multi value (array, collection or map of objects) is passed, then each single object is stored separately.
-   * <p>
+   * 
    * Before to use the specified cluster a check is made to know if is allowed and figures in the configured and the record is valid
    * following the constraints declared in the schema.
-   *
+   * 
    * @see ODocument#validate()
    */
   public <RET> RET save(final Object iPojo, final String iClusterName, OPERATION_MODE iMode, boolean iForceCreate,
-      final ORecordCallback<? extends Number> iRecordCreatedCallback, ORecordCallback<Integer> iRecordUpdatedCallback) {
-    checkOpenness();
+      final ORecordCallback<? extends Number> iRecordCreatedCallback, ORecordCallback<ORecordVersion> iRecordUpdatedCallback) {
+    checkOpeness();
     if (iPojo == null)
       return (RET) iPojo;
     else if (OMultiValue.isMultiValue(iPojo)) {
@@ -503,8 +467,8 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
           // registerUserObject(iPojo, record);
           deleteOrphans((((OObjectProxyMethodHandler) ((ProxyObject) proxiedObject).getHandler())));
 
-          ODocument savedRecord = underlying
-              .save(record, iClusterName, iMode, iForceCreate, iRecordCreatedCallback, iRecordUpdatedCallback);
+          ODocument savedRecord = underlying.save(record, iClusterName, iMode, iForceCreate, iRecordCreatedCallback,
+              iRecordUpdatedCallback);
 
           ((OObjectProxyMethodHandler) ((ProxyObject) proxiedObject).getHandler()).setDoc(savedRecord);
           ((OObjectProxyMethodHandler) ((ProxyObject) proxiedObject).getHandler()).updateLoadedFieldMap(proxiedObject, false);
@@ -519,7 +483,7 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   }
 
   public ODatabaseObject delete(final Object iPojo) {
-    checkOpenness();
+    checkOpeness();
 
     if (iPojo == null)
       return this;
@@ -544,7 +508,7 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
 
   @Override
   public ODatabaseObject delete(final ORID iRID) {
-    checkOpenness();
+    checkOpeness();
 
     if (iRID == null)
       return this;
@@ -565,75 +529,62 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   }
 
   @Override
-  public ODatabaseObject delete(final ORID iRID, final int iVersion) {
+  public ODatabaseObject delete(final ORID iRID, final ORecordVersion iVersion) {
     deleteRecord(iRID, iVersion, false);
     return this;
   }
 
-  public ODatabaseObject delete(final ORecord iRecord) {
-    underlying.delete(iRecord);
+  @Override
+  public boolean hide(ORID rid) {
+    throw new UnsupportedOperationException("hide");
+  }
+
+  @Override
+  public ODatabase<Object> cleanOutRecord(ORID iRID, ORecordVersion iVersion) {
+    deleteRecord(iRID, iVersion, true);
     return this;
   }
 
   public long countClass(final String iClassName) {
-    checkOpenness();
+    checkOpeness();
     return underlying.countClass(iClassName);
   }
 
   public long countClass(final String iClassName, final boolean iPolymorphic) {
-    checkOpenness();
+    checkOpeness();
     return underlying.countClass(iClassName, iPolymorphic);
   }
 
   public long countClass(final Class<?> iClass) {
-    checkOpenness();
+    checkOpeness();
     return underlying.countClass(iClass.getSimpleName());
   }
 
   public ODictionary<Object> getDictionary() {
-    checkOpenness();
+    checkOpeness();
     if (dictionary == null)
       dictionary = new ODictionaryWrapper(this, underlying.getDictionary().getIndex());
 
     return dictionary;
   }
 
-  public OTransaction getTransaction() {
-    return underlying.getTransaction();
-  }
-
-  public OObjectDatabaseTx begin() {
-    underlying.begin();
-    return this;
-  }
-
-  public OObjectDatabaseTx begin(final OTransaction.TXTYPE iType) {
-    underlying.begin(iType);
-    return this;
-  }
-
-  public OObjectDatabaseTx begin(final OTransaction iTx) {
-    underlying.begin(iTx);
-    return this;
-  }
-
   @Override
-  public OObjectDatabaseTx commit() {
+  public ODatabasePojoAbstract<Object> commit() {
     // BY PASS DOCUMENT DB
-    return commit(false);
+    return (ODatabasePojoAbstract<Object>) commit(false);
   }
 
   @Override
-  public OObjectDatabaseTx commit(boolean force) throws OTransactionException {
+  public ODatabasePojoAbstract<Object> commit(boolean force) throws OTransactionException {
     underlying.commit(force);
 
     if (getTransaction().isActive())
       return this;
 
-    if (getTransaction().getRecordOperations() != null) {
+    if (getTransaction().getAllRecordEntries() != null) {
       // UPDATE ID & VERSION FOR ALL THE RECORDS
       Object pojo = null;
-      for (ORecordOperation entry : getTransaction().getRecordOperations()) {
+      for (ORecordOperation entry : getTransaction().getAllRecordEntries()) {
         switch (entry.type) {
         case ORecordOperation.CREATED:
         case ORecordOperation.UPDATED:
@@ -652,21 +603,21 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   }
 
   @Override
-  public OObjectDatabaseTx rollback() {
+  public ODatabasePojoAbstract<Object> rollback() {
     return rollback(false);
   }
 
   @Override
-  public OObjectDatabaseTx rollback(boolean force) throws OTransactionException {
+  public ODatabasePojoAbstract<Object> rollback(boolean force) throws OTransactionException {
     // BY PASS DOCUMENT DB
     underlying.rollback(force);
 
     if (!underlying.getTransaction().isActive()) {
       // COPY ALL TX ENTRIES
       final List<ORecordOperation> newEntries;
-      if (getTransaction().getRecordOperations() != null) {
+      if (getTransaction().getCurrentRecordEntries() != null) {
         newEntries = new ArrayList<ORecordOperation>();
-        for (ORecordOperation entry : getTransaction().getRecordOperations())
+        for (ORecordOperation entry : getTransaction().getCurrentRecordEntries())
           if (entry.type == ORecordOperation.CREATED)
             newEntries.add(entry);
       } else
@@ -687,25 +638,29 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
 
   /**
    * Returns the version number of the object. Version starts from 0 assigned on creation.
-   *
-   * @param iPojo User object
+   * 
+   * @param iPojo
+   *          User object
    */
-  public int getVersion(final Object iPojo) {
-    checkOpenness();
+  @Override
+  public ORecordVersion getVersion(final Object iPojo) {
+    checkOpeness();
     final ODocument record = getRecordByUserObject(iPojo, false);
     if (record != null)
-      return record.getVersion();
+      return record.getRecordVersion();
 
     return OObjectSerializerHelper.getObjectVersion(iPojo);
   }
 
   /**
    * Returns the object unique identity.
-   *
-   * @param iPojo User object
+   * 
+   * @param iPojo
+   *          User object
    */
+  @Override
   public ORID getIdentity(final Object iPojo) {
-    checkOpenness();
+    checkOpeness();
     if (iPojo instanceof OIdentifiable)
       return ((OIdentifiable) iPojo).getIdentity();
     final ODocument record = getRecordByUserObject(iPojo, false);
@@ -731,7 +686,7 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   }
 
   public Object newInstance() {
-    checkOpenness();
+    checkOpeness();
     return new ODocument();
   }
 
@@ -755,9 +710,8 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     if (iPojo instanceof ProxyObject) {
       return ((OObjectProxyMethodHandler) ((ProxyObject) iPojo).getHandler()).getDoc();
     }
-    return OObjectSerializerHelper
-        .toStream(iPojo, iRecord, getEntityManager(), getMetadata().getSchema().getClass(iPojo.getClass().getSimpleName()), this,
-            this, saveOnlyDirty);
+    return OObjectSerializerHelper.toStream(iPojo, iRecord, getEntityManager(),
+        getMetadata().getSchema().getClass(iPojo.getClass().getSimpleName()), this, this, saveOnlyDirty);
   }
 
   @Override
@@ -820,10 +774,7 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     return OObjectEntitySerializer.getDocument((Proxy) OObjectEntitySerializer.serializeObject(iPojo, this));
   }
 
-  public Object getUserObjectByRecord(final OIdentifiable iRecord, final String iFetchPlan) {
-    return getUserObjectByRecord(iRecord, iFetchPlan, true);
-  }
-
+  @Override
   public Object getUserObjectByRecord(final OIdentifiable iRecord, final String iFetchPlan, final boolean iCreate) {
     final ODocument document = iRecord.getRecord();
 
@@ -837,15 +788,8 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   public void registerUserObjectAfterLinkSave(ORecord iRecord) {
   }
 
+  @Override
   public void unregisterPojo(final Object iObject, final ODocument iRecord) {
-  }
-
-  public boolean existsUserObjectByRID(ORID iRID) {
-    return false;
-  }
-
-  public boolean isManaged(final Object iEntity) {
-    return false;
   }
 
   public void registerClassMethodFilter(Class<?> iClass, OObjectMethodFilter iMethodFilter) {
@@ -857,18 +801,12 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
   }
 
   @Override
-  public String incrementalBackup(String path) {
-    return underlying.incrementalBackup(path);
-  }
-
-  @Override
   public void resetInitialization() {
     underlying.resetInitialization();
   }
 
-  protected <RET> RET detachAll(final Object iPojo, boolean returnNonProxiedInstance, Map<Object, Object> alreadyDetached,
-      Map<Object, Object> lazyObjects) {
-    return (RET) OObjectEntitySerializer.detachAll(iPojo, this, returnNonProxiedInstance, alreadyDetached, lazyObjects);
+  protected <RET> RET detachAll(final Object iPojo, boolean returnNonProxiedInstance, Map<Object, Object> alreadyDetached) {
+    return (RET) OObjectEntitySerializer.detachAll(iPojo, this, returnNonProxiedInstance, alreadyDetached);
   }
 
   protected void deleteCascade(final ODocument record) {
@@ -898,8 +836,9 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
 
   protected void init() {
     entityManager = OEntityManager.getEntityManagerByDatabaseURL(getURL());
-    entityManager.setClassHandler(OObjectEntityClassHandler.getInstance(getURL()));
-
+    entityManager.setClassHandler(OObjectEntityClassHandler.getInstance());
+    saveOnlyDirty = OGlobalConfiguration.OBJECT_SAVE_ONLY_DIRTY.getValueAsBoolean();
+    OObjectSerializerHelper.register();
     lazyLoading = true;
     if (!isClosed() && entityManager.getEntityClass(OUser.class.getSimpleName()) == null) {
       entityManager.registerEntityClass(OUser.class);
@@ -911,14 +850,13 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
     for (ORID orphan : handler.getOrphans()) {
       final ODocument doc = orphan.getRecord();
       deleteCascade(doc);
-      if (doc != null)
-        underlying.delete(doc);
+      underlying.delete(doc);
     }
     handler.getOrphans().clear();
   }
 
-  private boolean deleteRecord(ORID iRID, final int iVersion, boolean prohibitTombstones) {
-    checkOpenness();
+  private boolean deleteRecord(ORID iRID, ORecordVersion iVersion, boolean prohibitTombstones) {
+    checkOpeness();
 
     if (iRID == null)
       return true;
@@ -939,197 +877,5 @@ public class OObjectDatabaseTx extends ODatabaseWrapperAbstract<ODatabaseDocumen
 
     }
     return false;
-  }
-
-  @Override
-  public int addBlobCluster(String iClusterName, Object... iParameters) {
-    return getUnderlying().addBlobCluster(iClusterName, iParameters);
-  }
-
-  @Override
-  public Set<Integer> getBlobClusterIds() {
-    return getUnderlying().getBlobClusterIds();
-  }
-
-  @Override
-  public OSharedContext getSharedContext() {
-    return underlying.getSharedContext();
-  }
-
-  /**
-   * Register the static document binary mapping mode in the database context (only if it's not already set)
-   */
-  private void registerFieldMappingStrategy() {
-    if (!this.getConfiguration().getContextKeys().contains(OGlobalConfiguration.DOCUMENT_BINARY_MAPPING.getKey())) {
-      this.getConfiguration()
-          .setValue(OGlobalConfiguration.DOCUMENT_BINARY_MAPPING, OGlobalConfiguration.DOCUMENT_BINARY_MAPPING.getValueAsInteger());
-    }
-  }
-
-  /**
-   * Returns a wrapped OCommandRequest instance to catch the result-set by converting it before to return to the user application.
-   */
-  public <RET extends OCommandRequest> RET command(final OCommandRequest iCommand) {
-    return (RET) new OCommandSQLPojoWrapper(this, underlying.command(iCommand));
-  }
-
-  @Override
-  public <RET extends List<?>> RET query(OQuery<?> iCommand, Object... iArgs) {
-    checkOpenness();
-
-    convertParameters(iArgs);
-
-    final List<ODocument> result = underlying.query(iCommand, iArgs);
-
-    if (result == null)
-      return null;
-
-    final List<Object> resultPojo = new ArrayList<Object>();
-    Object obj;
-    for (OIdentifiable doc : result) {
-      if (doc instanceof ODocument) {
-        // GET THE ASSOCIATED DOCUMENT
-        if (((ODocument) doc).getClassName() == null)
-          obj = doc;
-        else
-          obj = getUserObjectByRecord(((ODocument) doc), iCommand.getFetchPlan(), true);
-
-        resultPojo.add(obj);
-      } else {
-        resultPojo.add(doc);
-      }
-
-    }
-
-    return (RET) resultPojo;
-  }
-
-  /**
-   * Converts an array of parameters: if a POJO is used, then replace it with its record id.
-   *
-   * @param iArgs Array of parameters as Object
-   *
-   * @see #convertParameter(Object)
-   */
-  protected void convertParameters(final Object... iArgs) {
-    if (iArgs == null)
-      return;
-
-    // FILTER PARAMETERS
-    for (int i = 0; i < iArgs.length; ++i)
-      iArgs[i] = convertParameter(iArgs[i]);
-  }
-
-  /**
-   * Sets as dirty a POJO. This is useful when you change the object and need to tell to the engine to treat as dirty.
-   *
-   * @param iPojo User object
-   */
-  public void setDirty(final Object iPojo) {
-    if (iPojo == null)
-      return;
-
-    final ODocument record = getRecordByUserObject(iPojo, false);
-    if (record == null)
-      throw new OObjectNotManagedException("The object " + iPojo + " is not managed by current database");
-
-    record.setDirty();
-  }
-
-  /**
-   * Sets as not dirty a POJO. This is useful when you change some other object and need to tell to the engine to treat this one as
-   * not dirty.
-   *
-   * @param iPojo User object
-   */
-  public void unsetDirty(final Object iPojo) {
-    if (iPojo == null)
-      return;
-
-    final ODocument record = getRecordByUserObject(iPojo, false);
-    if (record == null)
-      return;
-
-    ORecordInternal.unsetDirty(record);
-  }
-
-  /**
-   * Convert a parameter: if a POJO is used, then replace it with its record id.
-   *
-   * @param iParameter Parameter to convert, if applicable
-   *
-   * @see #convertParameters(Object...)
-   */
-  protected Object convertParameter(final Object iParameter) {
-    if (iParameter != null)
-      // FILTER PARAMETERS
-      if (iParameter instanceof Map<?, ?>) {
-        Map<String, Object> map = (Map<String, Object>) iParameter;
-
-        for (Map.Entry<String, Object> e : map.entrySet()) {
-          map.put(e.getKey(), convertParameter(e.getValue()));
-        }
-
-        return map;
-      } else if (iParameter instanceof Collection<?>) {
-        List<Object> result = new ArrayList<Object>();
-        for (Object object : (Collection<Object>) iParameter) {
-          result.add(convertParameter(object));
-        }
-        return result;
-      } else if (iParameter.getClass().isEnum()) {
-        return ((Enum<?>) iParameter).name();
-      } else if (!OType.isSimpleType(iParameter)) {
-        final ORID rid = getIdentity(iParameter);
-        if (rid != null && rid.isValid())
-          // REPLACE OBJECT INSTANCE WITH ITS RECORD ID
-          return rid;
-      }
-
-    return iParameter;
-  }
-
-  @Deprecated
-  public boolean isMVCC() {
-    return underlying.isMVCC();
-  }
-
-  @Deprecated
-  public <DBTYPE extends ODatabase<?>> DBTYPE setMVCC(final boolean iMvcc) {
-    underlying.setMVCC(iMvcc);
-    return (DBTYPE) this;
-  }
-
-  /**
-   * Returns true if current configuration retains objects, otherwise false
-   *
-   * @see #setRetainObjects(boolean)
-   */
-  @Deprecated
-  public boolean isRetainObjects() {
-    return false;
-  }
-
-  /**
-   * Specifies if retain handled objects in memory or not. Setting it to false can improve performance on large inserts. Default is
-   * enabled.
-   *
-   * @param iValue True to enable, false to disable it.
-   *
-   * @see #isRetainObjects()
-   */
-  @Deprecated
-  public OObjectDatabaseTx setRetainObjects(final boolean iValue) {
-    return this;
-  }
-
-  @Override
-  public OLiveQueryMonitor live(String query, OLiveQueryResultListener listener, Object... args) {
-    return underlying.live(query, listener, args);
-  }
-
-  @Override
-  public OLiveQueryMonitor live(String query, OLiveQueryResultListener listener, Map<String, ?> args) {
-    return underlying.live(query, listener, args);
   }
 }

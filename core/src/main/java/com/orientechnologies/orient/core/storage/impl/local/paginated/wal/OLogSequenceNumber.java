@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 OrientDB LTD (info--at--orientdb.com)
+ * Copyright 2010-2013 Orient Technologies LTD (info--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,28 +15,17 @@
  */
 package com.orientechnologies.orient.core.storage.impl.local.paginated.wal;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-
 /**
- * Immutable number representing the position in WAL file (LSN).
- * 
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 29.04.13
  */
 public class OLogSequenceNumber implements Comparable<OLogSequenceNumber> {
   private final long segment;
   private final long position;
 
-  public OLogSequenceNumber(final long segment, final long position) {
+  public OLogSequenceNumber(long segment, long position) {
     this.segment = segment;
     this.position = position;
-  }
-
-  public OLogSequenceNumber(final DataInput in) throws IOException {
-    this.segment = in.readLong();
-    this.position = in.readLong();
   }
 
   public long getSegment() {
@@ -48,13 +37,13 @@ public class OLogSequenceNumber implements Comparable<OLogSequenceNumber> {
   }
 
   @Override
-  public boolean equals(final Object o) {
+  public boolean equals(Object o) {
     if (this == o)
       return true;
     if (o == null || getClass() != o.getClass())
       return false;
 
-    final OLogSequenceNumber that = (OLogSequenceNumber) o;
+    OLogSequenceNumber that = (OLogSequenceNumber) o;
 
     if (position != that.position)
       return false;
@@ -72,7 +61,7 @@ public class OLogSequenceNumber implements Comparable<OLogSequenceNumber> {
   }
 
   @Override
-  public int compareTo(final OLogSequenceNumber otherNumber) {
+  public int compareTo(OLogSequenceNumber otherNumber) {
     if (segment > otherNumber.segment)
       return 1;
     if (segment < otherNumber.segment)
@@ -86,13 +75,8 @@ public class OLogSequenceNumber implements Comparable<OLogSequenceNumber> {
     return 0;
   }
 
-  public void toStream(final DataOutput out) throws IOException {
-    out.writeLong(segment);
-    out.writeLong(position);
-  }
-
   @Override
   public String toString() {
-    return "OLogSequenceNumber{segment=" + segment + ", position=" + position + '}';
+    return "OLogSequenceNumber{" + "segment=" + segment + ", position=" + position + '}';
   }
 }

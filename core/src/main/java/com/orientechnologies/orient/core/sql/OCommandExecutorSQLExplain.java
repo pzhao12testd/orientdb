@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
@@ -28,8 +28,8 @@ import java.util.Map;
 
 /**
  * Explains the execution of a command returning profiling information.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
  */
 public class OCommandExecutorSQLExplain extends OCommandExecutorSQLDelegate {
   public static final String KEYWORD_EXPLAIN = "EXPLAIN";
@@ -37,19 +37,8 @@ public class OCommandExecutorSQLExplain extends OCommandExecutorSQLDelegate {
   @SuppressWarnings("unchecked")
   @Override
   public OCommandExecutorSQLExplain parse(OCommandRequest iCommand) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iCommand;
-
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
-    try {
-      queryText = preParse(queryText, iCommand);
-      textRequest.setText(queryText);
-
-      final String cmd = ((OCommandRequestText) iCommand).getText();
-      super.parse(new OCommandSQL(cmd.substring(KEYWORD_EXPLAIN.length())));
-    } finally {
-      textRequest.setText(originalQuery);
-    }
+    final String cmd = ((OCommandRequestText) iCommand).getText();
+    super.parse(new OCommandSQL(cmd.substring(KEYWORD_EXPLAIN.length())));
     return this;
   }
 
@@ -90,10 +79,5 @@ public class OCommandExecutorSQLExplain extends OCommandExecutorSQLDelegate {
   @Override
   public DISTRIBUTED_RESULT_MGMT getDistributedResultManagement() {
     return DISTRIBUTED_RESULT_MGMT.MERGE;
-  }
-
-  @Override
-  public boolean isCacheable() {
-    return false;
   }
 }

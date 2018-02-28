@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,12 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.server.handler;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.OConstants;
 import com.orientechnologies.orient.core.Orient;
@@ -65,7 +64,7 @@ public class OJMXPlugin extends OServerPluginAbstract {
       }
 
     } catch (Exception e) {
-      throw OException.wrapException(new OConfigurationException("Cannot initialize JMX server"), e);
+      throw new OConfigurationException("Cannot initialize JMX server", e);
     }
   }
 
@@ -83,7 +82,7 @@ public class OJMXPlugin extends OServerPluginAbstract {
           mBeanServer.unregisterMBean(onProfiler);
 
     } catch (Exception e) {
-      OLogManager.instance().error(this, "OrientDB Server v" + OConstants.getVersion() + " unregisterMBean error", e);
+      OLogManager.instance().error(this, "OrientDB Server v" + OConstants.ORIENT_VERSION + " unregisterMBean error.", e);
     }
 
   }

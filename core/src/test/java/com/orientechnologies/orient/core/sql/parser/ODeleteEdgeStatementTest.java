@@ -1,12 +1,13 @@
 package com.orientechnologies.orient.core.sql.parser;
 
-import org.junit.Test;
+import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
-import static org.junit.Assert.fail;
+import static org.testng.Assert.fail;
 
+@Test
 public class ODeleteEdgeStatementTest {
 
   protected SimpleNode checkRightSyntax(String query) {
@@ -34,7 +35,6 @@ public class ODeleteEdgeStatementTest {
     return null;
   }
 
-  @Test
   public void testDeleteEdge() {
     checkRightSyntax("DELETE EDGE E");
     checkRightSyntax("DELETE EDGE E from #12:0");
@@ -74,7 +74,6 @@ public class ODeleteEdgeStatementTest {
     checkRightSyntax("DELETE EDGE from [#12:0, #12:1] to [#13:0, #13:1] where age = 50");
     checkRightSyntax("DELETE EDGE from [#13:0, #13:1] where age = 50");
     checkRightSyntax("DELETE EDGE to [#13:0, #13:1] where age = 50");
-    checkRightSyntax("DELETE EDGE E limit 10");
   }
 
   private void printTree(String s) {

@@ -1,55 +1,43 @@
 package com.orientechnologies.orient.server.distributed.asynch;
 
 import com.orientechnologies.common.log.OLogManager;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.record.ODirection;
-import com.orientechnologies.orient.core.record.OEdge;
-import com.orientechnologies.orient.core.record.OVertex;
+import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.Edge;
+import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 
 public class TestRemoteDelete extends BareBoneBase1ClientTest {
 
   @Override
   protected void dbClient1() {
-    ODatabaseDocumentTx graph = new ODatabaseDocumentTx(getLocalURL());
-    if(graph.exists()){
-      graph.open("admin", "admin");
-    }else{
-      graph.create();
-      graph.createClass("vertextype","V");
-      graph.createClass("edgetype","E");
-    }
-
-    graph.begin();
+    OrientBaseGraph graph = new OrientGraph(getRemoteURL());
     try {
-      OVertex v1 = graph.newVertex("vertextype").save();
+      Vertex v1 = graph.addVertex("vertextype", (String) null);
       graph.commit();
-      graph.begin();
-      assertEquals(1, v1.getVersion());
+      assertEquals(1, ((OrientVertex) v1).getRecord().getVersion());
 
-      OVertex v2 = graph.newVertex("vertextype").save();
-
+      Vertex v2 = graph.addVertex("vertextype", (String) null);
       graph.commit();
-      graph.begin();
-      assertEquals(1, v2.getVersion());
+      assertEquals(1, ((OrientVertex) v2).getRecord().getVersion());
 
-      OEdge e = v1.addEdge(v2, "edgetype").save();
+      Edge e = v1.addEdge("edgetype", v2);
       graph.commit();
-      graph.begin();
-      assertEquals(2, v1.getVersion());
-      assertEquals(2, v2.getVersion());
+      assertEquals(2, ((OrientVertex) v1).getRecord().getVersion());
+      assertEquals(2, ((OrientVertex) v2).getRecord().getVersion());
 
-      e.delete();
+      e.remove();
       graph.commit();
-      graph.begin();
-      assertFalse(v1.getVertices(ODirection.OUT, "edgetype").iterator().hasNext());
-      assertFalse(v2.getVertices(ODirection.IN, "edgetype").iterator().hasNext());
+      assertFalse(((OrientVertex) v1).getVertices(Direction.OUT, "edgetype").iterator().hasNext());
+      assertFalse(((OrientVertex) v2).getVertices(Direction.IN, "edgetype").iterator().hasNext());
     } catch (Throwable e) {
       if (exceptionInThread == null) {
         exceptionInThread = e;
       }
     } finally {
       OLogManager.instance().info(this, "Shutting down");
-      graph.close();
+      graph.shutdown();
     }
   }
 

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.record.OElement;
-import com.orientechnologies.orient.core.record.OVertex;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import junit.framework.Assert;
 import org.junit.Test;
 
@@ -33,10 +33,10 @@ import java.util.Iterator;
  * Start 2 servers and execute query across the cluster
  */
 public class ServerClusterQueryTest extends AbstractServerClusterTest {
-  final static int SERVERS = 2;
-  private OVertex v1;
-  private OVertex v2;
-  private OVertex v3;
+  final static int     SERVERS = 2;
+  private OrientVertex v1;
+  private OrientVertex v2;
+  private OrientVertex v3;
 
   public String getDatabaseName() {
     return "distributed-queries";
@@ -61,99 +61,99 @@ public class ServerClusterQueryTest extends AbstractServerClusterTest {
   }
 
   private void createDatabase() {
-    ODatabaseDocument g = serverInstance.get(0).getServerInstance().openDatabase(getDatabaseName(),"admin","admin");
+    OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server0/databases/" + getDatabaseName());
+    OrientGraphNoTx g = factory.getNoTx();
 
     try {
-      g.createVertexClass("V1");
-      g.createEdgeClass("E1");
-      v1 = g.newVertex("V1");
+      g.createVertexType("V1");
+      g.createEdgeType("E1");
+      v1 = g.addVertex("class:V1");
       v1.setProperty("amount", 10);
       v1.setProperty("kind", "a");
-      v1.save();
 
-      v2 = g.newVertex("V1");
+      v2 = g.addVertex("class:V2");
       v2.setProperty("amount", 15);
       v2.setProperty("kind", "b");
-      v2.save();
 
-      v3 = g.newVertex("V1");
+      v3 = g.addVertex("class:V2");
       v3.setProperty("amount", 21);
       v3.setProperty("kind", "b");
-      v3.save();
 
-      v1.addEdge(v2, "E1").save();
+      v1.addEdge("E1", v2);
     } finally {
-      g.close();
+      g.shutdown();
     }
   }
 
   private void checkNestedQueryContext() {
     for (int s = 0; s < SERVERS; ++s) {
-      ODatabaseDocument g = serverInstance.get(s).getServerInstance().openDatabase(getDatabaseName(),"admin","admin");
+      OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server" + s + "/databases/" + getDatabaseName());
+      OrientGraphNoTx g = factory.getNoTx();
 
       try {
-        final Iterable<OElement> result = g.command(new OCommandSQL("select *, $depth as d from (traverse in('E1') from ?)"))
+        final Iterable<OrientVertex> result = g.command(new OCommandSQL("select *, $depth as d from (traverse in('E1') from ?)"))
             .execute(v2.getIdentity());
 
-        final Iterator<OElement> it = result.iterator();
+        final Iterator<OrientVertex> it = result.iterator();
         Assert.assertTrue(it.hasNext());
 
-        final OElement r1 = it.next();
+        final OrientVertex r1 = it.next();
         Assert.assertTrue(it.hasNext());
-        final OElement r2 = it.next();
+        final OrientVertex r2 = it.next();
         Assert.assertFalse(it.hasNext());
 
-        Assert.assertEquals(r1.<Object>getProperty("d"), 0);
-        Assert.assertEquals(r2.<Object>getProperty("d"), 1);
+        Assert.assertEquals(r1.getProperty("d"), 0);
+        Assert.assertEquals(r2.getProperty("d"), 1);
 
       } finally {
-        g.close();
+        g.shutdown();
       }
     }
   }
 
   private void checkSum() {
     for (int s = 0; s < SERVERS; ++s) {
-
-      ODatabaseDocument g = serverInstance.get(s).getServerInstance().openDatabase(getDatabaseName(),"admin","admin");
+      OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server" + s + "/databases/" + getDatabaseName());
+      OrientGraphNoTx g = factory.getNoTx();
 
       try {
-        final Iterable<OElement> result = g.command(new OCommandSQL("select sum(amount) as total from v"))
-            .execute(v2.getIdentity());
+        final Iterable<OrientVertex> result = g.command(new OCommandSQL("select sum(amount) as total from v")).execute(
+            v2.getIdentity());
 
-        final Iterator<OElement> it = result.iterator();
+        final Iterator<OrientVertex> it = result.iterator();
         Assert.assertTrue(it.hasNext());
 
-        final OElement r1 = it.next();
-        Assert.assertEquals(r1.<Object>getProperty("total"), 46);
+        final OrientVertex r1 = it.next();
+        Assert.assertEquals(r1.getProperty("total"), 46);
 
       } finally {
-        g.close();
+        g.shutdown();
       }
     }
   }
 
   private void checkShardedOrderBy() {
     for (int s = 0; s < SERVERS; ++s) {
-      ODatabaseDocument g = serverInstance.get(s).getServerInstance().openDatabase(getDatabaseName(),"admin","admin");
+      OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server" + s + "/databases/" + getDatabaseName());
+      OrientGraphNoTx g = factory.getNoTx();
 
       try {
-        Iterable<OElement> result = g.command(new OCommandSQL("select amount from v order by amount asc"))
-            .execute(v2.getIdentity());
+        Iterable<OrientVertex> result = g.command(new OCommandSQL("select amount from v order by amount asc")).execute(
+            v2.getIdentity());
 
-        Iterator<OElement> it = result.iterator();
+        Iterator<OrientVertex> it = result.iterator();
         Assert.assertTrue(it.hasNext());
 
-        OElement r1 = it.next();
+        OrientVertex r1 = it.next();
         Assert.assertTrue(it.hasNext());
-        OElement r2 = it.next();
+        OrientVertex r2 = it.next();
         Assert.assertTrue(it.hasNext());
-        OElement r3 = it.next();
+        OrientVertex r3 = it.next();
         Assert.assertFalse(it.hasNext());
 
-        Assert.assertEquals(10, r1.<Object>getProperty("amount"));
-        Assert.assertEquals(15, r2.<Object>getProperty("amount"));
-        Assert.assertEquals(21, r3.<Object>getProperty("amount"));
+        Assert.assertEquals(10, r1.getProperty("amount"));
+        Assert.assertEquals(15, r2.getProperty("amount"));
+        Assert.assertEquals(21, r3.getProperty("amount"));
 
         result = g.command(new OCommandSQL("select amount from v order by amount desc")).execute(v2.getIdentity());
 
@@ -167,37 +167,38 @@ public class ServerClusterQueryTest extends AbstractServerClusterTest {
         r3 = it.next();
         Assert.assertFalse(it.hasNext());
 
-        Assert.assertEquals(21, r1.<Object>getProperty("amount"));
-        Assert.assertEquals(15, r2.<Object>getProperty("amount"));
-        Assert.assertEquals(10, r3.<Object>getProperty("amount"));
+        Assert.assertEquals(21, r1.getProperty("amount"));
+        Assert.assertEquals(15, r2.getProperty("amount"));
+        Assert.assertEquals(10, r3.getProperty("amount"));
 
       } finally {
-        g.close();
+        g.shutdown();
       }
     }
   }
 
   private void checkShardedGroupBy() {
     for (int s = 0; s < SERVERS; ++s) {
-      ODatabaseDocument g = serverInstance.get(s).getServerInstance().openDatabase(getDatabaseName(),"admin","admin");
+      OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server" + s + "/databases/" + getDatabaseName());
+      OrientGraphNoTx g = factory.getNoTx();
 
       try {
-        Iterable<OElement> result = g
-            .command(new OCommandSQL("select from ( select amount, kind from v group by kind ) order by kind")).execute();
+        Iterable<OrientVertex> result = g.command(
+            new OCommandSQL("select from ( select amount, kind from v group by kind ) order by kind")).execute();
 
-        Iterator<OElement> it = result.iterator();
+        Iterator<OrientVertex> it = result.iterator();
         Assert.assertTrue(it.hasNext());
 
-        OElement r1 = it.next();
+        OrientVertex r1 = it.next();
         Assert.assertTrue(it.hasNext());
-        OElement r2 = it.next();
+        OrientVertex r2 = it.next();
         Assert.assertFalse(it.hasNext());
 
         Assert.assertEquals(r1.getProperty("kind"), "a");
         Assert.assertEquals(r2.getProperty("kind"), "b");
 
       } finally {
-        g.close();
+        g.shutdown();
       }
     }
   }

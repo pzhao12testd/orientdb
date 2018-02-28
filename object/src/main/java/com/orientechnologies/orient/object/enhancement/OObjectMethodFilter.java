@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,25 +19,19 @@ package com.orientechnologies.orient.object.enhancement;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
 
 import javassist.util.proxy.MethodFilter;
 
 import com.orientechnologies.common.log.OLogManager;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com) Original implementation
+ * @author luca.molino Original implementation
  * @author Janos Haber Scala binding
  * 
  */
 public class OObjectMethodFilter implements MethodFilter {
-
-  private Map<Method, String> fieldNameCache = new HashMap<Method, String>();
-  private Map<Method, Boolean> isSetterCache = new HashMap<Method, Boolean>();
-  private Map<Method, Boolean> isGetterCache = new HashMap<Method, Boolean>();
-
   public boolean isHandled(final Method m) {
+    final String methodName = m.getName();
     final String fieldName = getFieldName(m);
 
     if (fieldName == null)
@@ -46,7 +40,7 @@ public class OObjectMethodFilter implements MethodFilter {
     try {
       if (!OObjectEntitySerializer.isClassField(m.getDeclaringClass(), fieldName))
         return false;
-      return (isSetterMethod(m) || isGetterMethod(m));
+      return (isSetterMethod(methodName, m) || isGetterMethod(methodName, m));
     } catch (NoSuchFieldException nsfe) {
       OLogManager.instance().warn(this, "Error handling the method %s in class %s", nsfe, m.getName(),
           m.getDeclaringClass().getName());
@@ -58,25 +52,17 @@ public class OObjectMethodFilter implements MethodFilter {
   }
 
   public String getFieldName(final Method m) {
-    String fieldName = fieldNameCache.get(m);
-    if (fieldName != null){
-      return fieldName;
-    }
     final String methodName = m.getName();
     final Class<?> clz = m.getDeclaringClass();
 
     if (methodName.startsWith("get"))
-      fieldName = getFieldName(methodName, "get");
+      return getFieldName(methodName, "get");
     else if (methodName.startsWith("set"))
-      fieldName = getFieldName(methodName, "set");
+      return getFieldName(methodName, "set");
     else if (methodName.startsWith("is"))
-      fieldName = getFieldName(methodName, "is");
+      return getFieldName(methodName, "is");
     else if (isScalaClass(clz)) {
-      fieldName = getScalaFieldName(clz, methodName);
-    }
-    if (fieldName != null){
-      fieldNameCache.put(m, fieldName);
-      return fieldName;
+      return getScalaFieldName(clz, methodName);
     }
     // NO FIELD
     return null;
@@ -89,26 +75,15 @@ public class OObjectMethodFilter implements MethodFilter {
     return fieldName.toString();
   }
 
-  public boolean isSetterMethod(final Method m) throws SecurityException, NoSuchFieldException {
-    Boolean cachedIsSetter = isSetterCache.get(m);
-    if (cachedIsSetter != null){
-      return cachedIsSetter;
-    }
-    String methodName = m.getName();
+  public boolean isSetterMethod(final String methodName, final Method m) throws SecurityException, NoSuchFieldException {
     Class<?> clz = m.getDeclaringClass();
     if (!methodName.startsWith("set") || !checkIfFirstCharAfterPrefixIsUpperCase(methodName, "set")
-        || (isScalaClass(clz) && !methodName.endsWith("_$eq"))){
-      isSetterCache.put(m, false);
+        || (isScalaClass(clz) && !methodName.endsWith("_$eq")))
       return false;
-    }
-    if (m.getParameterTypes() != null && m.getParameterTypes().length != 1){
-      isSetterCache.put(m, false);
+    if (m.getParameterTypes() != null && m.getParameterTypes().length != 1)
       return false;
-    }
-    if (OObjectEntitySerializer.isTransientField(m.getDeclaringClass(), getFieldName(m))){
-      isSetterCache.put(m, false);
+    if (OObjectEntitySerializer.isTransientField(m.getDeclaringClass(), getFieldName(m)))
       return false;
-    }
     Class<?>[] parameters = m.getParameterTypes();
     Field f = OObjectEntitySerializer.getField(getFieldName(m), m.getDeclaringClass());
     if (!f.getType().isAssignableFrom(parameters[0])) {
@@ -116,42 +91,27 @@ public class OObjectMethodFilter implements MethodFilter {
           this,
           "Setter method " + m.toString() + " for field " + f.getName() + " in class " + m.getDeclaringClass().toString()
               + " cannot be bound to proxied instance: parameter class don't match with field type " + f.getType().toString());
-      isSetterCache.put(m, false);
       return false;
     }
-    isSetterCache.put(m, true);
     return true;
   }
 
-  public boolean isGetterMethod(Method m) throws SecurityException, NoSuchFieldException {
-    Boolean cachedIsGetter = isGetterCache.get(m);
-    if (cachedIsGetter != null){
-      return cachedIsGetter;
-    }
-    String methodName = m.getName();
+  public boolean isGetterMethod(String fieldName, Method m) throws SecurityException, NoSuchFieldException {
     int prefixLength;
     Class<?> clz = m.getDeclaringClass();
-    if (methodName.startsWith("get") && checkIfFirstCharAfterPrefixIsUpperCase(methodName, "get"))
+    if (fieldName.startsWith("get") && checkIfFirstCharAfterPrefixIsUpperCase(fieldName, "get"))
       prefixLength = "get".length();
-    else if (methodName.startsWith("is") && checkIfFirstCharAfterPrefixIsUpperCase(methodName, "is"))
+    else if (fieldName.startsWith("is") && checkIfFirstCharAfterPrefixIsUpperCase(fieldName, "is"))
       prefixLength = "is".length();
-    else if (isScalaClass(clz) && methodName.equals(getFieldName(m)))
+    else if (isScalaClass(clz) && fieldName.equals(getFieldName(m)))
       prefixLength = 0;
-    else  {
-      isGetterCache.put(m, false);
+    else
       return false;
-    }
-    if (m.getParameterTypes() != null && m.getParameterTypes().length > 0){
-      isGetterCache.put(m, false);
+    if (m.getParameterTypes() != null && m.getParameterTypes().length > 0)
       return false;
-    }
-    if (methodName.length() <= prefixLength){
-      isGetterCache.put(m, false);
+    if (fieldName.length() <= prefixLength)
       return false;
-    }
-    boolean isGetter = !OObjectEntitySerializer.isTransientField(m.getDeclaringClass(), getFieldName(m));
-    isGetterCache.put(m, isGetter);
-    return isGetter;
+    return !OObjectEntitySerializer.isTransientField(m.getDeclaringClass(), getFieldName(m));
   }
 
   private boolean checkIfFirstCharAfterPrefixIsUpperCase(String methodName, String prefix) {
@@ -159,7 +119,7 @@ public class OObjectMethodFilter implements MethodFilter {
   }
 
   protected boolean isScalaClass(Class<?> clz) {
-    Annotation[] annotations = OObjectEntitySerializer.getDeclaredAnnotations(clz);
+    Annotation[] annotations = clz.getDeclaredAnnotations();
     for (Annotation a : annotations) {
       if ("scala.reflect.ScalaSignature".contains(a.annotationType().getName())
           || "scala.reflect.ScalaLongSignature".contains(a.getClass().getName())) {

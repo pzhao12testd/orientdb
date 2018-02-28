@@ -26,12 +26,7 @@ public class DefaultKeyProvider implements OKeyProvider {
   }
 
   @Override
-  public String getDefaultKey() {
-    return "default";
-  }
-  
-  @Override
   public String[] getKeys() {
-    return new String[] { "default" };
+    return new String[] { "HmacSHA256" };
   }
 }

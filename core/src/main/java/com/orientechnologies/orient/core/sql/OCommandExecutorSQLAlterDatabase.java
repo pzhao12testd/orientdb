@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandDistributedReplicateRequest;
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
@@ -36,73 +35,62 @@ import java.util.Map;
 
 /**
  * SQL ALTER DATABASE command: Changes an attribute of the current database.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 @SuppressWarnings("unchecked")
 public class OCommandExecutorSQLAlterDatabase extends OCommandExecutorSQLAbstract implements OCommandDistributedReplicateRequest {
-  public static final String KEYWORD_ALTER    = "ALTER";
-  public static final String KEYWORD_DATABASE = "DATABASE";
+  public static final String   KEYWORD_ALTER    = "ALTER";
+  public static final String   KEYWORD_DATABASE = "DATABASE";
 
   private ODatabase.ATTRIBUTES attribute;
   private String               value;
 
   public OCommandExecutorSQLAlterDatabase parse(final OCommandRequest iRequest) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iRequest;
+    init((OCommandRequestText) iRequest);
 
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
+    StringBuilder word = new StringBuilder();
+
+    int oldPos = 0;
+    int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_ALTER))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_ALTER + " not found. Use " + getSyntax(), parserText, oldPos);
+
+    oldPos = pos;
+    pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_DATABASE))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_DATABASE + " not found. Use " + getSyntax(), parserText, oldPos);
+
+    oldPos = pos;
+    pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
+    if (pos == -1)
+      throw new OCommandSQLParsingException("Missed the database's attribute to change. Use " + getSyntax(), parserText, oldPos);
+
+    final String attributeAsString = word.toString();
+
     try {
-      queryText = preParse(queryText, iRequest);
-      textRequest.setText(queryText);
-
-      init((OCommandRequestText) iRequest);
-
-      StringBuilder word = new StringBuilder();
-
-      int oldPos = 0;
-      int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_ALTER))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_ALTER + " not found. Use " + getSyntax(), parserText, oldPos);
-
-      oldPos = pos;
-      pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_DATABASE))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_DATABASE + " not found. Use " + getSyntax(), parserText, oldPos);
-
-      oldPos = pos;
-      pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
-      if (pos == -1)
-        throw new OCommandSQLParsingException("Missed the database's attribute to change. Use " + getSyntax(), parserText, oldPos);
-
-      final String attributeAsString = word.toString();
-
-      try {
-        attribute = ODatabase.ATTRIBUTES.valueOf(attributeAsString.toUpperCase(Locale.ENGLISH));
-      } catch (IllegalArgumentException e) {
-        throw OException.wrapException(new OCommandSQLParsingException(
-            "Unknown database's attribute '" + attributeAsString + "'. Supported attributes are: " + Arrays
-                .toString(ODatabase.ATTRIBUTES.values()), parserText, oldPos), e);
-      }
-
-      value = parserText.substring(pos + 1).trim();
-
-      if (value.length() == 0)
-        throw new OCommandSQLParsingException("Missed the database's value to change for attribute '" + attribute + "'. Use "
-            + getSyntax(), parserText, oldPos);
-
-      if (value.equalsIgnoreCase("null"))
-        value = null;
-    } finally {
-      textRequest.setText(originalQuery);
+      attribute = ODatabase.ATTRIBUTES.valueOf(attributeAsString.toUpperCase(Locale.ENGLISH));
+    } catch (IllegalArgumentException e) {
+      throw new OCommandSQLParsingException("Unknown database's attribute '" + attributeAsString + "'. Supported attributes are: "
+          + Arrays.toString(ODatabase.ATTRIBUTES.values()), parserText, oldPos, e);
     }
+
+    value = parserText.substring(pos + 1).trim();
+
+    if (value.length() == 0)
+      throw new OCommandSQLParsingException("Missed the database's value to change for attribute '" + attribute + "'. Use "
+          + getSyntax(), parserText, oldPos);
+
+    if (value.equalsIgnoreCase("null"))
+      value = null;
 
     return this;
   }
 
   @Override
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_QUICK_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   /**

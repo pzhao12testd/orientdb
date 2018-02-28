@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,22 +14,26 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http;
 
-import com.orientechnologies.common.exception.OSystemException;
+import com.orientechnologies.common.exception.OException;
 
-public class OHttpRequestException extends OSystemException {
+public class OHttpRequestException extends OException {
 
   private static final long serialVersionUID = 12132321321321L;
 
-  public OHttpRequestException(OHttpRequestException exception) {
-    super(exception);
+  public OHttpRequestException() {
+    super();
   }
 
   public OHttpRequestException(String message) {
     super(message);
+  }
+
+  public OHttpRequestException(Throwable cause) {
+    super(cause);
   }
 }

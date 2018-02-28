@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,30 +14,34 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
 package com.orientechnologies.orient.core.db.record;
 
-import com.orientechnologies.orient.core.command.OBasicCommandContext;
-import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import org.junit.Assert;import org.junit.After; import org.junit.Before; import org.junit.Test;
+
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
 import java.util.Map;
 
+@Test
 public class DocumentTest {
   private ODatabaseDocumentTx db;
 
-  @Before
+  @BeforeClass
   public void before() {
     db = new ODatabaseDocumentTx("memory:" + DocumentTest.class.getSimpleName());
     db.create();
   }
 
-  @After
+  @AfterClass
   public void after() {
     db.drop();
   }
@@ -80,7 +84,7 @@ public class DocumentTest {
   }
 
   @Test
-  public void testConversionOnTypeSet() {
+  public void testConvertionOnTypeSet() {
     ODocument doc = new ODocument();
 
     doc.field("some", 3);
@@ -88,29 +92,6 @@ public class DocumentTest {
     Assert.assertEquals(doc.fieldType("some"), OType.STRING);
     Assert.assertEquals(doc.field("some"), "3");
 
-  }
-
-  @Test
-  public void testEval() {
-    ODocument doc = new ODocument();
-
-    doc.field("amount", 300);
-
-    Number amountPlusVat = (Number) doc.eval("amount * 120 / 100");
-
-    Assert.assertEquals(amountPlusVat.longValue(), 360l);
-  }
-
-  @Test
-  public void testEvalInContext() {
-    ODocument doc = new ODocument();
-
-    doc.field("amount", 300);
-
-    OCommandContext context = new OBasicCommandContext().setVariable("vat", 20);
-    Number amountPlusVat = (Number) doc.eval("amount * (100 + $vat) / 100", context);
-
-    Assert.assertEquals(amountPlusVat.longValue(), 360l);
   }
 
 }

@@ -1,6 +1,6 @@
 /*
    *
-   *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+   *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
    *  *
    *  *  Licensed under the Apache License, Version 2.0 (the "License");
    *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
    *  *  See the License for the specific language governing permissions and
    *  *  limitations under the License.
    *  *
-   *  * For more information: http://orientdb.com
+   *  * For more information: http://www.orientechnologies.com
    *
    */
 package com.orientechnologies.orient.server.network.protocol.http.command.delete;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
  import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
  import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
@@ -36,7 +35,7 @@ public class OServerCommandDeleteClass extends OServerCommandAuthenticatedDbAbst
      iRequest.data.commandInfo = "Delete class";
      iRequest.data.commandDetail = urlParts[2];
 
-     ODatabaseDocument db = null;
+     ODatabaseDocumentTx db = null;
 
      try {
        db = getProfiledDatabaseInstance(iRequest);
@@ -46,7 +45,7 @@ public class OServerCommandDeleteClass extends OServerCommandAuthenticatedDbAbst
 
        db.getMetadata().getSchema().dropClass(urlParts[2]);
 
-       iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, null, null);
+       iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, null, null);
 
      } finally {
        if (db != null)

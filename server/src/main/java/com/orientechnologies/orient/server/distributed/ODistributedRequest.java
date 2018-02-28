@@ -1,6 +1,6 @@
 /*
       *
-      *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+      *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
       *  *
       *  *  Licensed under the Apache License, Version 2.0 (the "License");
       *  *  you may not use this file except in compliance with the License.
@@ -14,129 +14,43 @@
       *  *  See the License for the specific language governing permissions and
       *  *  limitations under the License.
       *  *
-      *  * For more information: http://orientdb.com
+      *  * For more information: http://www.orientechnologies.com
       *
       */
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.core.id.ORecordId;
-import com.orientechnologies.orient.server.distributed.task.ORemoteTask;
-
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.server.distributed.task.OAbstractRemoteTask;
 
 /**
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
- *
- */
-public class ODistributedRequest {
-  public enum EXECUTION_MODE {
-    RESPONSE, NO_RESPONSE
-  }
+  *
+  * @author Luca Garulli (l.garulli--at--orientechnologies.com)
+  *
+  */
+ public interface ODistributedRequest {
+   enum EXECUTION_MODE {
+     RESPONSE, NO_RESPONSE
+   }
 
-  private final ODistributedServerManager manager;
+   long getId();
 
-  private ODistributedRequestId id;
-  private String                databaseName;
-  private long                  senderThreadId;
-  private ORemoteTask           task;
-  private ORecordId             userRID;       // KEEP ALSO THE RID TO AVOID SECURITY PROBLEM ON DELETE & RECREATE USERS
+   void setId(long iId);
 
-  public ODistributedRequest(final ODistributedServerManager manager) {
-    this.manager = manager;
-  }
+   EXECUTION_MODE getExecutionMode();
 
-  public ODistributedRequest(final ODistributedServerManager manager, final int senderNodeId, final long msgSequence,
-      final String databaseName, final ORemoteTask payload) {
-    this.manager = manager;
-    this.id = new ODistributedRequestId(senderNodeId, msgSequence);
-    this.databaseName = databaseName;
-    this.senderThreadId = Thread.currentThread().getId();
-    this.task = payload;
-  }
+   String getDatabaseName();
 
-  public ODistributedRequestId getId() {
-    return id;
-  }
+   ODistributedRequest setDatabaseName(final String databaseName);
 
-  public void setId(final ODistributedRequestId reqId) {
-    id = reqId;
-  }
+   String getSenderNodeName();
 
-  public String getDatabaseName() {
-    return databaseName;
-  }
+   ODistributedRequest setSenderNodeName(String localNodeName);
 
-  public ODistributedRequest setDatabaseName(final String databaseName) {
-    this.databaseName = databaseName;
-    return this;
-  }
+   OAbstractRemoteTask getTask();
 
-  public ORemoteTask getTask() {
-    return task;
-  }
+   ODistributedRequest setTask(final OAbstractRemoteTask payload);
 
-  public ODistributedRequest setTask(final ORemoteTask payload) {
-    this.task = payload;
-    return this;
-  }
+   ORID getUserRID();
 
-  public ORecordId getUserRID() {
-    return userRID;
-  }
-
-  public void setUserRID(final ORecordId iUserRID) {
-    this.userRID = iUserRID;
-  }
-
-  public void toStream(final DataOutput out) throws IOException {
-    id.toStream(out);
-    out.writeLong(senderThreadId);
-    out.writeUTF(databaseName != null ? databaseName : "");
-
-    out.writeByte(task.getFactoryId());
-    task.toStream(out);
-
-    if (userRID != null) {
-      out.writeBoolean(true);
-      userRID.toStream(out);
-    } else
-      out.writeBoolean(false);
-  }
-
-  public void fromStream(final DataInput in) throws IOException {
-    id = new ODistributedRequestId();
-    id.fromStream(in);
-    senderThreadId = in.readLong();
-    databaseName = in.readUTF();
-    if (databaseName.isEmpty())
-      databaseName = null;
-
-    final ORemoteTaskFactory taskFactory = manager.getTaskFactoryManager().getFactoryByServerId(id.getNodeId());
-    task = taskFactory.createTask(in.readByte());
-    task.fromStream(in, taskFactory);
-
-    if (in.readBoolean()) {
-      userRID = new ORecordId();
-      userRID.fromStream(in);
-    }
-  }
-
-  @Override
-  public String toString() {
-    final StringBuilder buffer = new StringBuilder(256);
-    buffer.append("id=");
-    buffer.append(id);
-    if (task != null) {
-      buffer.append(" task=");
-      buffer.append(task.toString());
-    }
-    if (userRID != null) {
-      buffer.append(" user=");
-      buffer.append(userRID);
-    }
-    return buffer.toString();
-  }
-}
+   void setUserRID(ORID iUserRID);
+ }

@@ -1,33 +1,18 @@
 package com.orientechnologies.orient.core.metadata.schema;
 
+import static org.testng.AssertJUnit.assertNull;
+import static org.testng.AssertJUnit.assertEquals;
+import org.testng.annotations.Test;
+
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.exception.OSchemaException;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class AlterPropertyTest {
 
-  private ODatabaseDocument db;
-
-  @Before
-  public void before() {
-    db = new ODatabaseDocumentTx("memory:" + AlterPropertyTest.class.getSimpleName());
-    db.create();
-  }
-
-  @After
-  public void after() {
-    db.drop();
-  }
-
   @Test
   public void testPropertyRenaming() {
+    ODatabaseDocument db = new ODatabaseDocumentTx("memory:" + AlterPropertyTest.class.getSimpleName());
+    db.create();
     OSchema schema = db.getMetadata().getSchema();
     OClass classA = schema.createClass("TestPropertyRenaming");
     OProperty property = classA.createProperty("propertyOld", OType.STRING);
@@ -36,10 +21,13 @@ public class AlterPropertyTest {
     property.setName("propertyNew");
     assertNull(classA.getProperty("propertyOld"));
     assertEquals(property, classA.getProperty("propertyNew"));
+    db.drop();
   }
 
   @Test
   public void testPropertyRenamingReload() {
+    ODatabaseDocument db = new ODatabaseDocumentTx("memory:" + AlterPropertyTest.class.getSimpleName());
+    db.create();
     OSchema schema = db.getMetadata().getSchema();
     OClass classA = schema.createClass("TestPropertyRenaming");
     OProperty property = classA.createProperty("propertyOld", OType.STRING);
@@ -50,75 +38,6 @@ public class AlterPropertyTest {
     classA = schema.getClass("TestPropertyRenaming");
     assertNull(classA.getProperty("propertyOld"));
     assertEquals(property, classA.getProperty("propertyNew"));
+    db.drop();
   }
-
-  @Test
-  public void testLinkedMapPropertyLinkedType() {
-    OSchema schema = db.getMetadata().getSchema();
-    OClass classA = schema.createClass("TestMapProperty");
-    try {
-      classA.createProperty("propertyMap", OType.LINKMAP, OType.STRING);
-      fail("create linkmap property should not allow linked type");
-    } catch (OSchemaException e) {
-
-    }
-
-    OProperty prop = classA.getProperty("propertyMap");
-    assertNull(prop);
-  }
-
-  @Test
-  public void testLinkedMapPropertyLinkedClass() {
-    OSchema schema = db.getMetadata().getSchema();
-    OClass classA = schema.createClass("TestMapProperty");
-    OClass classLinked = schema.createClass("LinkedClass");
-    try {
-      classA.createProperty("propertyString", OType.STRING, classLinked);
-      fail("create linkmap property should not allow linked type");
-    } catch (OSchemaException e) {
-
-    }
-
-    OProperty prop = classA.getProperty("propertyString");
-    assertNull(prop);
-  }
-
-  @Test
-  public void testRemoveLinkedClass() {
-    OSchema schema = db.getMetadata().getSchema();
-    OClass classA = schema.createClass("TestRemoveLinkedClass");
-    OClass classLinked = schema.createClass("LinkedClass");
-    OProperty prop = classA.createProperty("propertyLink", OType.LINK, classLinked);
-    assertNotNull(prop.getLinkedClass());
-    prop.setLinkedClass(null);
-    assertNull(prop.getLinkedClass());
-  }
-
-  @Test
-  public void testRemoveLinkedClassSQL() {
-    OSchema schema = db.getMetadata().getSchema();
-    OClass classA = schema.createClass("TestRemoveLinkedClass");
-    OClass classLinked = schema.createClass("LinkedClass");
-    OProperty prop = classA.createProperty("propertyLink", OType.LINK, classLinked);
-    assertNotNull(prop.getLinkedClass());
-    db.command(new OCommandSQL("alter property TestRemoveLinkedClass.propertyLink linkedclass null")).execute();
-    assertNull(prop.getLinkedClass());
-  }
-
-  @Test
-  public void testMax() {
-    OSchema schema = db.getMetadata().getSchema();
-    OClass classA = schema.createClass("TestWrongMax");
-    OProperty prop = classA.createProperty("dates", OType.EMBEDDEDLIST, OType.DATE);
-
-    db.command(new OCommandSQL("alter property TestWrongMax.dates max 2016-05-25")).execute();
-
-    try {
-      db.command(new OCommandSQL("alter property TestWrongMax.dates max '2016-05-25'")).execute();
-      Assert.fail();
-    } catch (Exception e) {
-    }
-
-  }
-
 }

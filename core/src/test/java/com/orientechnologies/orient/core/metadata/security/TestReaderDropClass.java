@@ -1,14 +1,15 @@
 package com.orientechnologies.orient.core.metadata.security;
 
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.exception.OSecurityAccessException;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class TestReaderDropClass {
 
-  @Test
+  @Test()
   public void testReaderDropClass() {
     ODatabaseDocument db = new ODatabaseDocumentTx("memory:" + TestReaderDropClass.class.getSimpleName());
     db.create();
@@ -21,7 +22,7 @@ public class TestReaderDropClass {
         Assert.fail("reader should not be able to drop a class");
       } catch (OSecurityAccessException ex) {
       }
-      Assert.assertTrue(db.getMetadata().getSchema().existsClass("Test"));
+      Assert.assertTrue(db.getMetadata().getSchema().existsClass("Test"), "reader should not be able to drop a class");
 
     } finally {
       db.close();

@@ -3,17 +3,15 @@ package com.orientechnologies.orient.core.metadata.security;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OSecurityAccessException;
+import com.orientechnologies.orient.core.exception.OSecurityException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.security.OSecurityManager;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 03/11/14
  */
 public class OImmutableUser implements OSecurityUser {
@@ -42,25 +40,24 @@ public class OImmutableUser implements OSecurityUser {
     }
   }
 
-  public OSecurityRole allow(final ORule.ResourceGeneric resourceGeneric, final String resourceSpecific, final int iOperation) {
+  public OSecurityRole allow(final ORule.ResourceGeneric resourceGeneric, String resourceSpecific, final int iOperation) {
     if (roles.isEmpty())
       throw new OSecurityAccessException(getName(), "User '" + getName() + "' has no role defined");
 
     final OSecurityRole role = checkIfAllowed(resourceGeneric, resourceSpecific, iOperation);
 
     if (role == null)
-      throw new OSecurityAccessException(getName(), "User '" + getName() + "' does not have permission to execute the operation '"
+      throw new OSecurityAccessException(getName(), "User '" + getName() + "' has no the permission to execute the operation '"
           + ORole.permissionToString(iOperation) + "' against the resource: " + resourceGeneric + "." + resourceSpecific);
 
     return role;
   }
 
-  public OSecurityRole checkIfAllowed(final ORule.ResourceGeneric resourceGeneric, final String resourceSpecific,
-      final int iOperation) {
+  public OSecurityRole checkIfAllowed(final ORule.ResourceGeneric resourceGeneric, String resourceSpecific, final int iOperation) {
     for (OImmutableRole r : roles) {
       if (r == null)
         OLogManager.instance().warn(this,
-            "User '%s' has a null role, ignoring it.  Consider fixing this user's roles before continuing", getName());
+            "User '%s' has a null role, bypass it. Consider to fix this user roles before to continue", getName());
       else if (r.allow(resourceGeneric, resourceSpecific, iOperation))
         return r;
     }
@@ -72,7 +69,7 @@ public class OImmutableUser implements OSecurityUser {
     for (OImmutableRole r : roles)
       if (r == null)
         OLogManager.instance().warn(this,
-            "User '%s' has a null role, ignoring it.  Consider fixing this user's roles before continuing", getName());
+            "User '%s' has a null role, bypass it. Consider to fix this user roles before to continue", getName());
       else if (r.hasRule(resourceGeneric, resourceSpecific))
         return true;
 
@@ -116,7 +113,7 @@ public class OImmutableUser implements OSecurityUser {
   }
 
   public boolean checkPassword(final String iPassword) {
-    return OSecurityManager.instance().checkPassword(iPassword, getPassword());
+    return OSecurityManager.instance().check(iPassword, getPassword());
   }
 
   public String getName() {

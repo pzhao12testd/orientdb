@@ -2,13 +2,8 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import com.orientechnologies.orient.core.sql.executor.OResult;
-import com.orientechnologies.orient.core.sql.executor.OResultInternal;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 public class OFetchPlan extends SimpleNode {
 
@@ -22,69 +17,25 @@ public class OFetchPlan extends SimpleNode {
     super(p, id);
   }
 
-  /**
-   * Accept the visitor.
-   **/
+  /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
   }
 
-  public void toString(Map<Object, Object> params, StringBuilder builder) {
-    builder.append("FETCHPLAN ");
+  @Override
+  public String toString() {
+    StringBuilder result = new StringBuilder();
+    result.append("FETCHPLAN ");
     boolean first = true;
     for (OFetchPlanItem item : items) {
       if (!first) {
-        builder.append(" ");
+        result.append(" ");
       }
 
-      item.toString(params, builder);
+      result.append(item.toString());
       first = false;
     }
-  }
-
-  public OFetchPlan copy() {
-    OFetchPlan result = new OFetchPlan(-1);
-    result.items = items.stream().map(x -> x.copy()).collect(Collectors.toList());
-    return result;
-  }
-
-  @Override public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-
-    OFetchPlan that = (OFetchPlan) o;
-
-    if (items != null ? !items.equals(that.items) : that.items != null)
-      return false;
-
-    return true;
-  }
-
-  @Override public int hashCode() {
-    return items != null ? items.hashCode() : 0;
-  }
-
-  public OResult serialize() {
-    OResultInternal result = new OResultInternal();
-    if (items != null) {
-      result.setProperty("items", items.stream().map(x -> x.serialize()).collect(Collectors.toList()));
-    }
-    return result;
-  }
-
-  public void deserialize(OResult fromResult) {
-
-    if (fromResult.getProperty("items") != null) {
-      List<OResult> ser = fromResult.getProperty("items");
-      items = new ArrayList<>();
-      for (OResult r : ser) {
-        OFetchPlanItem exp = new OFetchPlanItem(-1);
-        exp.deserialize(r);
-        items.add(exp);
-      }
-    }
+    return result.toString();
   }
 }
 /* JavaCC - OriginalChecksum=b4cd86f2c6e8fc5e9dce8912389a1167 (do not edit this line) */

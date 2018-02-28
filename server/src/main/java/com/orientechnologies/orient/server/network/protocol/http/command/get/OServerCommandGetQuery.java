@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command.get;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.sql.executor.OResultSet;
-import com.orientechnologies.orient.core.sql.parser.OStatement;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.query.OQueryAbstract;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
 import com.orientechnologies.orient.server.network.protocol.http.command.OServerCommandAuthenticatedDbAbstract;
-import com.orientechnologies.orient.server.network.protocol.http.command.post.OServerCommandPostCommand;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,10 +38,12 @@ public class OServerCommandGetQuery extends OServerCommandAuthenticatedDbAbstrac
   @Override
   @SuppressWarnings("unchecked")
   public boolean execute(final OHttpRequest iRequest, OHttpResponse iResponse) throws Exception {
-    String[] urlParts = checkSyntax(iRequest.url, 4,
+    String[] urlParts = checkSyntax(
+        iRequest.url,
+        4,
         "Syntax error: query/<database>/sql/<query-text>[/<limit>][/<fetchPlan>].<br>Limit is optional and is set to 20 by default. Set to 0 to have no limits.");
 
-    int limit = urlParts.length > 4 ? Integer.parseInt(urlParts[4]) : 20;
+    final int limit = urlParts.length > 4 ? Integer.parseInt(urlParts[4]) : 20;
     String fetchPlan = urlParts.length > 5 ? urlParts[5] : null;
     final String text = urlParts[3];
     final String accept = iRequest.getHeader("accept");
@@ -49,37 +51,23 @@ public class OServerCommandGetQuery extends OServerCommandAuthenticatedDbAbstrac
     iRequest.data.commandInfo = "Query";
     iRequest.data.commandDetail = text;
 
-    ODatabaseDocument db = null;
+    ODatabaseDocumentTx db = null;
+
+    final List<OIdentifiable> response;
 
     try {
       db = getProfiledDatabaseInstance(iRequest);
 
-      OStatement stm = OServerCommandPostCommand.parseStatement("SQL", text, db);
-      OResultSet result = db.query(text, new Object[] {});
-      limit = OServerCommandPostCommand.getLimitFromStatement(stm, limit);
-      String localFetchPlan = OServerCommandPostCommand.getFetchPlanFromStatement(stm);
-      if (localFetchPlan != null) {
-        fetchPlan = localFetchPlan;
-      }
-      int i = 0;
-      List response = new ArrayList();
-      while (result.hasNext()) {
-        if (limit >= 0 && i >= limit) {
-          break;
-        }
-        response.add(result.next());
-        i++;
-      }
+      final OQueryAbstract command = new OSQLSynchQuery<ODocument>(text, limit).setFetchPlan(fetchPlan);
+      response = (List<OIdentifiable>) db.query(command);
+      fetchPlan = command.getFetchPlan();
 
-      Map<String, Object> additionalContent = new HashMap<>();
+      Map<String, Object> additionalContent = null;
 
-      result.getExecutionPlan().ifPresent(x -> additionalContent.put("executionPlan", x.toResult().toElement()));
-
-      result.close();
-
-      String format = null;
-      if (fetchPlan != null) {
-        format = "fetchPlan:" + fetchPlan;
+      final List<String> tips = (List<String>) command.getContext().getVariable("tips");
+      if (tips != null) {
+        additionalContent = new HashMap<String, Object>(1);
+        additionalContent.put("warnings", tips);
       }
 
       iResponse.writeRecords(response, fetchPlan, null, accept, additionalContent);

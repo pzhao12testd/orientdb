@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2014 OrientDB LTD (info(-at-)orientdb.com)
+ * Copyright 2010-2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,13 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 
 /**
  * Returns always the first cluster configured.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  */
 public class ODefaultClusterSelectionStrategy implements OClusterSelectionStrategy {
   public static final String NAME = "default";
 
   public int getCluster(final OClass iClass, final ODocument doc) {
-    return iClass.getDefaultClusterId();
-  }
-
-  @Override
-  public int getCluster(OClass iClass, int[] selection, ODocument doc) {
     return iClass.getDefaultClusterId();
   }
 

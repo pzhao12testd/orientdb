@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -130,8 +130,8 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
     OUser admin = database.getMetadata().getSecurity().getUser("admin");
     OUser reader = database.getMetadata().getSecurity().getUser("reader");
 
-    ORole byPassRestrictedRole = database.getMetadata().getSecurity().createRole("byPassRestrictedRole",
-        ORole.ALLOW_MODES.DENY_ALL_BUT);
+    ORole byPassRestrictedRole = database.getMetadata().getSecurity()
+        .createRole("byPassRestrictedRole", ORole.ALLOW_MODES.DENY_ALL_BUT);
     byPassRestrictedRole.addRule(ORule.ResourceGeneric.BYPASS_RESTRICTED, null, ORole.PERMISSION_READ);
     byPassRestrictedRole.save();
 
@@ -147,28 +147,28 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
 
     List<ODocument> result = database.query(new OSQLSynchQuery<ODocument>("select count(*) from QueryCountExtendsRestrictedClass"));
     ODocument count = result.get(0);
-    Assert.assertEquals(2L, count.<Object>field("count"));
+    Assert.assertEquals(2L, count.field("count"));
 
     database.close();
     database.open("admin", "admin");
 
     result = database.query(new OSQLSynchQuery<ODocument>("select count(*) from QueryCountExtendsRestrictedClass"));
     count = result.get(0);
-    Assert.assertEquals(2L, count.<Object>field("count"));
+    Assert.assertEquals(2L, count.field("count"));
 
     database.close();
     database.open("reader", "reader");
 
     result = database.query(new OSQLSynchQuery<ODocument>("select count(*) from QueryCountExtendsRestrictedClass"));
     count = result.get(0);
-    Assert.assertEquals(1L, count.<Object>field("count"));
+    Assert.assertEquals(1L, count.field("count"));
 
     database.close();
     database.open("superReader", "superReader");
 
     result = database.query(new OSQLSynchQuery<ODocument>("select count(*) from QueryCountExtendsRestrictedClass"));
     count = result.get(0);
-    Assert.assertEquals(2L, count.<Object>field("count"));
+    Assert.assertEquals(2L, count.field("count"));
   }
 
   @Test
@@ -179,8 +179,8 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
     database.newInstance("Indexed").field("key", "one").save();
     database.newInstance("Indexed").field("key", "two").save();
 
-    List<ODocument> result = database
-        .command(new OSQLSynchQuery<ODocument>("select count(*) as total from Indexed where key > 'one'")).execute();
+    List<ODocument> result = database.command(
+        new OSQLSynchQuery<ODocument>("select count(*) as total from Indexed where key > 'one'")).execute();
 
     Assert.assertTrue(result.size() == 1);
     for (ODocument d : result) {
@@ -253,8 +253,8 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
   }
 
   public void testSelectMap() {
-    List<ODocument> result = database
-        .query(new OSQLSynchQuery<ODocument>("select list( 1, 4, 5.00, 'john', map( 'kAA', 'vAA' ) ) as myresult"));
+    List<ODocument> result = database.query(new OSQLSynchQuery<ODocument>(
+        "select list( 1, 4, 5.00, 'john', map( 'kAA', 'vAA' ) ) as myresult"));
 
     Assert.assertEquals(result.size(), 1);
 
@@ -336,9 +336,8 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
 
   @Test
   public void queryFormat() {
-    List<ODocument> result = database
-        .command(new OSQLSynchQuery<ODocument>("select format('%d - %s (%s)', nr, street, type, dummy ) as output from Account"))
-        .execute();
+    List<ODocument> result = database.command(
+        new OSQLSynchQuery<ODocument>("select format('%d - %s (%s)', nr, street, type, dummy ) as output from Account")).execute();
 
     Assert.assertTrue(result.size() > 1);
     for (ODocument d : result) {
@@ -391,8 +390,9 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
     String pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
     SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
 
-    result = database.command(new OSQLSynchQuery<ODocument>(
-        "select from Account where created <= date('" + dateFormat.format(new Date()) + "', \"" + pattern + "\")")).execute();
+    result = database.command(
+        new OSQLSynchQuery<ODocument>("select from Account where created <= date('" + dateFormat.format(new Date()) + "', \""
+            + pattern + "\")")).execute();
 
     Assert.assertEquals(result.size(), tot);
     for (ODocument d : result) {
@@ -454,22 +454,21 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
     for (ODocument d : result) {
       Assert.assertNotNull(d.field("value"));
       Assert.assertTrue(d.field("value") instanceof Long);
-      Assert.assertEquals(moreThanInteger, d.<Object>field("value"));
+      Assert.assertEquals(moreThanInteger, d.field("value"));
     }
   }
 
   @Test
   public void testHashMethod() throws UnsupportedEncodingException, NoSuchAlgorithmException {
-    List<ODocument> result = database
-        .command(new OSQLSynchQuery<ODocument>("select name, name.hash() as n256, name.hash('sha-512') as n512 from OUser"))
-        .execute();
+    List<ODocument> result = database.command(
+        new OSQLSynchQuery<ODocument>("select name, name.hash() as n256, name.hash('sha-512') as n512 from OUser")).execute();
 
     Assert.assertFalse(result.isEmpty());
     for (ODocument d : result) {
       final String name = d.field("name");
 
-      Assert.assertEquals(OSecurityManager.createHash(name, "SHA-256"), d.field("n256"));
-      Assert.assertEquals(OSecurityManager.createHash(name, "SHA-512"), d.field("n512"));
+      Assert.assertEquals(OSecurityManager.digest2String(name, "SHA-256"), d.field("n256"));
+      Assert.assertEquals(OSecurityManager.digest2String(name, "SHA-512"), d.field("n512"));
     }
   }
 
@@ -483,12 +482,12 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
     sequence.remove(0);
     new ODocument("V").field("sequence", sequence).save();
 
-    List<ODocument> result = database
-        .command(new OSQLSynchQuery<ODocument>("select first(sequence) from V where sequence is not null")).execute();
+    List<ODocument> result = database.command(
+        new OSQLSynchQuery<ODocument>("select first(sequence) from V where sequence is not null")).execute();
 
     Assert.assertEquals(result.size(), 2);
-    Assert.assertEquals(result.get(0).<Object>field("first"), 0l);
-    Assert.assertEquals(result.get(1).<Object>field("first"), 1l);
+    Assert.assertEquals(result.get(0).field("first"), 0l);
+    Assert.assertEquals(result.get(1).field("first"), 1l);
   }
 
   @Test
@@ -501,33 +500,12 @@ public class SQLFunctionsTest extends DocumentDBBaseTest {
     sequence.remove(sequence.size() - 1);
     new ODocument("V").field("sequence2", sequence).save();
 
-    List<ODocument> result = database
-        .command(new OSQLSynchQuery<ODocument>("select last(sequence2) from V where sequence2 is not null")).execute();
+    List<ODocument> result = database.command(
+        new OSQLSynchQuery<ODocument>("select last(sequence2) from V where sequence2 is not null")).execute();
 
     Assert.assertEquals(result.size(), 2);
-    Assert.assertEquals(result.get(0).<Object>field("last"), 99l);
-    Assert.assertEquals(result.get(1).<Object>field("last"), 98l);
+    Assert.assertEquals(result.get(0).field("last"), 99l);
+    Assert.assertEquals(result.get(1).field("last"), 98l);
 
   }
-
-  @Test
-  public void querySplit() {
-    String sql = "select v.split('-') as value from ( select '1-2-3' as v ) limit 1";
-
-    List<ODocument> result = database.command(new OSQLSynchQuery<ODocument>(sql)).execute();
-
-    Assert.assertEquals(result.size(), 1);
-    for (ODocument d : result) {
-      Assert.assertNotNull(d.field("value"));
-      Assert.assertTrue(d.field("value").getClass().isArray());
-
-      Object[] array = d.field("value");
-
-      Assert.assertEquals(array.length, 3);
-      Assert.assertEquals(array[0], "1");
-      Assert.assertEquals(array[1], "2");
-      Assert.assertEquals(array[2], "3");
-    }
-  }
-
 }

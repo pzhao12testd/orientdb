@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.test.database.auto;
 
 import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.command.script.OCommandScript;
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -51,7 +50,7 @@ public class TransactionIsolationTest extends DocumentDBBaseTest {
     db1.open("admin", "admin");
 
     ODocument record1 = new ODocument();
-    record1.field("name", "This is the first version").save(db1.getClusterNameById(db1.getDefaultClusterId()));
+    record1.field("name", "This is the first version").save();
 
     db1.begin();
     try {
@@ -88,7 +87,7 @@ public class TransactionIsolationTest extends DocumentDBBaseTest {
     db1.open("admin", "admin");
 
     ODocument record1 = new ODocument();
-    record1.field("name", "This is the first version").save(db1.getClusterNameById(db1.getDefaultClusterId()));
+    record1.field("name", "This is the first version").save();
 
     db1.begin();
     db1.getTransaction().setIsolationLevel(OTransaction.ISOLATION_LEVEL.READ_COMMITTED);
@@ -120,25 +119,21 @@ public class TransactionIsolationTest extends DocumentDBBaseTest {
     db1.open("admin", "admin");
 
     final ODocument record1 = new ODocument();
-    record1.field("name", "This is the first version").save(db1.getClusterNameById(db1.getDefaultClusterId()));
+    record1.field("name", "This is the first version").save();
 
     Future<List<OIdentifiable>> txFuture = Orient.instance().submit(new Callable<List<OIdentifiable>>() {
       @Override
       public List<OIdentifiable> call() throws Exception {
-        try {
-          String cmd = "";
-          cmd += "begin isolation REPEATABLE_READ;";
-          cmd += "let r1 = select from " + record1.getIdentity() + ";";
-          cmd += "sleep 2000;";
-          cmd += "let r2 = select from " + record1.getIdentity() + ";";
-          cmd += "commit;";
-          cmd += "return $r2;";
+        String cmd = "";
+        cmd += "begin isolation REPEATABLE_READ;";
+        cmd += "let r1 = select from " + record1.getIdentity() + ";";
+        cmd += "sleep 2000;";
+        cmd += "let r2 = select from " + record1.getIdentity() + ";";
+        cmd += "commit;";
+        cmd += "return $r2;";
 
-          db1.activateOnCurrentThread();
-          return db1.command(new OCommandScript("sql", cmd)).execute();
-        } finally {
-          ODatabaseRecordThreadLocal.instance().remove();
-        }
+        db1.activateOnCurrentThread();
+        return db1.command(new OCommandScript("sql", cmd)).execute();
       }
     });
 
@@ -170,25 +165,21 @@ public class TransactionIsolationTest extends DocumentDBBaseTest {
     db1.open("admin", "admin");
 
     final ODocument record1 = new ODocument();
-    record1.field("name", "This is the first version").save(db1.getClusterNameById(db1.getDefaultClusterId()));
+    record1.field("name", "This is the first version").save();
 
     Future<List<OIdentifiable>> txFuture = Orient.instance().submit(new Callable<List<OIdentifiable>>() {
       @Override
       public List<OIdentifiable> call() throws Exception {
-        try {
-          String cmd = "";
-          cmd += "begin isolation READ_COMMITTED;";
-          cmd += "let r1 = select from " + record1.getIdentity() + ";";
-          cmd += "sleep 2000;";
-          cmd += "let r2 = select from " + record1.getIdentity() + " nocache;";
-          cmd += "commit;";
-          cmd += "return $r2;";
+        String cmd = "";
+        cmd += "begin isolation READ_COMMITTED;";
+        cmd += "let r1 = select from " + record1.getIdentity() + ";";
+        cmd += "sleep 2000;";
+        cmd += "let r2 = select from " + record1.getIdentity() + " nocache;";
+        cmd += "commit;";
+        cmd += "return $r2;";
 
-          db1.activateOnCurrentThread();
-          return db1.command(new OCommandScript("sql", cmd)).execute();
-        } finally {
-          ODatabaseRecordThreadLocal.instance().remove();
-        }
+        db1.activateOnCurrentThread();
+        return db1.command(new OCommandScript("sql", cmd)).execute();
       }
     });
 

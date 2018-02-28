@@ -2,7 +2,8 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-public class ONearOperator extends SimpleNode implements OBinaryCompareOperator {
+public
+class ONearOperator  extends SimpleNode implements OBinaryCompareOperator {
   public ONearOperator(int id) {
     super(id);
   }
@@ -11,6 +12,7 @@ public class ONearOperator extends SimpleNode implements OBinaryCompareOperator 
     super(p, id);
   }
 
+
   /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
@@ -18,7 +20,7 @@ public class ONearOperator extends SimpleNode implements OBinaryCompareOperator 
 
   @Override
   public boolean execute(Object left, Object right) {
-    throw new UnsupportedOperationException(toString() + " operator cannot be evaluated in this context");
+    return false;
   }
 
   @Override
@@ -30,16 +32,6 @@ public class ONearOperator extends SimpleNode implements OBinaryCompareOperator 
     return false;
   }
 
-  @Override public ONearOperator copy() {
-    return this;
-  }
 
-  @Override public boolean equals(Object obj) {
-    return obj != null && obj.getClass().equals(this.getClass());
-  }
-
-  @Override public int hashCode() {
-    return getClass().hashCode();
-  }
 }
 /* JavaCC - OriginalChecksum=a79af9beed70f813658f38a0162320e0 (do not edit this line) */

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql.filter;
@@ -26,8 +26,9 @@ import com.orientechnologies.orient.core.collate.OCollate;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.exception.OQueryParsingException;
-import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OProperty;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
 import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
 import com.orientechnologies.orient.core.sql.OSQLEngine;
 import com.orientechnologies.orient.core.sql.functions.OSQLFunction;
@@ -35,7 +36,7 @@ import com.orientechnologies.orient.core.sql.functions.coll.OSQLMethodMultiValue
 import com.orientechnologies.orient.core.sql.method.OSQLMethod;
 import com.orientechnologies.orient.core.sql.method.misc.OSQLMethodField;
 import com.orientechnologies.orient.core.sql.method.misc.OSQLMethodFunctionDelegate;
-import com.orientechnologies.orient.core.sql.method.OSQLMethodRuntime;
+import com.orientechnologies.orient.core.sql.methods.OSQLMethodRuntime;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ import java.util.Locale;
 /**
  * Represents an object field as value in the query condition.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public abstract class OSQLFilterItemAbstract implements OSQLFilterItem {
@@ -183,9 +184,9 @@ public abstract class OSQLFilterItemAbstract implements OSQLFilterItem {
 
   protected abstract void setRoot(OBaseParser iQueryToParse, final String iRoot);
 
-  protected OCollate getCollateForField(final OClass iClass, final String iFieldName) {
-    if (iClass != null) {
-      final OProperty p = iClass.getProperty(iFieldName);
+  protected OCollate getCollateForField(final ODocument doc, final String iFieldName) {
+    if (ODocumentInternal.getImmutableSchemaClass(doc) != null) {
+      final OProperty p = ODocumentInternal.getImmutableSchemaClass(doc).getProperty(iFieldName);
       if (p != null)
         return p.getCollate();
     }

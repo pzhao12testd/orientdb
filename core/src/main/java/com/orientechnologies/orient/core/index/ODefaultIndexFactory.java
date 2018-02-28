@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Orient Technologies.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,22 +15,21 @@
  */
 package com.orientechnologies.orient.core.index;
 
-import com.orientechnologies.orient.core.exception.OConfigurationException;
-import com.orientechnologies.orient.core.storage.index.engine.ORemoteIndexEngine;
-import com.orientechnologies.orient.core.storage.index.engine.OSBTreeIndexEngine;
-import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.storage.OStorage;
-import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
-
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
+import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
+import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.exception.OConfigurationException;
+import com.orientechnologies.orient.core.index.engine.OSBTreeIndexEngine;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
+
 /**
- * Default OrientDB index factory for indexes based on SBTree.<br>
- * Supports index types:
+ * Default OrientDB index factory for indexes based on MVRBTree.<br>
+ * Supports index types :
  * <ul>
  * <li>UNIQUE</li>
  * <li>NOTUNIQUE</li>
@@ -40,10 +39,10 @@ import java.util.Set;
  */
 public class ODefaultIndexFactory implements OIndexFactory {
 
-  public static final String SBTREE_ALGORITHM = "SBTREE";
+  public static final String       SBTREE_ALGORITHM             = "SBTREE";
 
-  public static final String SBTREEBONSAI_VALUE_CONTAINER = "SBTREEBONSAISET";
-  public static final String NONE_VALUE_CONTAINER         = "NONE";
+  public static final String       SBTREEBONSAI_VALUE_CONTAINER = "SBTREEBONSAISET";
+  public static final String       NONE_VALUE_CONTAINER         = "NONE";
 
   private static final Set<String> TYPES;
   private static final Set<String> ALGORITHMS;
@@ -92,59 +91,58 @@ public class ODefaultIndexFactory implements OIndexFactory {
     return ALGORITHMS;
   }
 
-  public OIndexInternal<?> createIndex(String name, OStorage storage, String indexType, String algorithm,
+  public OIndexInternal<?> createIndex(String name, ODatabaseDocumentInternal database, String indexType, String algorithm,
       String valueContainerAlgorithm, ODocument metadata, int version) throws OConfigurationException {
     if (valueContainerAlgorithm == null)
       valueContainerAlgorithm = NONE_VALUE_CONTAINER;
-
     if (version < 0)
       version = getLastVersion();
 
     if (SBTREE_ALGORITHM.equals(algorithm))
-      return createSBTreeIndex(name, indexType, valueContainerAlgorithm, metadata,
-          (OAbstractPaginatedStorage) storage.getUnderlying(), version);
+      return createSBTreeIndex(name, indexType, valueContainerAlgorithm, metadata, (OAbstractPaginatedStorage) database
+          .getStorage().getUnderlying(), version);
 
-    throw new OConfigurationException("Unsupported type: " + indexType);
+    throw new OConfigurationException("Unsupported type : " + indexType);
   }
 
   private OIndexInternal<?> createSBTreeIndex(String name, String indexType, String valueContainerAlgorithm, ODocument metadata,
       OAbstractPaginatedStorage storage, int version) {
+    Boolean durableInNonTxMode;
 
-    if (OClass.INDEX_TYPE.UNIQUE.toString().equals(indexType)) {
-      return new OIndexUnique(name, indexType, SBTREE_ALGORITHM, version, storage, valueContainerAlgorithm, metadata);
-    } else if (OClass.INDEX_TYPE.NOTUNIQUE.toString().equals(indexType)) {
-      return new OIndexNotUnique(name, indexType, SBTREE_ALGORITHM, version, storage, valueContainerAlgorithm, metadata);
-    } else if (OClass.INDEX_TYPE.FULLTEXT.toString().equals(indexType)) {
-      return new OIndexFullText(name, indexType, SBTREE_ALGORITHM, version, storage, valueContainerAlgorithm, metadata);
-    } else if (OClass.INDEX_TYPE.DICTIONARY.toString().equals(indexType)) {
-      return new OIndexDictionary(name, indexType, SBTREE_ALGORITHM, version, storage, valueContainerAlgorithm, metadata);
+    Object durable = null;
+
+    if (metadata != null) {
+      durable = metadata.field("durableInNonTxMode");
     }
 
-    throw new OConfigurationException("Unsupported type: " + indexType);
+    if (durable instanceof Boolean)
+      durableInNonTxMode = (Boolean) durable;
+    else
+      durableInNonTxMode = null;
+
+    if (OClass.INDEX_TYPE.UNIQUE.toString().equals(indexType)) {
+      return new OIndexUnique(name, indexType, SBTREE_ALGORITHM, new OSBTreeIndexEngine<OIdentifiable>(name, durableInNonTxMode,
+          storage,
+          version), valueContainerAlgorithm, metadata);
+    } else if (OClass.INDEX_TYPE.NOTUNIQUE.toString().equals(indexType)) {
+      return new OIndexNotUnique(name, indexType, SBTREE_ALGORITHM, new OSBTreeIndexEngine<Set<OIdentifiable>>(name,
+          durableInNonTxMode,
+          storage, version), valueContainerAlgorithm, metadata);
+    } else if (OClass.INDEX_TYPE.FULLTEXT.toString().equals(indexType)) {
+      return new OIndexFullText(name, indexType, SBTREE_ALGORITHM, new OSBTreeIndexEngine<Set<OIdentifiable>>(name,
+          durableInNonTxMode,
+          storage, version), valueContainerAlgorithm, metadata);
+    } else if (OClass.INDEX_TYPE.DICTIONARY.toString().equals(indexType)) {
+      return new OIndexDictionary(name, indexType, SBTREE_ALGORITHM, new OSBTreeIndexEngine<OIdentifiable>(name,
+          durableInNonTxMode,
+          storage, version), valueContainerAlgorithm, metadata);
+    }
+
+    throw new OConfigurationException("Unsupported type : " + indexType);
   }
 
   @Override
   public int getLastVersion() {
     return OSBTreeIndexEngine.VERSION;
-  }
-
-  @Override
-  public OIndexEngine createIndexEngine(String algorithm, String name, Boolean durableInNonTxMode, OStorage storage, int version,
-      Map<String, String> engineProperties) {
-
-    final OIndexEngine indexEngine;
-
-    final String storageType = storage.getType();
-    if (storageType.equals("memory") || storageType.equals("plocal"))
-      indexEngine = new OSBTreeIndexEngine(name, durableInNonTxMode, (OAbstractPaginatedStorage) storage, version);
-    else if (storageType.equals("distributed"))
-      // DISTRIBUTED CASE: HANDLE IT AS FOR LOCAL
-      indexEngine = new OSBTreeIndexEngine(name, durableInNonTxMode, (OAbstractPaginatedStorage) storage.getUnderlying(), version);
-    else if (storageType.equals("remote"))
-      indexEngine = new ORemoteIndexEngine(name);
-    else
-      throw new OIndexException("Unsupported storage type: " + storageType);
-
-    return indexEngine;
   }
 }

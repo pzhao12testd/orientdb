@@ -22,33 +22,17 @@ public class OUpdateAddItem extends SimpleNode {
     return visitor.visit(this, data);
   }
 
-
-  public void toString(Map<Object, Object> params, StringBuilder builder) {
-    left.toString(params, builder);
-    builder.append(" = ");
-    right.toString(params, builder);
+  public void replaceParameters(Map<Object, Object> params) {
+    right.replaceParameters(params);
   }
 
-  @Override public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-
-    OUpdateAddItem that = (OUpdateAddItem) o;
-
-    if (left != null ? !left.equals(that.left) : that.left != null)
-      return false;
-    if (right != null ? !right.equals(that.right) : that.right != null)
-      return false;
-
-    return true;
-  }
-
-  @Override public int hashCode() {
-    int result = left != null ? left.hashCode() : 0;
-    result = 31 * result + (right != null ? right.hashCode() : 0);
-    return result;
+  @Override
+  public String toString() {
+    StringBuilder result = new StringBuilder();
+    result.append(left.toString());
+    result.append(" = ");
+    result.append(value.toString());
+    return result.toString();
   }
 }
 /* JavaCC - OriginalChecksum=769679aa2d2d8df58a13210152b50a9d (do not edit this line) */

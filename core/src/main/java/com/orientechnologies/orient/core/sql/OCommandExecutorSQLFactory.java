@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Orient Technologies.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
  */
 package com.orientechnologies.orient.core.sql;
 
-import com.orientechnologies.orient.core.command.OCommandExecutor;
-import com.orientechnologies.orient.core.exception.OCommandExecutionException;
-
 import java.util.Set;
+
+import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 
 /**
  * Factory to register new OCommandExecutorSQL.
@@ -30,7 +29,7 @@ public interface OCommandExecutorSQLFactory {
   /**
    * @return Set of supported command names of this factory
    */
-  Set<String> getCommandNames();
+  public Set<String> getCommandNames();
 
   /**
    * Create command for the given name. returned command may be a new instance each time or a constant.
@@ -40,5 +39,5 @@ public interface OCommandExecutorSQLFactory {
    * @throws OCommandExecutionException
    *           : when command creation fail
    */
-  OCommandExecutor createCommand(String name) throws OCommandExecutionException;
+  public OCommandExecutorSQLAbstract createCommand(String name) throws OCommandExecutionException;
 }

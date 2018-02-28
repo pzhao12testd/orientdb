@@ -6,9 +6,9 @@
             <class name="com.orientechnologies.orient.test.database.auto.ClusterMetadataTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.DBMethodsTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.AlterDatabaseTest"/>
+            <class name="com.orientechnologies.orient.test.database.auto.ConnectDatabaseTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.DatabaseConflictStategyTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.DatabaseConflictStrategyAutoMergeTest"/>
-            <class name="com.orientechnologies.orient.test.database.auto.DbCopyTest"/>
         </classes>
     </test>
     <test name="Schema">
@@ -31,11 +31,13 @@
     </test>
     <test name="Population">
         <classes>
+            <class name="com.orientechnologies.orient.test.database.auto.CRUDFlatPhysicalTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.ObjectTreeTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.CRUDObjectPhysicalTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.CRUDObjectInheritanceTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.CRUDDocumentPhysicalTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.ComplexTypesTest"/>
+            <class name="com.orientechnologies.orient.test.database.auto.CRUDFlatPhysicalTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.CRUDDocumentValidationTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.RecordMetadataTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.ObjectDetachingTest"/>
@@ -98,7 +100,6 @@
             <class name="com.orientechnologies.orient.test.database.auto.OrderByIndexReuseTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.LinkSetIndexTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.CompositeIndexWithNullTest"/>
-            <class name="com.orientechnologies.orient.test.database.auto.AutoShardingTest"/>
         </classes>
     </test>
     <test name="Dictionary">
@@ -149,10 +150,8 @@
             <class name="com.orientechnologies.orient.test.database.auto.SQLFunctionsTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.SQLUpdateTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.SQLDeleteTest"/>
-            <class name="com.orientechnologies.orient.test.database.auto.SQLTruncateRecordTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.SQLCreateVertexTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.SQLDeleteEdgeTest"/>
-            <class name="com.orientechnologies.orient.test.database.auto.SQLBatchTest"/>
         </classes>
     </test>
     <test name="other-commands">
@@ -162,7 +161,7 @@
     </test>
     <test name="misc">
         <classes>
-            <class name="com.orientechnologies.orient.test.database.auto.TruncateClassTest"/>
+            <class name="com.orientechnologies.orient.test.database.auto.TruncateTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.DateTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.SQLFindReferencesTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.SQLCreateLinkTest"/>
@@ -177,14 +176,13 @@
             <class name="com.orientechnologies.orient.test.database.auto.PoolTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.StringsTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.RecordReloadTest"/>
-            <class name="com.orientechnologies.orient.test.database.auto.SequenceTest"/>
-            <class name="com.orientechnologies.orient.test.database.auto.SQLSequenceTest"/>
         </classes>
     </test>
     <test name="DbTools">
         <classes>
+            <class name="com.orientechnologies.orient.test.database.auto.DbCheckTest"/>
             <class name="com.orientechnologies.orient.test.database.auto.DbImportExportTest"/>
-            <class name="com.orientechnologies.orient.test.database.auto.StressTestWorkloadTest"/>
+            <class name="com.orientechnologies.orient.test.database.auto.DbCompareTest"/>
         </classes>
     </test>
     <test name="DbToolsDelete">

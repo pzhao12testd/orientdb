@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http;
@@ -26,12 +26,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.orientechnologies.common.exception.OException;
-import com.orientechnologies.common.exception.OSystemException;
 
 /**
  * Contains HTTP utilities static methods and constants.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  *
  */
 public class OHttpUtils {
@@ -56,11 +55,9 @@ public class OHttpUtils {
   public static final String HEADER_AUTHENTICATION               = "OAuthentication: ";
   public static final String HEADER_CONTENT_ENCODING             = "Accept-Encoding: ";
   public static final String HEADER_ETAG                         = "ETag: ";
-  public static final String HEADER_AUTHENTICATE_NEGOTIATE       = "WWW-Authenticate: Negotiate";
-  
+
   public static final String AUTHORIZATION_BEARER                = "Bearer";
   public static final String AUTHORIZATION_BASIC                 = "Basic";
-  public static final String AUTHORIZATION_NEGOTIATE             = "Negotiate";
   public static final String OSESSIONID                          = "OSESSIONID";
 
   public static final String MULTIPART_CONTENT_DISPOSITION       = "Content-Disposition";
@@ -120,7 +117,7 @@ public class OHttpUtils {
           try {
             params.put(parts[0], URLDecoder.decode(parts[1], "UTF-8"));
           } catch (UnsupportedEncodingException e) {
-            throw OException.wrapException(new OSystemException("Can not parse HTTP parameters"), e);
+            throw new OException(e);
           }
       }
       return params;

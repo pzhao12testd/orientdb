@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.record.impl;
 
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
@@ -30,8 +29,6 @@ import com.orientechnologies.orient.core.record.ORecordAbstract;
 import com.orientechnologies.orient.core.record.ORecordStringable;
 import com.orientechnologies.orient.core.serialization.OBinaryProtocol;
 
-import java.io.UnsupportedEncodingException;
-
 /**
  * It's schema less. Use this if you need to store Strings at low level. The object can be reused across calls to the database by
  * using the reset() at every re-use.
@@ -40,12 +37,12 @@ import java.io.UnsupportedEncodingException;
 @Deprecated
 public class ORecordFlat extends ORecordAbstract implements ORecordStringable {
   private static final long serialVersionUID = 1L;
-  public static final  byte RECORD_TYPE      = 'f';
-  protected String value;
+  public static final byte  RECORD_TYPE      = 'f';
+  protected String          value;
 
-  public ORecordFlat(ODatabaseDocumentInternal iDatabase) {
+  public ORecordFlat(ODatabaseDocumentTx iDatabase) {
     this();
-    ODatabaseRecordThreadLocal.instance().set(iDatabase);
+    ODatabaseRecordThreadLocal.INSTANCE.set(iDatabase);
   }
 
   public ORecordFlat() {
@@ -95,7 +92,7 @@ public class ORecordFlat extends ORecordAbstract implements ORecordStringable {
     cloned._recordId = _recordId.copy();
     cloned._dirty = _dirty;
     cloned._contentChanged = _contentChanged;
-    cloned._recordVersion = _recordVersion;
+    cloned._recordVersion = _recordVersion.copy();
     return cloned;
   }
 
@@ -106,11 +103,7 @@ public class ORecordFlat extends ORecordAbstract implements ORecordStringable {
         reload();
 
       // LAZY LOADING: LOAD THE RECORD FIRST
-      try {
-        value = new String(_source, "UTF-8");
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException(e);
-      }
+      value = OBinaryProtocol.bytes2string(_source);
     }
 
     return value;
@@ -137,11 +130,7 @@ public class ORecordFlat extends ORecordAbstract implements ORecordStringable {
   @Override
   public byte[] toStream() {
     if (_source == null && value != null)
-      try {
-        _source = value.getBytes("UTF-8");
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException(e);
-      }
+      _source = OBinaryProtocol.string2bytes(value);
     return _source;
   }
 

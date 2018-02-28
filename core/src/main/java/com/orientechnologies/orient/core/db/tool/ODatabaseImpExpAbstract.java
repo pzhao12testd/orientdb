@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.db.tool;
@@ -23,16 +23,21 @@ import com.orientechnologies.orient.core.command.OCommandOutputListener;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.metadata.OMetadataDefault;
+import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Abstract class for import/export of database and data in general.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
-public abstract class ODatabaseImpExpAbstract extends ODatabaseTool {
+public abstract class ODatabaseImpExpAbstract {
   protected final static String       DEFAULT_EXT               = ".json";
   protected ODatabaseDocumentInternal database;
   protected String                    fileName;
@@ -72,6 +77,25 @@ public abstract class ODatabaseImpExpAbstract extends ODatabaseTool {
     excludeClusters = new LinkedHashSet<String>();
     excludeClusters.add(OMetadataDefault.CLUSTER_INDEX_NAME);
     excludeClusters.add(OMetadataDefault.CLUSTER_MANUAL_INDEX_NAME);
+  }
+
+  public ODatabaseImpExpAbstract setOptions(final String iOptions) {
+    if (iOptions != null) {
+      final List<String> options = OStringSerializerHelper.smartSplit(iOptions, ' ');
+      for (String o : options) {
+        final int sep = o.indexOf('=');
+        if (sep == -1) {
+          parseSetting(o, Collections.EMPTY_LIST);
+        } else {
+          final String option = o.substring(0, sep);
+          final String value = OStringSerializerHelper.getStringContent(o.substring(sep + 1));
+          final List<String> items = OStringSerializerHelper.smartSplit(value, ' ');
+          parseSetting(option, items);
+        }
+
+      }
+    }
+    return this;
   }
 
   public Set<String> getIncludeClusters() {
@@ -196,6 +220,10 @@ public abstract class ODatabaseImpExpAbstract extends ODatabaseTool {
 
   protected void parseSetting(final String option, final List<String> items) {
     if (option.equalsIgnoreCase("-excludeAll")) {
+      includeClasses = new HashSet<String>();
+      excludeClasses = null;
+      includeClusters = new HashSet<String>();
+      excludeClusters = null;
       includeInfo = false;
       includeClusterDefinitions = false;
       includeSchema = false;
@@ -207,24 +235,24 @@ public abstract class ODatabaseImpExpAbstract extends ODatabaseTool {
     } else if (option.equalsIgnoreCase("-includeClass")) {
       includeClasses = new HashSet<String>();
       for (String item : items)
-        includeClasses.add(item.toUpperCase(Locale.ENGLISH));
+        includeClasses.add(item.toUpperCase());
       includeRecords = true;
 
     } else if (option.equalsIgnoreCase("-excludeClass")) {
       excludeClasses = new HashSet<String>(items);
       for (String item : items)
-        excludeClasses.add(item.toUpperCase(Locale.ENGLISH));
+        excludeClasses.add(item.toUpperCase());
 
     } else if (option.equalsIgnoreCase("-includeCluster")) {
       includeClusters = new HashSet<String>(items);
       for (String item : items)
-        includeClusters.add(item.toUpperCase(Locale.ENGLISH));
+        includeClusters.add(item.toUpperCase());
       includeRecords = true;
 
     } else if (option.equalsIgnoreCase("-excludeCluster")) {
       excludeClusters = new HashSet<String>(items);
       for (String item : items)
-        excludeClusters.add(item.toUpperCase(Locale.ENGLISH));
+        excludeClusters.add(item.toUpperCase());
 
     } else if (option.equalsIgnoreCase("-includeInfo")) {
       includeInfo = Boolean.parseBoolean(items.get(0));
@@ -234,10 +262,7 @@ public abstract class ODatabaseImpExpAbstract extends ODatabaseTool {
 
     } else if (option.equalsIgnoreCase("-includeSchema")) {
       includeSchema = Boolean.parseBoolean(items.get(0));
-      if (includeSchema) {
-        includeClusterDefinitions = true;
-        includeInfo = true;
-      }
+
     } else if (option.equalsIgnoreCase("-includeSecurity")) {
       includeSecurity = Boolean.parseBoolean(items.get(0));
 

@@ -2,9 +2,8 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import java.util.Map;
-
-public class OContainsValueOperator extends SimpleNode implements OBinaryCompareOperator {
+public
+class OContainsValueOperator extends SimpleNode {
   public OContainsValueOperator(int id) {
     super(id);
   }
@@ -13,40 +12,10 @@ public class OContainsValueOperator extends SimpleNode implements OBinaryCompare
     super(p, id);
   }
 
-  /**
-   * Accept the visitor.
-   **/
+
+  /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
-  }
-
-  @Override public boolean execute(Object iLeft, Object iRight) {
-    if (iLeft instanceof Map<?, ?>) {
-      final Map<String, ?> map = (Map<String, ?>) iLeft;
-      return map.containsValue(iRight);
-    }
-    return false;
-
-  }
-
-  @Override public boolean supportsBasicCalculation() {
-    return true;
-  }
-
-  @Override public OContainsValueOperator copy() {
-    return this;
-  }
-
-  @Override public String toString() {
-    return "CONTAINSVALUE";
-  }
-
-  @Override public boolean equals(Object obj) {
-    return obj != null && obj.getClass().equals(this.getClass());
-  }
-
-  @Override public int hashCode() {
-    return getClass().hashCode();
   }
 }
 /* JavaCC - OriginalChecksum=5d6492dbb028b8bac69e60d4916cf341 (do not edit this line) */

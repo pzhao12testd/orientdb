@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command.get;
 
-import com.orientechnologies.common.io.OIOUtils;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.util.OCallable;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
@@ -29,29 +28,35 @@ import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.zip.GZIPOutputStream;
 
 public class OServerCommandGetStaticContent extends OServerCommandConfigurableAbstract {
-  private static final String[] DEF_PATTERN = { "GET|www", "GET|studio/", "GET|", "GET|*.htm", "GET|*.html", "GET|*.xml",
-      "GET|*.jpeg", "GET|*.jpg", "GET|*.png", "GET|*.gif", "GET|*.js", "GET|*.otf", "GET|*.css", "GET|*.swf", "GET|favicon.ico",
-      "GET|robots.txt" };
+  private static final String[]                                DEF_PATTERN       = { "GET|www", "GET|studio/", "GET|", "GET|*.htm",
+      "GET|*.html", "GET|*.xml", "GET|*.jpeg", "GET|*.jpg", "GET|*.png", "GET|*.gif", "GET|*.js", "GET|*.otf", "GET|*.css",
+      "GET|*.swf", "GET|favicon.ico", "GET|robots.txt"                          };
 
-  private static final String CONFIG_HTTP_CACHE = "http.cache:";
-  private static final String CONFIG_ROOT_PATH  = "root.path";
-  private static final String CONFIG_FILE_PATH  = "file.path";
+  private static final String                                  CONFIG_HTTP_CACHE = "http.cache:";
+  private static final String                                  CONFIG_ROOT_PATH  = "root.path";
+  private static final String                                  CONFIG_FILE_PATH  = "file.path";
 
-  private ConcurrentHashMap<String, OStaticContentCachedEntry> cacheContents    = new ConcurrentHashMap<String, OStaticContentCachedEntry>();
-  private Map<String, String>                                  cacheHttp        = new HashMap<String, String>();
-  private String                                               cacheHttpDefault = "Cache-Control: max-age=3000";
-  private String rootPath;
-  private String filePath;
-  private ConcurrentHashMap<String, OCallable<Object, String>> virtualFolders = new ConcurrentHashMap<String, OCallable<Object, String>>();
+  private ConcurrentHashMap<String, OStaticContentCachedEntry> cacheContents     = new ConcurrentHashMap<String, OStaticContentCachedEntry>();
+  private Map<String, String>                                  cacheHttp         = new HashMap<String, String>();
+  private String                                               cacheHttpDefault  = "Cache-Control: max-age=3000";
+  private String                                               rootPath;
+  private String                                               filePath;
+  private ConcurrentHashMap<String, OCallable<Object, String>> virtualFolders    = new ConcurrentHashMap<String, OCallable<Object, String>>();
 
   public static class OStaticContent {
     public InputStream is          = null;
@@ -125,27 +130,11 @@ public class OServerCommandGetStaticContent extends OServerCommandConfigurableAb
         loadStaticContent(iRequest, iResponse, staticContent);
       }
 
-      if (staticContent.is != null && staticContent.contentSize < 0) {
-        ByteArrayOutputStream bytesOutput = new ByteArrayOutputStream();
-        GZIPOutputStream stream = new GZIPOutputStream(bytesOutput, 16384);
-        try {
-          OIOUtils.copyStream(staticContent.is, stream, -1);
-          stream.finish();
-          byte[] compressedBytes = bytesOutput.toByteArray();
-          iResponse.sendStream(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, staticContent.type,
-              new ByteArrayInputStream(compressedBytes), compressedBytes.length, null, new HashMap<String, String>() {{
-                put("Content-Encoding", "gzip");
-              }});
-        } finally {
-          stream.close();
-          bytesOutput.close();
-        }
-      } else if (staticContent.is != null) {
+      if (staticContent.is != null)
         iResponse.sendStream(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, staticContent.type, staticContent.is,
             staticContent.contentSize);
-      } else {
+      else
         iResponse.sendStream(404, "File not found", null, null, 0);
-      }
 
     } catch (IOException e) {
       OLogManager.instance().error(this, "Error on loading resource %s", e, iRequest.url);
@@ -215,9 +204,8 @@ public class OServerCommandGetStaticContent extends OServerCommandConfigurableAb
       // GET GLOBAL CONFIG
       rootPath = iRequest.configuration.getValueAsString("orientdb.www.path", "src/site");
       if (rootPath == null) {
-        OLogManager.instance()
-            .warn(this, "No path configured. Specify the 'root.path', 'file.path' or the global 'orientdb.www.path' variable",
-                rootPath);
+        OLogManager.instance().warn(this,
+            "No path configured. Specify the 'root.path', 'file.path' or the global 'orientdb.www.path' variable", rootPath);
         return;
       }
     }
@@ -251,7 +239,7 @@ public class OServerCommandGetStaticContent extends OServerCommandConfigurableAb
       return;
     }
 
-    if (server.getContextConfiguration().getValueAsBoolean(OGlobalConfiguration.SERVER_CACHE_FILE_STATIC)) {
+    if (OGlobalConfiguration.SERVER_CACHE_FILE_STATIC.getValueAsBoolean()) {
       final OStaticContentCachedEntry cachedEntry = cacheContents.get(path);
       if (cachedEntry != null) {
         staticContent.is = new ByteArrayInputStream(cachedEntry.content);
@@ -285,7 +273,7 @@ public class OServerCommandGetStaticContent extends OServerCommandConfigurableAb
       staticContent.is = new BufferedInputStream(new FileInputStream(inputFile));
       staticContent.contentSize = inputFile.length();
 
-      if (server.getContextConfiguration().getValueAsBoolean(OGlobalConfiguration.SERVER_CACHE_FILE_STATIC)) {
+      if (OGlobalConfiguration.SERVER_CACHE_FILE_STATIC.getValueAsBoolean()) {
         // READ THE ENTIRE STREAM AND CACHE IT IN MEMORY
         final byte[] buffer = new byte[(int) staticContent.contentSize];
         for (int i = 0; i < staticContent.contentSize; ++i)

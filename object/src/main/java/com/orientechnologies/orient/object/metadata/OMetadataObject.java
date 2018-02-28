@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,25 +18,23 @@ package com.orientechnologies.orient.object.metadata;
 
 import java.io.IOException;
 
-import com.orientechnologies.orient.core.cache.OCommandCache;
-import com.orientechnologies.orient.core.index.OIndexManager;
 import com.orientechnologies.orient.core.index.OIndexManagerProxy;
 import com.orientechnologies.orient.core.metadata.OMetadata;
 import com.orientechnologies.orient.core.metadata.OMetadataInternal;
 import com.orientechnologies.orient.core.metadata.function.OFunctionLibrary;
 import com.orientechnologies.orient.core.metadata.schema.OImmutableSchema;
+import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.metadata.security.OSecurity;
-import com.orientechnologies.orient.core.metadata.sequence.OSequenceLibrary;
-import com.orientechnologies.orient.core.schedule.OScheduler;
+import com.orientechnologies.orient.core.schedule.OSchedulerListener;
 import com.orientechnologies.orient.object.metadata.schema.OSchemaProxyObject;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class OMetadataObject implements OMetadataInternal {
 
-  protected OMetadataInternal  underlying;
+  protected OMetadataInternal          underlying;
   protected OSchemaProxyObject schema;
 
   public OMetadataObject(OMetadataInternal iUnderlying) {
@@ -64,15 +62,14 @@ public class OMetadataObject implements OMetadataInternal {
   }
 
   @Override
-  @Deprecated
   public void load() {
     underlying.load();
   }
 
   @Override
-  @Deprecated
   public void create() throws IOException {
     underlying.create();
+
   }
 
   @Override
@@ -83,17 +80,12 @@ public class OMetadataObject implements OMetadataInternal {
   }
 
   @Override
-  public OCommandCache getCommandCache() {
-    return underlying.getCommandCache();
-  }
-
-  @Override
   public OSecurity getSecurity() {
     return underlying.getSecurity();
   }
 
   @Override
-  public OIndexManager getIndexManager() {
+  public OIndexManagerProxy getIndexManager() {
     return underlying.getIndexManager();
   }
 
@@ -108,7 +100,6 @@ public class OMetadataObject implements OMetadataInternal {
   }
 
   @Override
-  @Deprecated
   public void close() {
     underlying.close();
   }
@@ -119,13 +110,8 @@ public class OMetadataObject implements OMetadataInternal {
   }
 
   @Override
-  public OSequenceLibrary getSequenceLibrary() {
-    return underlying.getSequenceLibrary();
-  }
-
-    @Override
-  public OScheduler getScheduler() {
-    return underlying.getScheduler();
+  public OSchedulerListener getSchedulerListener() {
+    return underlying.getSchedulerListener();
   }
 
   public OMetadata getUnderlying() {

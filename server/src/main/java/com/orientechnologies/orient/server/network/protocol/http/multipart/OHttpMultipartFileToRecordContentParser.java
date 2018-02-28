@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2011 Luca Molino (molino.luca--AT--gmail.com *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,12 +20,11 @@ import java.util.Map;
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class OHttpMultipartFileToRecordContentParser implements OHttpMultipartContentParser<ORID> {
@@ -33,7 +32,7 @@ public class OHttpMultipartFileToRecordContentParser implements OHttpMultipartCo
   @Override
   public ORID parse(final OHttpRequest iRequest, final Map<String, String> headers, final OHttpMultipartContentInputStream in,
       ODatabaseDocument database) throws IOException {
-    final OBlob record = new ORecordBytes();
+    final ORecordBytes record = new ORecordBytes();
     record.fromInputStream(in);
     record.save();
     return record.getIdentity();

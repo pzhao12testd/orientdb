@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2013 OrientDB LTD (info--at--orientdb.com)
+ * Copyright 2010-2013 Orient Technologies LTD (info--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,40 +15,22 @@
  */
 package com.orientechnologies.orient.core.storage.impl.local.paginated;
 
-import com.orientechnologies.orient.core.storage.impl.local.OMicroTransaction;
-import com.orientechnologies.orient.core.tx.OTransactionInternal;
+import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OLogSequenceNumber;
+import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OOperationUnitId;
+import com.orientechnologies.orient.core.tx.OTransaction;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 12.06.13
  */
 public class OStorageTransaction {
-  private final OTransactionInternal clientTx;
-  private final OMicroTransaction    microTransaction;
+  private final OTransaction clientTx;
 
-  public OStorageTransaction(OTransactionInternal clientTx) {
+  public OStorageTransaction(OTransaction clientTx) {
     this.clientTx = clientTx;
-    this.microTransaction = null;
   }
 
-  /**
-   * Instantiates a new storage transaction for the given micro-transaction.
-   *
-   * @param microTransaction the micro-transaction.
-   */
-  public OStorageTransaction(OMicroTransaction microTransaction) {
-    this.microTransaction = microTransaction;
-    this.clientTx = null;
-  }
-
-  public OTransactionInternal getClientTx() {
+  public OTransaction getClientTx() {
     return clientTx;
-  }
-
-  /**
-   * @return the micro-transaction associated with this storage transaction or {@code null} if there are no such transaction.
-   */
-  public OMicroTransaction getMicroTransaction() {
-    return microTransaction;
   }
 }

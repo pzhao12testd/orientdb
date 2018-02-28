@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.entity;
 
 import com.orientechnologies.orient.core.config.OStorageClusterHoleConfiguration;
-import com.orientechnologies.orient.core.config.OStorageConfigurationImpl;
+import com.orientechnologies.orient.core.config.OStorageConfiguration;
 import com.orientechnologies.orient.core.config.OStorageDataHoleConfiguration;
 import com.orientechnologies.orient.core.config.OStorageFileConfiguration;
 import com.orientechnologies.orient.core.config.OStorageSegmentConfiguration;
@@ -30,6 +30,7 @@ import com.orientechnologies.orient.core.metadata.schema.OProperty;
 import com.orientechnologies.orient.core.metadata.security.OUser;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ORecordBytes;
+import com.orientechnologies.orient.core.record.impl.ORecordFlat;
 
 public class OClassDictionary {
   private static final OClassDictionary instance = new OClassDictionary();
@@ -43,7 +44,7 @@ public class OClassDictionary {
     case '0':
       return ODocument.class;
     case '2':
-      throw new IllegalArgumentException("Record type 'flat' is not supported anymore");
+      return ORecordFlat.class;
     case '3':
       return ORecordBytes.class;
 
@@ -55,7 +56,7 @@ public class OClassDictionary {
       return OUser.class;
 
     case '7':
-      return OStorageConfigurationImpl.class;
+      return OStorageConfiguration.class;
     case 'a':
       return OStorageClusterHoleConfiguration.class;
     case 'b':
@@ -72,6 +73,8 @@ public class OClassDictionary {
   public Character getCodeByClass(final Class<?> iClass) {
     if (iClass.equals(ODocument.class))
       return '0';
+    if (iClass.equals(ORecordFlat.class))
+      return '2';
     if (iClass.equals(ORecordBytes.class))
       return '3';
 
@@ -82,7 +85,7 @@ public class OClassDictionary {
     if (iClass.equals(OUser.class))
       return '6';
 
-    if (iClass.equals(OStorageConfigurationImpl.class))
+    if (iClass.equals(OStorageConfiguration.class))
       return '7';
     if (iClass.equals(OStorageClusterHoleConfiguration.class))
       return 'a';

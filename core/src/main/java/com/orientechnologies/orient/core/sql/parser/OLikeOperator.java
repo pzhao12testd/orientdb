@@ -2,10 +2,8 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import com.orientechnologies.common.collection.OMultiValue;
-import com.orientechnologies.orient.core.query.OQueryHelper;
-
-public class OLikeOperator extends SimpleNode implements OBinaryCompareOperator {
+public
+class OLikeOperator extends SimpleNode  implements OBinaryCompareOperator{
   public OLikeOperator(int id) {
     super(id);
   }
@@ -14,47 +12,24 @@ public class OLikeOperator extends SimpleNode implements OBinaryCompareOperator 
     super(p, id);
   }
 
-  /**
-   * Accept the visitor.
-   **/
+
+  /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
   }
 
-  @Override
-  public boolean execute(Object iLeft, Object iRight) {
-    if (OMultiValue.isMultiValue(iLeft) || OMultiValue.isMultiValue(iRight))
-      return false;
-
-    if (iLeft == null || iRight == null) {
-      return false;
-    }
-    return OQueryHelper.like(iLeft.toString(), iRight.toString());
+  @Override public boolean execute(Object left, Object right) {
+    return false;
   }
 
-  @Override
-  public String toString() {
+  @Override public String toString() {
     return "LIKE";
   }
 
-  @Override
-  public boolean supportsBasicCalculation() {
+  @Override public boolean supportsBasicCalculation() {
     return true;
   }
 
-  @Override
-  public OLikeOperator copy() {
-    return this;
-  }
 
-  @Override
-  public boolean equals(Object obj) {
-    return obj != null && obj.getClass().equals(this.getClass());
-  }
-
-  @Override
-  public int hashCode() {
-    return getClass().hashCode();
-  }
 }
 /* JavaCC - OriginalChecksum=16d302abf0f85b404e57b964606952ca (do not edit this line) */

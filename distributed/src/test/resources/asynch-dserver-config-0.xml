@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <orient-server>
     <handlers>
+        <handler class="com.orientechnologies.orient.graph.handler.OGraphServerHandler">
+            <parameters/>
+        </handler>
         <handler class="com.orientechnologies.orient.server.handler.OJMXPlugin">
             <parameters>
                 <parameter value="false" name="enabled"/>
@@ -28,13 +31,10 @@
                 <parameter value="src/test/resources/asynch-distributed-db-config.json" name="configuration.db.default"/>
                 <parameter value="src/test/resources/hazelcast-0.xml" name="configuration.hazelcast"/>
                 <parameter value="com.orientechnologies.orient.server.distributed.conflict.ODefaultReplicationConflictResolver" name="conflict.resolver.impl"/>
-                <parameter value="node-1" name="nodeName"/>
+                <parameter value="node1" name="nodeName"/>
             </parameters>
         </handler>
     </handlers>
-    <hooks>
-        <hook class="com.orientechnologies.orient.server.distributed.asynch.UpdateHook" position="REGULAR"/>
-    </hooks>
     <network>
         <protocols>
             <protocol implementation="com.orientechnologies.orient.server.network.protocol.binary.ONetworkProtocolBinary" name="binary"/>
@@ -60,10 +60,14 @@
     <users>
         <user resources="*" password="02030E9917890174FB847A47C4BFFC449A604A248E9642BB31F28CE51245EC85" name="root"/>
         <user resources="connect,server.listDatabases,server.dblist" password="guest" name="guest"/>
+        <user resources="database.passthrough" password="repl" name="replicator"/>
     </users>
     <properties>
         <entry value="info" name="log.console.level"/>
         <entry value="fine" name="log.file.level"/>
     </properties>
-    <isAfterFirstTime>true</isAfterFirstTime>
+	<hooks>
+        <hook class="com.orientechnologies.orient.server.distributed.asynch.UpdateHook"
+            position="REGULAR" />
+   </hooks>
 </orient-server>

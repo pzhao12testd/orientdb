@@ -1,15 +1,17 @@
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
+import junit.framework.Assert;
+
+import org.junit.Test;
+
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
-import junit.framework.Assert;
-import org.junit.Test;
 
 /*
  *
- *  *  Copyright 2015 OrientDB LTD (info(-at-)orientdb.com)
+ *  *  Copyright 2015 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -23,12 +25,12 @@ import org.junit.Test;
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 /**
- * @author Luigi Dell'Aquila (l.dellaquila-(at)-orientdb.com)
+ * @author Luigi Dell'Aquila
  */
 public class DistributedIndexes extends AbstractServerClusterTest {
   private final static int SERVERS = 2;
@@ -61,7 +63,7 @@ public class DistributedIndexes extends AbstractServerClusterTest {
   }
 
   @Override
-  protected void onAfterDatabaseCreation(ODatabaseDocument db) {
+  protected void onAfterDatabaseCreation(OrientBaseGraph db) {
     db.command(new OCommandSQL("CREATE CLASS Person extends V")).execute();
     db.command(new OCommandSQL("CREATE PROPERTY Person.name STRING")).execute();
     db.command(new OCommandSQL("CREATE INDEX Person.name NOTUNIQUE METADATA { ignoreNullValues: false }")).execute();
@@ -117,7 +119,7 @@ public class DistributedIndexes extends AbstractServerClusterTest {
       } catch (Exception e) {
         // CHECK DB COHERENCY
         final Iterable<ODocument> result = db.command(new OCommandSQL("select count(*) from DistributedIndexTest")).execute();
-        Assert.assertEquals(result.iterator().next().<Object>field("count"), 2l);
+        Assert.assertEquals(result.iterator().next().field("count"), 2l);
       }
 
       final ODocument test4 = new ODocument("DistributedIndexTest");
@@ -132,12 +134,11 @@ public class DistributedIndexes extends AbstractServerClusterTest {
       } catch (Exception e) {
         // CHECK DB COHERENCY
         final Iterable<ODocument> result = db.command(new OCommandSQL("select count(*) from DistributedIndexTest")).execute();
-        Assert.assertEquals(result.iterator().next().<Object>field("count"), 2l);
+        Assert.assertEquals(result.iterator().next().field("count"), 2l);
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
-      Assert.fail(e.toString());
+      Assert.fail();
     }
   }
 }

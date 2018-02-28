@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,41 +14,59 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.graph.sql;
 
+import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.schema.OSchema;
-import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.List;
 
 /**
- * @author Luigi Dell'Aquila (l.dellaquila-(at)-orientdb.com)
+ * @author Luigi Dell'Aquila
  */
+@RunWith(JUnit4.class)
 public class OCommandExecutorSQLDeleteVertexTest {
 
-  private ODatabaseDocumentTx db;
+  private static ODatabaseDocumentTx db;
 
-  @Before
-  public void init() throws Exception {
-    db = new ODatabaseDocumentTx("memory:" + OCommandExecutorSQLDeleteVertexTest.class.getSimpleName());
+  @BeforeClass
+  public static void init() throws Exception {
+    db = Orient.instance().getDatabaseFactory()
+        .createDatabase("graph", "memory:" + OCommandExecutorSQLDeleteVertexTest.class.getSimpleName());
+    if (db.exists()) {
+      db.open("admin", "admin");
+      db.drop();
+    }
+
     db.create();
+
     final OSchema schema = db.getMetadata().getSchema();
     schema.createClass("User", schema.getClass("V"));
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
+    db.activateOnCurrentThread();
     db.drop();
     db = null;
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    db.getMetadata().getSchema().getClass("User").truncate();
   }
 
   @Test
@@ -80,46 +98,4 @@ public class OCommandExecutorSQLDeleteVertexTest {
     Assert.assertEquals(result.size(), 0);
 
   }
-
-  @Test
-  public void testDeleteVertexWithEdgeRid() throws Exception {
-    List<ODocument> edges = db.command(new OCommandSQL("select from e limit 1")).execute();
-    try {
-      final int res = (Integer) db.command(new OCommandSQL("delete vertex [" + edges.get(0).getIdentity() + "]")).execute();
-      Assert.fail("Error on deleting a vertex with a rid of an edge");
-    } catch (Exception e) {
-      // OK
-    }
-  }
-
-
-  @Test
-  public void testDeleteVertexFromSubquery() throws Exception {
-    // for issue #4523
-
-    for (int i = 0; i < 100; i++) {
-      db.command(new OCommandSQL("create vertex User set name = 'foo" + i + "'")).execute();
-    }
-
-    final int res = (Integer) db.command(new OCommandSQL("delete vertex from (select from User)")).execute();
-    List<?> result = db.query(new OSQLSynchQuery("select from User"));
-    Assert.assertEquals(result.size(), 0);
-  }
-
-  @Test
-  public void testDeleteVertexFromSubquery2() throws Exception {
-    // for issue #4523
-
-    for (int i = 0; i < 100; i++) {
-      db.command(new OCommandSQL("create vertex User set name = 'foo" + i + "'")).execute();
-    }
-
-    final int res = (Integer) db.command(new OCommandSQL("delete vertex from (select from User where name = 'foo10')")).execute();
-
-    List<?> result = db.query(new OSQLSynchQuery("select from User"));
-    Assert.assertEquals(result.size(), 99);
-
-  }
-
-
 }

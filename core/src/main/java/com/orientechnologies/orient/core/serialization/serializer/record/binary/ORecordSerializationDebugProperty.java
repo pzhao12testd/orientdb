@@ -11,6 +11,5 @@ public class ORecordSerializationDebugProperty {
   public boolean          faildToRead;
   public int              failPosition;
   public Object           value;
-  public int              valuePos;
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,15 @@
  */
 package com.orientechnologies.orient.graph.sql;
 
+import java.util.List;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -24,14 +33,6 @@ import com.orientechnologies.orient.graph.gremlin.OGremlinHelper;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
-import java.util.List;
 
 @RunWith(JUnit4.class)
 public class SQLGraphFunctionsTest {
@@ -40,7 +41,7 @@ public class SQLGraphFunctionsTest {
   public SQLGraphFunctionsTest() {
   }
 
-  @BeforeClass
+	@BeforeClass
   public static void beforeClass() {
     String url = "memory:" + SQLGraphFunctionsTest.class.getSimpleName();
     graph = new OrientGraph(url);
@@ -62,7 +63,8 @@ public class SQLGraphFunctionsTest {
     graph.commit();
   }
 
-  @AfterClass
+
+	@AfterClass
   public static void afterClass() {
     graph.shutdown();
   }
@@ -74,12 +76,9 @@ public class SQLGraphFunctionsTest {
     Assert.assertTrue(result.iterator().hasNext());
 
     for (OrientVertex d : result) {
-
-      OrientVertex $current = d.getProperty("$current");
-      Object name = $current.getProperty("name");
-      Iterable<OrientVertex> $target = (Iterable<OrientVertex>) d.getProperty("$target");
-      Object name1 = $target.iterator().next().getProperty("name");
-      System.out.println("Shortest path from " + name + " and " + name1 + " is: " + d.getProperty("path"));
+      System.out.println("Shortest path from " + ((OrientVertex) d.getProperty("$current")).getProperty("name") + " and "
+          + ((Iterable<OrientVertex>) d.getProperty("$target")).iterator().next().getProperty("name") + " is: "
+          + d.getProperty("path"));
     }
   }
 
@@ -96,8 +95,8 @@ public class SQLGraphFunctionsTest {
     graph.setAutoStartTx(false);
     graph.commit();
 
-    graph.command(new OCommandSQL("create class tc1 extends V clusters 1")).execute();
-    graph.command(new OCommandSQL("create class edge1 extends E clusters 1")).execute();
+    graph.command(new OCommandSQL("create class tc1 extends V")).execute();
+    graph.command(new OCommandSQL("create class edge1 extends E")).execute();
 
     graph.setAutoStartTx(true);
 
@@ -109,8 +108,8 @@ public class SQLGraphFunctionsTest {
     int tc1Id = graph.getRawGraph().getClusterIdByName("tc1");
     int edge1Id = graph.getRawGraph().getClusterIdByName("edge1");
 
-    Iterable<OrientEdge> e = graph
-        .command(new OCommandSQL("create edge edge1 from #" + tc1Id + ":0 to #" + tc1Id + ":1 set f='fieldValue';")).execute();
+    Iterable<OrientEdge> e = graph.command(
+        new OCommandSQL("create edge edge1 from #" + tc1Id + ":0 to #" + tc1Id + ":1 set f='fieldValue';")).execute();
     graph.commit();
 
     List<ODocument> result = graph.getRawGraph().query(new OSQLSynchQuery<ODocument>("select gremlin('current.outE') from tc1"));

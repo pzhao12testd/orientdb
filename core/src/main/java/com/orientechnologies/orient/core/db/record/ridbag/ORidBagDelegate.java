@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,37 +14,35 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.core.db.record.ridbag;
+
+import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.OMultiValueChangeListener;
 import com.orientechnologies.orient.core.db.record.ORecordLazyMultiValue;
 import com.orientechnologies.orient.core.db.record.OTrackedMultiValue;
 import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.storage.ridbag.sbtree.Change;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.NavigableMap;
-import java.util.UUID;
 
 public interface ORidBagDelegate extends Iterable<OIdentifiable>, ORecordLazyMultiValue,
     OTrackedMultiValue<OIdentifiable, OIdentifiable> {
-  void addAll(Collection<OIdentifiable> values);
+  public void addAll(Collection<OIdentifiable> values);
 
-  void add(OIdentifiable identifiable);
+  public void add(OIdentifiable identifiable);
 
-  void remove(OIdentifiable identifiable);
+  public void remove(OIdentifiable identifiable);
 
-  boolean isEmpty();
+  public boolean isEmpty();
 
-  int getSerializedSize();
+  public int getSerializedSize();
 
-  int getSerializedSize(byte[] stream, int offset);
+  public int getSerializedSize(byte[] stream, int offset);
 
   /**
    * Writes content of bag to stream.
@@ -59,20 +57,11 @@ public interface ORidBagDelegate extends Iterable<OIdentifiable>, ORecordLazyMul
    *          id of delegate owner
    * @return offset where content of stream is ended
    */
-  int serialize(byte[] stream, int offset, UUID ownerUuid);
+  public int serialize(byte[] stream, int offset, UUID ownerUuid);
 
-  int deserialize(byte[] stream, int offset);
+  public int deserialize(byte[] stream, int offset);
 
-  void requestDelete();
-
-  /**
-   * THIS IS VERY EXPENSIVE METHOD AND CAN NOT BE CALLED IN REMOTE STORAGE.
-   *
-   * @param identifiable
-   *          Object to check.
-   * @return true if ridbag contains at leas one instance with the same rid as passed in identifiable.
-   */
-  boolean contains(OIdentifiable identifiable);
+  public void requestDelete();
 
   public void setOwner(ORecord owner);
 
@@ -80,7 +69,5 @@ public interface ORidBagDelegate extends Iterable<OIdentifiable>, ORecordLazyMul
 
   public String toString();
 
-  public List<OMultiValueChangeListener<OIdentifiable, OIdentifiable>> getChangeListeners();
-
-  NavigableMap<OIdentifiable,Change> getChanges();
+  public Set<OMultiValueChangeListener<OIdentifiable, OIdentifiable>> getChangeListeners();
 }

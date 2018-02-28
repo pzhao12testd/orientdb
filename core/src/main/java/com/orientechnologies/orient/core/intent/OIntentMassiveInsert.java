@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -23,6 +23,7 @@ package com.orientechnologies.orient.core.intent;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.object.ODatabaseObject;
 import com.orientechnologies.orient.core.hook.ORecordHook;
 import com.orientechnologies.orient.core.index.OClassIndexManager;
 import com.orientechnologies.orient.core.metadata.security.OSecurityUser;
@@ -36,10 +37,11 @@ public class OIntentMassiveInsert implements OIntent {
   private boolean                                     previousValidation;
   private Map<ORecordHook, ORecordHook.HOOK_POSITION> removedHooks;
   private OSecurityUser                               currentUser;
-  private boolean disableValidation = true;
-  private boolean disableSecurity   = true;
-  private boolean disableHooks      = true;
-  private boolean enableCache       = true;
+
+  private boolean                                     disableValidation = true;
+  private boolean                                     disableSecurity   = true;
+  private boolean                                     disableHooks      = true;
+  private boolean                                     enableCache       = true;
 
   public void begin(final ODatabaseDocumentInternal iDatabase) {
     if (disableSecurity) {
@@ -58,8 +60,7 @@ public class OIntentMassiveInsert implements OIntent {
       ((ODatabaseDocument) ownerDb).setRetainRecords(false);
 
       // VALIDATION
-      if (disableValidation && !iDatabase.getStorage().isRemote()) {
-        // Avoid to change server side validation if massive intent run on a client
+      if (disableValidation) {
         previousValidation = ((ODatabaseDocument) ownerDb).isValidationEnabled();
         if (previousValidation)
           ((ODatabaseDocument) ownerDb).setValidationEnabled(false);
@@ -68,6 +69,11 @@ public class OIntentMassiveInsert implements OIntent {
 
     while (ownerDb.getDatabaseOwner() != ownerDb)
       ownerDb = ownerDb.getDatabaseOwner();
+
+    if (ownerDb instanceof ODatabaseObject) {
+      previousRetainObjects = ((ODatabaseObject) ownerDb).isRetainObjects();
+      ((ODatabaseObject) ownerDb).setRetainObjects(false);
+    }
 
     if (disableHooks) {
       // REMOVE ALL HOOKS BUT INDEX
@@ -84,24 +90,27 @@ public class OIntentMassiveInsert implements OIntent {
   }
 
   public void end(final ODatabaseDocumentInternal iDatabase) {
-    ODatabaseInternal<?> ownerDb = iDatabase.getDatabaseOwner();
-
     if (disableSecurity)
       if (currentUser != null)
         // RE-ENABLE CHECK OF SECURITY
-        ownerDb.setUser(currentUser);
+        iDatabase.getDatabaseOwner().setUser(currentUser);
+
+    ODatabaseInternal<?> ownerDb = iDatabase.getDatabaseOwner();
 
     if (!enableCache) {
       ownerDb.getLocalCache().setEnable(!enableCache);
     }
     if (ownerDb instanceof ODatabaseDocument) {
       ((ODatabaseDocument) ownerDb).setRetainRecords(previousRetainRecords);
-      if (disableValidation && !iDatabase.getStorage().isRemote())
+      if (disableValidation)
         ((ODatabaseDocument) ownerDb).setValidationEnabled(previousValidation);
     }
 
     while (ownerDb.getDatabaseOwner() != ownerDb)
       ownerDb = ownerDb.getDatabaseOwner();
+
+    if (ownerDb instanceof ODatabaseObject)
+      ((ODatabaseObject) ownerDb).setRetainObjects(previousRetainObjects);
 
     if (disableHooks)
       if (removedHooks != null) {

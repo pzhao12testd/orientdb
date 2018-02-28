@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.db.record;
@@ -24,7 +24,7 @@ import com.orientechnologies.common.util.OSizeable;
 import java.util.Iterator;
 
 public interface ORecordLazyMultiValue extends OAutoConvertToRecord, ODetachable, OSizeable {
-  Iterator<OIdentifiable> rawIterator();
+  public Iterator<OIdentifiable> rawIterator();
 
   /**
    * Browse all the set to convert all the items into records.
@@ -32,12 +32,12 @@ public interface ORecordLazyMultiValue extends OAutoConvertToRecord, ODetachable
    * It converts only items that already loaded into memory from storage. To convert records that will be fetched from disk later
    * use {@link #setAutoConvertToRecord(boolean)}
    */
-  void convertLinks2Records();
+  public void convertLinks2Records();
 
   /**
    * Browse all the set to convert all the items into links.
    * 
    * @return
    */
-  boolean convertRecords2Links();
+  public boolean convertRecords2Links();
 }

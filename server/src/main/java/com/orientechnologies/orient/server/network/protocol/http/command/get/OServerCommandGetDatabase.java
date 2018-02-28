@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,21 +14,18 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command.get;
 
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.OConstants;
-import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.config.OStorageEntryConfiguration;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.exception.OSecurityAccessException;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.index.OIndexDefinition;
-import com.orientechnologies.orient.core.index.OIndexManager;
 import com.orientechnologies.orient.core.index.OIndexManagerProxy;
 import com.orientechnologies.orient.core.metadata.OMetadataInternal;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
@@ -52,7 +49,7 @@ import java.util.*;
 public class OServerCommandGetDatabase extends OServerCommandGetConnect {
   private static final String[] NAMES = { "GET|database/*" };
 
-  public static void exportClass(final ODatabaseDocument db, final OJSONWriter json, final OClass cls) throws IOException {
+  public static void exportClass(final ODatabaseDocumentTx db, final OJSONWriter json, final OClass cls) throws IOException {
     json.beginObject();
     json.writeAttribute("name", cls.getName());
     json.writeAttribute("superClass", cls.getSuperClass() != null ? cls.getSuperClass().getName() : "");
@@ -82,8 +79,6 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
       json.writeAttribute("records", db.countClass(cls.getName()));
     } catch (OSecurityAccessException e) {
       json.writeAttribute("records", "? (Unauthorized)");
-    } catch (Exception e) {
-      json.writeAttribute("records", "? (Error)");
     }
 
     if (cls.properties() != null && cls.properties().size() > 0) {
@@ -103,7 +98,6 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
         json.writeAttribute("max", prop.getMax());
         json.writeAttribute("regexp", prop.getRegexp());
         json.writeAttribute("collate", prop.getCollate() != null ? prop.getCollate().getName() : "default");
-        json.writeAttribute("defaultValue", prop.getDefaultValue());
 
         if (prop instanceof OPropertyImpl) {
           final Map<String, String> custom = ((OPropertyImpl) prop).getCustomInternal();
@@ -159,10 +153,10 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
 
   protected void exec(final OHttpRequest iRequest, final OHttpResponse iResponse, final String[] urlParts)
       throws InterruptedException, IOException {
-    ODatabaseDocumentInternal db = null;
+    ODatabaseDocumentTx db = null;
     try {
       if (urlParts.length > 2) {
-        db = server.openDatabase(urlParts[1], urlParts[2], urlParts[3]);
+        db = server.getDatabasePoolFactory().get(urlParts[1], urlParts[2], urlParts[3]).acquire();
       } else
         db = getProfiledDatabaseInstance(iRequest);
 
@@ -171,7 +165,7 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
       json.beginObject();
 
       json.beginObject("server");
-      json.writeAttribute("version", OConstants.getRawVersion());
+      json.writeAttribute("version", OConstants.ORIENT_VERSION);
       if (OConstants.getBuildNumber() != null)
         json.writeAttribute("build", OConstants.getBuildNumber());
       json.writeAttribute("osName", System.getProperty("os.name"));
@@ -179,18 +173,6 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
       json.writeAttribute("osArch", System.getProperty("os.arch"));
       json.writeAttribute("javaVendor", System.getProperty("java.vm.vendor"));
       json.writeAttribute("javaVersion", System.getProperty("java.vm.version"));
-
-      json.beginCollection("conflictStrategies");
-
-      Set<String> strategies = Orient.instance().getRecordConflictStrategy().getRegisteredImplementationNames();
-
-      int i = 0;
-      for (String strategy : strategies) {
-        json.write((i > 0 ? "," : "") + "\"" + strategy + "\"");
-        i++;
-      }
-      json.endCollection();
-
       json.endObject();
 
       if (((OMetadataInternal) db.getMetadata()).getImmutableSchemaSnapshot().getClasses() != null) {
@@ -220,7 +202,7 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
           try {
             cluster = db.getStorage().getClusterById(db.getClusterIdByName(clusterName));
           } catch (IllegalArgumentException e) {
-            OLogManager.instance().error(this, "Cluster '%s' does not exist in database", e, clusterName);
+            OLogManager.instance().error(this, "Cluster '%s' does not exist in database", clusterName);
             continue;
           }
 
@@ -248,9 +230,9 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
       if (db.getUser() != null) {
         json.writeAttribute("currentUser", db.getUser().getName());
 
-        // exportSecurityInfo(db, json);
+        //exportSecurityInfo(db, json);
       }
-      final OIndexManager idxManager = db.getMetadata().getIndexManager();
+      final OIndexManagerProxy idxManager = db.getMetadata().getIndexManager();
       json.beginCollection("indexes");
       for (OIndex<?> index : idxManager.getIndexes()) {
         json.beginObject();
@@ -269,13 +251,13 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
       json.beginObject("config");
 
       json.beginCollection("values");
-      json.writeObjects(null, new Object[] { "name", "dateFormat", "value", db.getStorage().getConfiguration().getDateFormat()},
-          new Object[] { "name", "dateTimeFormat", "value", db.getStorage().getConfiguration().getDateTimeFormat() }, new Object[] {
+      json.writeObjects(null, new Object[] { "name", "dateFormat", "value", db.getStorage().getConfiguration().dateFormat },
+          new Object[] { "name", "dateTimeFormat", "value", db.getStorage().getConfiguration().dateTimeFormat }, new Object[] {
               "name", "localeCountry", "value", db.getStorage().getConfiguration().getLocaleCountry() }, new Object[] { "name",
               "localeLanguage", "value", db.getStorage().getConfiguration().getLocaleLanguage() }, new Object[] { "name",
               "charSet", "value", db.getStorage().getConfiguration().getCharset() }, new Object[] { "name", "timezone", "value",
               db.getStorage().getConfiguration().getTimeZone().getID() }, new Object[] { "name", "definitionVersion", "value",
-              db.getStorage().getConfiguration().getVersion() }, new Object[] { "name", "clusterSelection", "value",
+              db.getStorage().getConfiguration().version }, new Object[] { "name", "clusterSelection", "value",
               db.getStorage().getConfiguration().getClusterSelection() }, new Object[] { "name", "minimumClusters", "value",
               db.getStorage().getConfiguration().getMinimumClusters() }, new Object[] { "name", "conflictStrategy", "value",
               db.getStorage().getConfiguration().getConflictStrategy() });
@@ -297,14 +279,14 @@ public class OServerCommandGetDatabase extends OServerCommandGetConnect {
       json.endObject();
       json.flush();
 
-      iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_JSON, buffer.toString(), null);
+      iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_JSON, buffer.toString(), null);
     } finally {
       if (db != null)
         db.close();
     }
   }
 
-  private void exportSecurityInfo(ODatabaseDocument db, OJSONWriter json) throws IOException {
+  private void exportSecurityInfo(ODatabaseDocumentTx db, OJSONWriter json) throws IOException {
     json.beginCollection("users");
     for (ODocument doc : db.getMetadata().getSecurity().getAllUsers()) {
       OUser user = new OUser(doc);

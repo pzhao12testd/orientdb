@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
 
-import com.orientechnologies.common.io.OIOUtils;
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
@@ -34,66 +33,54 @@ import java.util.Map;
 
 /**
  * SQL CREATE FUNCTION command.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
  * @author Claudio Tesoriero
  */
 public class OCommandExecutorSQLCreateFunction extends OCommandExecutorSQLAbstract {
-  public static final String NAME = "CREATE FUNCTION";
-  private String name;
-  private String code;
-  private String language;
-  private boolean      idempotent = false;
-  private List<String> parameters = null;
+  public static final String NAME       = "CREATE FUNCTION";
+  private String             name;
+  private String             code;
+  private String             language;
+  private boolean            idempotent = false;
+  private List<String>       parameters = null;
 
   @SuppressWarnings("unchecked")
   public OCommandExecutorSQLCreateFunction parse(final OCommandRequest iRequest) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iRequest;
+    init((OCommandRequestText) iRequest);
 
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
-    try {
-      queryText = preParse(queryText, iRequest);
-      textRequest.setText(queryText);
+    parserRequiredKeyword("CREATE");
+    parserRequiredKeyword("FUNCTION");
 
-      init((OCommandRequestText) iRequest);
+    name = parserNextWord(false);
+    code = OStringSerializerHelper.getStringContent(parserNextWord(false));
 
-      parserRequiredKeyword("CREATE");
-      parserRequiredKeyword("FUNCTION");
-
-      name = parserNextWord(false);
-      code = OIOUtils.getStringContent(parserNextWord(false));
-
-      String temp = parseOptionalWord(true);
-      while (temp != null) {
-        if (temp.equals("IDEMPOTENT")) {
-          parserNextWord(false);
-          idempotent = Boolean.parseBoolean(parserGetLastWord());
-        } else if (temp.equals("LANGUAGE")) {
-          parserNextWord(false);
-          language = parserGetLastWord();
-        } else if (temp.equals("PARAMETERS")) {
-          parserNextWord(false);
-          parameters = new ArrayList<String>();
-          OStringSerializerHelper.getCollection(parserGetLastWord(), 0, parameters);
-          if (parameters.size() == 0)
-            throw new OCommandExecutionException("Syntax Error. Missing function parameter(s): " + getSyntax());
-        }
-
-        temp = parserOptionalWord(true);
-        if (parserIsEnded())
-          break;
+    String temp = parseOptionalWord(true);
+    while (temp != null) {
+      if (temp.equals("IDEMPOTENT")) {
+        parserNextWord(false);
+        idempotent = Boolean.parseBoolean(parserGetLastWord());
+      } else if (temp.equals("LANGUAGE")) {
+        parserNextWord(false);
+        language = parserGetLastWord();
+      } else if (temp.equals("PARAMETERS")) {
+        parserNextWord(false);
+        parameters = new ArrayList<String>();
+        OStringSerializerHelper.getCollection(parserGetLastWord(), 0, parameters);
+        if (parameters.size() == 0)
+          throw new OCommandExecutionException("Syntax Error. Missing function parameter(s): " + getSyntax());
       }
-    } finally {
-      textRequest.setText(originalQuery);
-    }
 
+      temp = parserOptionalWord(true);
+      if (parserIsEnded())
+        break;
+    }
     return this;
   }
 
   @Override
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_QUICK_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   /**

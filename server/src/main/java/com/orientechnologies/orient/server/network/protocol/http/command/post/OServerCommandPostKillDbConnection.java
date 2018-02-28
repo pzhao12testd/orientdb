@@ -1,6 +1,6 @@
 /*
  *
- *  * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  * Copyright 2014 Orient Technologies.
  *  *
  *  * Licensed under the Apache License, Version 2.0 (the "License");
  *  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ public class OServerCommandPostKillDbConnection extends OServerCommandAuthentica
         final OHttpRequest req = http.getRequest();
 
         if (req != null && req != iRequest && req.sessionId.equals(iRequest.sessionId)) {
-          server.getClientConnectionManager().interrupt(connection.getId());
+          server.getClientConnectionManager().interrupt(connection.id);
         }
       }
     }

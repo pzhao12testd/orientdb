@@ -28,7 +28,6 @@ public interface OrientSqlVisitor
   public Object visit(OUpdateIncrementItem node, Object data);
   public Object visit(OUpdateRemoveItem node, Object data);
   public Object visit(OUpdatePutItem node, Object data);
-  public Object visit(OUpdateAddItem node, Object data);
   public Object visit(OInsertStatement node, Object data);
   public Object visit(OInsertBody node, Object data);
   public Object visit(OCreateVertexStatementEmptyNoTarget node, Object data);
@@ -55,6 +54,7 @@ public interface OrientSqlVisitor
   public Object visit(OModifier node, Object data);
   public Object visit(OExpression node, Object data);
   public Object visit(OMathExpression node, Object data);
+  public Object visit(OMultExpression node, Object data);
   public Object visit(OFirstLevelExpression node, Object data);
   public Object visit(OParenthesisExpression node, Object data);
   public Object visit(OBaseExpression node, Object data);

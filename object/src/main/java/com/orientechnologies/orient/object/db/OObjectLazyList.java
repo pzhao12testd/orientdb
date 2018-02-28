@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.object.db;
@@ -69,10 +69,6 @@ public class OObjectLazyList<TYPE> extends ArrayList<TYPE> implements OLazyObjec
 
   public Iterator<TYPE> iterator() {
     return new OObjectLazyListIterator<TYPE>(this, sourceRecord);
-  }
-
-  public Spliterator<TYPE> spliterator() {
-    return Spliterators.spliterator(this, Spliterator.ORDERED);
   }
 
   public boolean contains(final Object o) {
@@ -424,21 +420,21 @@ public class OObjectLazyList<TYPE> extends ArrayList<TYPE> implements OLazyObjec
     }
   }
 
-  public void detachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached, Map<Object, Object> lazyObjects) {
-    convertAndDetachAll(nonProxiedInstance, alreadyDetached, lazyObjects);
+  public void detachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached) {
+    convertAndDetachAll(nonProxiedInstance, alreadyDetached);
   }
 
-  protected void convertAndDetachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached, Map<Object, Object> lazyObjects) {
+  protected void convertAndDetachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached) {
     if (converted || !convertToRecord)
       return;
 
     for (int i = 0; i < size(); ++i)
-      convertAndDetachAll(i, nonProxiedInstance, alreadyDetached, lazyObjects);
+      convertAndDetachAll(i, nonProxiedInstance, alreadyDetached);
 
     converted = true;
   }
 
-  private void convertAndDetachAll(final int iIndex, boolean nonProxiedInstance, Map<Object, Object> alreadyDetached, Map<Object, Object> lazyObjects) {
+  private void convertAndDetachAll(final int iIndex, boolean nonProxiedInstance, Map<Object, Object> alreadyDetached) {
     if (converted || !convertToRecord)
       return;
 
@@ -463,7 +459,7 @@ public class OObjectLazyList<TYPE> extends ArrayList<TYPE> implements OLazyObjec
       }
       o = OObjectEntityEnhancer.getInstance().getProxiedInstance(doc.getClassName(), getDatabase().getEntityManager(), doc,
           sourceRecord);
-      o = ((OObjectDatabaseTx) getDatabase()).detachAll(o, nonProxiedInstance, alreadyDetached, lazyObjects);
+      o = ((OObjectDatabaseTx) getDatabase()).detachAll(o, nonProxiedInstance, alreadyDetached);
       super.set(iIndex, (TYPE) o);
     }
   }

@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,21 +14,18 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.index;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * Key that is used in {@link com.orientechnologies.orient.core.index.mvrbtree.OMVRBTree} for partial composite key search.
  * It always greater than any passed in key.
  *
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 20.03.12
  */
-@SuppressFBWarnings("EQ_COMPARETO_USE_OBJECT_EQUALS")
 public final class OAlwaysGreaterKey implements Comparable<Comparable<?>>{
 	public int compareTo(Comparable<?> o) {
 		return 1;

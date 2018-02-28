@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.hook;
@@ -24,7 +24,7 @@ import com.orientechnologies.orient.core.record.ORecord;
 /**
  * Hook abstract class that calls separate methods for each hook defined.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * @see ORecordHook
  */
 public abstract class ORecordHookAbstract implements ORecordHook {
@@ -175,9 +175,6 @@ public abstract class ORecordHookAbstract implements ORecordHook {
   public void onRecordFinalizeCreation(final ORecord record) {
   }
 
-  public void onRecordFinalizeDeletion(final ORecord record) {
-  }
-
   public RESULT onTrigger(final TYPE iType, final ORecord record) {
     switch (iType) {
     case BEFORE_CREATE:
@@ -246,10 +243,6 @@ public abstract class ORecordHookAbstract implements ORecordHook {
 
     case FINALIZE_UPDATE:
       onRecordFinalizeUpdate(record);
-      break;
-
-    case FINALIZE_DELETION:
-      onRecordFinalizeDeletion(record);
       break;
 
     }

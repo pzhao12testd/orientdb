@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.iterator;
@@ -39,34 +39,51 @@ import java.util.Arrays;
  * concurrent clients/threads insert and remove item in any cluster the iterator is browsing. If the cluster are hot removed by from
  * the database the iterator could be invalid and throw exception of cluster not found.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class ORecordIteratorClass<REC extends ORecord> extends ORecordIteratorClusters<REC> {
   protected final OClass targetClass;
   protected boolean      polymorphic;
 
+  /**
+   * This method is only to maintain the retro compatibility with TinkerPop BP 2.2
+   */
+  public ORecordIteratorClass(final ODatabaseDocumentInternal iDatabase, final ODatabaseDocumentTx iLowLevelDatabase,
+      final String iClassName, final boolean iPolymorphic) {
+    this(iDatabase, iLowLevelDatabase, iClassName, iPolymorphic, true, false);
+  }
+
   public ORecordIteratorClass(final ODatabaseDocumentInternal iDatabase, final ODatabaseDocumentInternal iLowLevelDatabase,
       final String iClassName, final boolean iPolymorphic) {
-    this(iDatabase, iLowLevelDatabase, iClassName, iPolymorphic, true);
+    this(iDatabase, iLowLevelDatabase, iClassName, iPolymorphic, true, false);
   }
 
   public ORecordIteratorClass(final ODatabaseDocumentInternal iDatabase, final ODatabaseDocumentInternal iLowLevelDatabase,
-      final String iClassName, final boolean iPolymorphic, final boolean iterateThroughTombstones) {
-    this(iDatabase, iLowLevelDatabase, iClassName, iPolymorphic, iterateThroughTombstones, true);
+      final String iClassName, final boolean iPolymorphic, final boolean iUseCache, final boolean iterateThroughTombstones) {
+    this(iDatabase, iLowLevelDatabase, iClassName, iPolymorphic, iUseCache, false, iterateThroughTombstones,
+        OStorage.LOCKING_STRATEGY.DEFAULT);
+    begin();
   }
 
   public ORecordIteratorClass(final ODatabaseDocumentInternal iDatabase, final ODatabaseDocumentInternal iLowLevelDatabase,
-      final String iClassName, final boolean iPolymorphic, final boolean iterateThroughTombstones, boolean begin) {
-    this(iDatabase, iLowLevelDatabase, iClassName, iPolymorphic, iterateThroughTombstones, OStorage.LOCKING_STRATEGY.DEFAULT);
-    if (begin)
-      begin();
+      final String iClassName, final boolean iPolymorphic, final boolean iUseCache, final boolean iUpdateCache,
+      final boolean iterateThroughTombstones) {
+    this(iDatabase, iLowLevelDatabase, iClassName, iPolymorphic, iUseCache, iUpdateCache, iterateThroughTombstones,
+        OStorage.LOCKING_STRATEGY.DEFAULT);
+    begin();
+  }
+
+  public ORecordIteratorClass(final ODatabaseDocumentInternal iDatabase, final ODatabaseDocumentInternal iLowLevelDatabase,
+      final String iClassName, final boolean iPolymorphic, final boolean iUseCache) {
+    this(iDatabase, iLowLevelDatabase, iClassName, iPolymorphic, iUseCache, false, false, OStorage.LOCKING_STRATEGY.NONE);
   }
 
   @Deprecated
   public ORecordIteratorClass(final ODatabaseDocumentInternal iDatabase, final ODatabaseDocumentInternal iLowLevelDatabase,
-      final String iClassName, final boolean iPolymorphic, final boolean iterateThroughTombstones,
-      final OStorage.LOCKING_STRATEGY iLockingStrategy) {
-    super(iDatabase, iLowLevelDatabase, iterateThroughTombstones, iLockingStrategy);
+      final String iClassName, final boolean iPolymorphic, final boolean iUseCache, final boolean iUpdateCache,
+      final boolean iterateThroughTombstones, final OStorage.LOCKING_STRATEGY iLockingStrategy) {
+    super(iDatabase, iLowLevelDatabase, iUseCache, iterateThroughTombstones, iLockingStrategy);
+    updateCache = iUpdateCache;
 
     targetClass = ((OMetadataInternal) database.getMetadata()).getImmutableSchemaSnapshot().getClass(iClassName);
     if (targetClass == null)

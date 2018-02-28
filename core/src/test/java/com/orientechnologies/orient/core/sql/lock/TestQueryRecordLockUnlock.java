@@ -1,17 +1,17 @@
 package com.orientechnologies.orient.core.sql.lock;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
-import org.junit.Ignore;
-import org.junit.Test;
+import static org.testng.AssertJUnit.assertEquals;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.testng.annotations.Test;
+
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.sql.OCommandSQL;
 
 public class TestQueryRecordLockUnlock {
 
@@ -25,7 +25,7 @@ public class TestQueryRecordLockUnlock {
       db.create();
       ODocument doc = new ODocument();
       doc.field("count", 0);
-      doc = db.save(doc, db.getClusterNameById(db.getDefaultClusterId()));
+      doc = db.save(doc);
       id = doc.getIdentity();
       db.commit();
     } finally {
@@ -45,7 +45,6 @@ public class TestQueryRecordLockUnlock {
             db = new ODatabaseDocumentTx("memory:" + TestQueryRecordLockUnlock.class.getSimpleName());
             db.open("admin", "admin");
             for (int j = 0; j < 10; j++) {
-              db.getLocalCache().deleteRecord(id);
               String asql = "update " + id.toString() + " INCREMENT count = 1 where count < 50 lock record";
               db.command(new OCommandSQL(asql)).execute(id);
             }
@@ -65,9 +64,7 @@ public class TestQueryRecordLockUnlock {
       db = new ODatabaseDocumentTx("memory:" + TestQueryRecordLockUnlock.class.getSimpleName());
       db.open("admin", "admin");
       ODocument doc = db.load(id);
-      //      assertEquals(50, doc.field("count"));
-
-      assertThat(doc.<Integer>field("count")).isEqualTo(50);
+      assertEquals(50, doc.field("count"));
 
     } finally {
       if (db != null) {
@@ -76,8 +73,7 @@ public class TestQueryRecordLockUnlock {
     }
   }
 
-  @Test
-  @Ignore
+  @Test(enabled = false)
   public void testLockWithSubqueryRecord() throws InterruptedException {
     final ORID id;
     ODatabaseDocumentTx db = null;
@@ -87,7 +83,7 @@ public class TestQueryRecordLockUnlock {
       db.create();
       ODocument doc = new ODocument();
       doc.field("count", 0);
-      doc = db.save(doc, db.getClusterNameById(db.getDefaultClusterId()));
+      doc = db.save(doc);
       id = doc.getIdentity();
       db.commit();
     } finally {
@@ -126,9 +122,7 @@ public class TestQueryRecordLockUnlock {
       db = new ODatabaseDocumentTx("memory:" + TestQueryRecordLockUnlock.class.getSimpleName());
       db.open("admin", "admin");
       ODocument doc = db.load(id);
-      //      assertEquals(50, doc.field("count"));
-
-      assertThat(doc.<Integer>field("count")).isEqualTo(50);
+      assertEquals(50, doc.field("count"));
 
     } finally {
       if (db != null) {
@@ -147,7 +141,7 @@ public class TestQueryRecordLockUnlock {
       db.create();
       ODocument doc = new ODocument();
       doc.field("count", 0);
-      doc = db.save(doc, db.getClusterNameById(db.getDefaultClusterId()));
+      doc = db.save(doc);
       id = doc.getIdentity();
       db.commit();
     } finally {
@@ -186,9 +180,7 @@ public class TestQueryRecordLockUnlock {
       db = new ODatabaseDocumentTx("memory:" + TestQueryRecordLockUnlock.class.getSimpleName());
       db.open("admin", "admin");
       ODocument doc = db.load(id);
-      //      assertEquals(50, doc.field("count"));
-
-      assertThat(doc.<Integer>field("count")).isEqualTo(50);
+      assertEquals(50, doc.field("count"));
 
     } finally {
       if (db != null) {

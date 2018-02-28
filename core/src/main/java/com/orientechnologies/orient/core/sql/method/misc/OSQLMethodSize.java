@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +19,12 @@ package com.orientechnologies.orient.core.sql.method.misc;
 import com.orientechnologies.common.collection.OMultiValue;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
+import com.orientechnologies.orient.core.record.ORecord;
 
 /**
  * 
  * @author Johann Sorel (Geomatys)
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodSize extends OAbstractSQLMethod {
 
@@ -38,7 +39,7 @@ public class OSQLMethodSize extends OAbstractSQLMethod {
     
     final Number size;
     if (ioResult != null) {
-      if (ioResult instanceof OIdentifiable) {
+      if (ioResult instanceof ORecord) {
         size = 1;
       } else {
         size = OMultiValue.getSize(ioResult);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +22,7 @@ import com.orientechnologies.orient.core.db.record.OIdentifiable;
 /**
  *
  * @author Johann Sorel (Geomatys)
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodAsBoolean extends OAbstractSQLMethod {
 
@@ -38,7 +38,15 @@ public class OSQLMethodAsBoolean extends OAbstractSQLMethod {
             if (ioResult instanceof String) {
                 ioResult = Boolean.valueOf(((String) ioResult).trim());
             } else if (ioResult instanceof Number) {
-                return ((Number) ioResult).intValue() != 0;
+                final int bValue = ((Number) ioResult).intValue();
+                if (bValue == 0) {
+                    ioResult = Boolean.FALSE;
+                } else if (bValue == 1) {
+                    ioResult = Boolean.TRUE;
+                } else {
+                    // IGNORE OTHER VALUES
+                    ioResult = null;
+                }
             }
         }
         return ioResult;

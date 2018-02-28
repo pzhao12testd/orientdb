@@ -4,10 +4,11 @@ import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
+import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 7/3/14
  */
 @Test
@@ -26,6 +27,6 @@ public abstract class DocumentDBBaseTest extends BaseTest<ODatabaseDocumentTx> {
   }
 
   protected ODatabaseDocumentTx createDatabaseInstance(String url) {
-    return new ODatabaseDocumentTx(url);
+    return Orient.instance().getDatabaseFactory().createDatabase("graph", url);
   }
 }

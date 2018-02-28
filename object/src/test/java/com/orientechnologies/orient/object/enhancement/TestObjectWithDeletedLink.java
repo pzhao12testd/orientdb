@@ -1,24 +1,25 @@
 package com.orientechnologies.orient.object.enhancement;
 
+import org.testng.Assert;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Test;
+
 import com.orientechnologies.orient.core.db.object.ODatabaseObject;
 import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 public class TestObjectWithDeletedLink {
 
   private ODatabaseObject db;
 
-  @Before
+  @BeforeTest
   public void before() {
     db = new OObjectDatabaseTx("memory:" + TestObjectWithDeletedLink.class.getName());
     db.create();
     db.getEntityManager().registerEntityClass(SimpleSelfRef.class);
   }
 
-  @After
+  @AfterTest
   public void after() {
     db.activateOnCurrentThread();
     db.drop();

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,44 +14,50 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.db.record.ridbag.embedded;
 
-import com.orientechnologies.common.log.OLogManager;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.UUID;
+import java.util.WeakHashMap;
+
 import com.orientechnologies.common.serialization.types.OIntegerSerializer;
 import com.orientechnologies.common.util.OCommonConst;
 import com.orientechnologies.common.util.OResettable;
 import com.orientechnologies.common.util.OSizeable;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.db.record.OMultiValueChangeEvent;
 import com.orientechnologies.orient.core.db.record.OMultiValueChangeListener;
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBagDelegate;
-import com.orientechnologies.orient.core.exception.OSerializationException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.record.ORecordInternal;
 import com.orientechnologies.orient.core.serialization.serializer.binary.impl.OLinkSerializer;
-import com.orientechnologies.orient.core.storage.ridbag.sbtree.Change;
-
-import java.util.*;
 
 public class OEmbeddedRidBag implements ORidBagDelegate {
-  private boolean contentWasChanged = false;
+  private byte[]                                                       serializedContent = null;
 
-  private Object[] entries       = OCommonConst.EMPTY_OBJECT_ARRAY;
-  private int      entriesLength = 0;
+  private boolean                                                      contentWasChanged = false;
+  private boolean                                                      deserialized      = true;
 
-  private boolean convertToRecord = true;
-  private int     size            = 0;
+  private Object[]                                                     entries           = OCommonConst.EMPTY_OBJECT_ARRAY;
+  private int                                                          entriesLength     = 0;
 
-  private transient ORecord owner;
+  private boolean                                                      convertToRecord   = true;
+  private int                                                          size              = 0;
 
-  private List<OMultiValueChangeListener<OIdentifiable, OIdentifiable>> changeListeners;
+  private transient ORecord                                            owner;
+
+  private Set<OMultiValueChangeListener<OIdentifiable, OIdentifiable>> changeListeners   = Collections
+                                                                                             .newSetFromMap(new WeakHashMap<OMultiValueChangeListener<OIdentifiable, OIdentifiable>, Boolean>());
 
   private static enum Tombstone {
     TOMBSTONE
@@ -59,9 +65,9 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
 
   private final class EntriesIterator implements Iterator<OIdentifiable>, OResettable, OSizeable {
     private final boolean convertToRecord;
-    private int currentIndex = -1;
-    private int nextIndex    = -1;
-    private boolean currentRemoved;
+    private int           currentIndex = -1;
+    private int           nextIndex    = -1;
+    private boolean       currentRemoved;
 
     private EntriesIterator(boolean convertToRecord) {
       reset();
@@ -70,14 +76,6 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
 
     @Override
     public boolean hasNext() {
-      //we may remove items in ridbag during iteration so we need to be sure that pointed item is not removed.
-      if (nextIndex > -1) {
-        if (entries[nextIndex] instanceof OIdentifiable)
-          return true;
-
-        nextIndex = nextIndex();
-      }
-
       return nextIndex > -1;
     }
 
@@ -89,31 +87,13 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
       if (currentIndex == -1)
         throw new NoSuchElementException();
 
-      Object nextValue = entries[currentIndex];
-
-      //we may remove items in ridbag during iteration so we need to be sure that pointed item is not removed.
-      if (!(nextValue instanceof OIdentifiable)) {
-        nextIndex = nextIndex();
-
-        currentIndex = nextIndex;
-        if (currentIndex == -1)
-          throw new NoSuchElementException();
-
-        nextValue = entries[currentIndex];
-      }
-
-      if (!convertToRecord && nextValue != null) {
-        if (((OIdentifiable) nextValue).getIdentity().isPersistent())
-          entries[currentIndex] = ((OIdentifiable) nextValue).getIdentity();
-      }
-
+      final OIdentifiable nextValue = (OIdentifiable) entries[currentIndex];
       nextIndex = nextIndex();
 
-      final OIdentifiable identifiable = (OIdentifiable) nextValue;
       if (convertToRecord)
-        return identifiable.getRecord();
+        return nextValue.getRecord();
 
-      return identifiable;
+      return nextValue;
     }
 
     @Override
@@ -131,12 +111,10 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
 
       size--;
       contentWasChanged = true;
-      if (OEmbeddedRidBag.this.owner != null)
-        ORecordInternal.unTrack(OEmbeddedRidBag.this.owner, nextValue);
 
-      fireCollectionChangedEvent(
-          new OMultiValueChangeEvent<OIdentifiable, OIdentifiable>(OMultiValueChangeEvent.OChangeType.REMOVE, nextValue, null,
-              nextValue));
+      if (!changeListeners.isEmpty())
+        fireCollectionChangedEvent(new OMultiValueChangeEvent<OIdentifiable, OIdentifiable>(
+            OMultiValueChangeEvent.OChangeType.REMOVE, nextValue, null, nextValue));
     }
 
     @Override
@@ -170,42 +148,13 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
   }
 
   @Override
-  public boolean contains(OIdentifiable identifiable) {
-    if (identifiable == null)
-      return false;
-
-    for (int i = 0; i < entriesLength; i++) {
-      if (identifiable.equals(entries[i]))
-        return true;
-    }
-
-    return false;
-  }
-
-  @Override
   public void setOwner(ORecord owner) {
     if (owner != null && this.owner != null && !this.owner.equals(owner)) {
       throw new IllegalStateException("This data structure is owned by document " + owner
           + " if you want to use it in other document create new rid bag instance and copy content of current one.");
     }
-    if (this.owner != null) {
-      for (int i = 0; i < entriesLength; i++) {
-        final Object entry = entries[i];
-        if (entry instanceof OIdentifiable) {
-          ORecordInternal.unTrack(this.owner, (OIdentifiable) entry);
-        }
-      }
-    }
 
     this.owner = owner;
-    if (this.owner != null) {
-      for (int i = 0; i < entriesLength; i++) {
-        final Object entry = entries[i];
-        if (entry instanceof OIdentifiable) {
-          ORecordInternal.track(this.owner, (OIdentifiable) entry);
-        }
-      }
-    }
   }
 
   @Override
@@ -215,47 +164,42 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
   }
 
   @Override
-  public void add(final OIdentifiable identifiable) {
-    if (identifiable == null)
-      throw new IllegalArgumentException("Impossible to add a null identifiable in a ridbag");
-
+  public void add(OIdentifiable identifiable) {
     addEntry(identifiable);
 
     size++;
     contentWasChanged = true;
 
-    fireCollectionChangedEvent(
-        new OMultiValueChangeEvent<OIdentifiable, OIdentifiable>(OMultiValueChangeEvent.OChangeType.ADD, identifiable,
-            identifiable));
+    if (!changeListeners.isEmpty())
+      fireCollectionChangedEvent(new OMultiValueChangeEvent<OIdentifiable, OIdentifiable>(OMultiValueChangeEvent.OChangeType.ADD,
+          identifiable, identifiable));
   }
 
   public OEmbeddedRidBag copy() {
     final OEmbeddedRidBag copy = new OEmbeddedRidBag();
+    copy.serializedContent = serializedContent;
     copy.contentWasChanged = contentWasChanged;
+    copy.deserialized = deserialized;
     copy.entries = entries;
     copy.entriesLength = entriesLength;
     copy.convertToRecord = convertToRecord;
     copy.size = size;
     copy.owner = owner;
-    if (changeListeners != null) {
-      copy.changeListeners = new LinkedList<OMultiValueChangeListener<OIdentifiable, OIdentifiable>>(changeListeners);
-    }
+    copy.changeListeners.addAll(changeListeners);
     return copy;
   }
 
   @Override
   public void remove(OIdentifiable identifiable) {
+    doDeserialization();
 
     if (removeEntry(identifiable)) {
       size--;
       contentWasChanged = true;
 
-      if (this.owner != null)
-        ORecordInternal.unTrack(this.owner, identifiable);
-
-      fireCollectionChangedEvent(
-          new OMultiValueChangeEvent<OIdentifiable, OIdentifiable>(OMultiValueChangeEvent.OChangeType.REMOVE, identifiable, null,
-              identifiable));
+      if (!changeListeners.isEmpty())
+        fireCollectionChangedEvent(new OMultiValueChangeEvent<OIdentifiable, OIdentifiable>(
+            OMultiValueChangeEvent.OChangeType.REMOVE, identifiable, null, identifiable));
     }
   }
 
@@ -266,29 +210,30 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
 
   @Override
   public Iterator<OIdentifiable> iterator() {
+    doDeserialization();
+
     return new EntriesIterator(convertToRecord);
   }
 
   @Override
   public Iterator<OIdentifiable> rawIterator() {
+    doDeserialization();
+
     return new EntriesIterator(false);
   }
 
   @Override
   public void convertLinks2Records() {
+    doDeserialization();
+
     for (int i = 0; i < entriesLength; i++) {
       final Object entry = entries[i];
 
       if (entry instanceof OIdentifiable) {
         final OIdentifiable identifiable = (OIdentifiable) entry;
         ORecord record = identifiable.getRecord();
-        if (record != null) {
-          if (this.owner != null) {
-            ORecordInternal.unTrack(this.owner, identifiable);
-            ORecordInternal.track(this.owner, record);
-          }
+        if (record != null)
           entries[i] = record;
-        }
       }
     }
   }
@@ -302,6 +247,9 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
         final OIdentifiable identifiable = (OIdentifiable) entry;
         if (identifiable instanceof ORecord) {
           final ORecord record = (ORecord) identifiable;
+          if (record.getIdentity().isNew()) {
+            record.save();
+          }
 
           entries[i] = record.getIdentity();
         }
@@ -333,10 +281,13 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
 
   @Override
   public String toString() {
+    if (!deserialized)
+      return "[size=" + size + "]";
+
     if (size < 10) {
       final StringBuilder sb = new StringBuilder(256);
       sb.append('[');
-      for (final Iterator<OIdentifiable> it = this.iterator(); it.hasNext(); ) {
+      for (final Iterator<OIdentifiable> it = this.iterator(); it.hasNext();) {
         try {
           OIdentifiable e = it.next();
           if (e != null) {
@@ -345,7 +296,7 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
 
             sb.append(e.getIdentity());
           }
-        } catch (NoSuchElementException ignore) {
+        } catch (NoSuchElementException ex) {
           // IGNORE THIS
         }
       }
@@ -356,14 +307,11 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
   }
 
   public void addChangeListener(final OMultiValueChangeListener<OIdentifiable, OIdentifiable> changeListener) {
-    if (changeListeners == null)
-      changeListeners = new LinkedList<OMultiValueChangeListener<OIdentifiable, OIdentifiable>>();
     changeListeners.add(changeListener);
   }
 
   public void removeRecordChangeListener(final OMultiValueChangeListener<OIdentifiable, OIdentifiable> changeListener) {
-    if (changeListeners != null)
-      changeListeners.remove(changeListener);
+    changeListeners.remove(changeListener);
   }
 
   @Override
@@ -396,7 +344,10 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
   public int getSerializedSize() {
     int size;
 
-    size = OIntegerSerializer.INT_SIZE;
+    if (!deserialized)
+      size = serializedContent.length;
+    else
+      size = OIntegerSerializer.INT_SIZE;
 
     size += this.size * OLinkSerializer.RID_SIZE;
 
@@ -410,26 +361,41 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
 
   @Override
   public int serialize(byte[] stream, int offset, UUID ownerUuid) {
-    OIntegerSerializer.INSTANCE.serializeLiteral(size, stream, offset);
-    offset += OIntegerSerializer.INT_SIZE;
-    ODatabaseDocumentInternal db = ODatabaseRecordThreadLocal.instance().getIfDefined();
+    for (int i = 0; i < entriesLength; i++) {
+      final Object entry = entries[i];
+
+      if (entry instanceof OIdentifiable) {
+        final OIdentifiable identifiable = (OIdentifiable) entry;
+        if (identifiable instanceof ORecord) {
+          final ORecord record = (ORecord) identifiable;
+          if (record.isDirty() || record.getIdentity().isNew()) {
+            record.save();
+          }
+        }
+      }
+    }
+
+    if (!deserialized) {
+      System.arraycopy(serializedContent, 0, stream, offset, serializedContent.length);
+
+      if (contentWasChanged) {
+        OIntegerSerializer.INSTANCE.serializeLiteral(size, stream, offset);
+        offset += serializedContent.length;
+      } else {
+        offset += serializedContent.length;
+        return offset;
+      }
+
+    } else {
+      OIntegerSerializer.INSTANCE.serializeLiteral(size, stream, offset);
+      offset += OIntegerSerializer.INT_SIZE;
+    }
+
     final int totEntries = entries.length;
     for (int i = 0; i < totEntries; ++i) {
       final Object entry = entries[i];
       if (entry instanceof OIdentifiable) {
-        OIdentifiable link = (OIdentifiable) entry;
-        final ORID rid = link.getIdentity();
-        if (db != null && !db.isClosed() && db.getTransaction().isActive()) {
-          if (!link.getIdentity().isPersistent()) {
-            link = db.getTransaction().getRecord(link.getIdentity());
-          }
-        }
-
-        if (link == null)
-          throw new OSerializationException("Found null entry in ridbag with rid=" + rid);
-
-        entries[i] = link.getIdentity();
-        OLinkSerializer.INSTANCE.serialize(link, stream, offset);
+        OLinkSerializer.INSTANCE.serialize((OIdentifiable) entry, stream, offset);
         offset += OLinkSerializer.RID_SIZE;
       }
     }
@@ -438,29 +404,16 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
   }
 
   @Override
-  public int deserialize(final byte[] stream, int offset) {
+  public int deserialize(final byte[] stream, final int offset) {
+    final int contentSize = getSerializedSize(stream, offset);
+
     this.size = OIntegerSerializer.INSTANCE.deserializeLiteral(stream, offset);
-    int entriesSize = OIntegerSerializer.INSTANCE.deserializeLiteral(stream, offset);
-    offset += OIntegerSerializer.INT_SIZE;
 
-    for (int i = 0; i < entriesSize; i++) {
-      ORID rid = OLinkSerializer.INSTANCE.deserialize(stream, offset);
-      offset += OLinkSerializer.RID_SIZE;
+    this.serializedContent = new byte[contentSize];
+    System.arraycopy(stream, offset, this.serializedContent, 0, contentSize);
+    deserialized = false;
 
-      OIdentifiable identifiable = null;
-      if (rid.isTemporary())
-        identifiable = rid.getRecord();
-
-      if (identifiable == null)
-        identifiable = rid;
-
-      if (identifiable == null)
-        OLogManager.instance().warn(this, "Found null reference during ridbag deserialization (rid=%s)", rid);
-      else
-        addEntry(identifiable);
-    }
-
-    return offset;
+    return offset + contentSize;
   }
 
   @Override
@@ -473,22 +426,20 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
   }
 
   @Override
-  public List<OMultiValueChangeListener<OIdentifiable, OIdentifiable>> getChangeListeners() {
-    if (changeListeners == null)
-      return Collections.emptyList();
-    return Collections.unmodifiableList(changeListeners);
+  public Set<OMultiValueChangeListener<OIdentifiable, OIdentifiable>> getChangeListeners() {
+    return Collections.unmodifiableSet(changeListeners);
   }
 
-  public void fireCollectionChangedEvent(final OMultiValueChangeEvent<OIdentifiable, OIdentifiable> event) {
-    if (changeListeners != null) {
-      for (final OMultiValueChangeListener<OIdentifiable, OIdentifiable> changeListener : changeListeners) {
-        if (changeListener != null)
-          changeListener.onAfterRecordChanged(event);
-      }
+  protected void fireCollectionChangedEvent(final OMultiValueChangeEvent<OIdentifiable, OIdentifiable> event) {
+    for (final OMultiValueChangeListener<OIdentifiable, OIdentifiable> changeListener : changeListeners) {
+      if (changeListener != null)
+        changeListener.onAfterRecordChanged(event);
     }
   }
 
   private void addEntry(final OIdentifiable identifiable) {
+    if (identifiable == null)
+      throw new NullPointerException("Impossible to add a null identifiable in a ridbag");
     if (entries.length == entriesLength) {
       if (entriesLength == 0) {
         final int cfgValue = OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD.getValueAsInteger();
@@ -499,8 +450,6 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
         System.arraycopy(oldEntries, 0, entries, 0, oldEntries.length);
       }
     }
-    if (this.owner != null)
-      ORecordInternal.track(this.owner, identifiable);
 
     entries[entriesLength] = identifiable;
     entriesLength++;
@@ -519,13 +468,27 @@ public class OEmbeddedRidBag implements ORidBagDelegate {
     return i < entriesLength;
   }
 
-  @Override
-  public NavigableMap<OIdentifiable, Change> getChanges() {
-    return null;
-  }
+  private void doDeserialization() {
+    if (deserialized)
+      return;
 
-  @Override
-  public void replace(OMultiValueChangeEvent<Object, Object> event, Object newValue) {
-    // do nothing not needed
+    int offset = 0;
+    int entriesSize = OIntegerSerializer.INSTANCE.deserializeLiteral(serializedContent, offset);
+    offset += OIntegerSerializer.INT_SIZE;
+
+    for (int i = 0; i < entriesSize; i++) {
+      ORID rid = OLinkSerializer.INSTANCE.deserialize(serializedContent, offset);
+      offset += OLinkSerializer.RID_SIZE;
+
+      OIdentifiable identifiable;
+      if (rid.isTemporary())
+        identifiable = rid.getRecord();
+      else
+        identifiable = rid;
+
+      addEntry(identifiable);
+    }
+
+    deserialized = true;
   }
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,30 +14,33 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
 
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.command.OCommandDistributedReplicateRequest;
-import com.orientechnologies.orient.core.command.OCommandExecutor;
 import com.orientechnologies.orient.core.command.OCommandExecutorNotFoundException;
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
+import com.orientechnologies.orient.core.sql.parser.OStatement;
+import com.orientechnologies.orient.core.sql.parser.OrientSql;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.Set;
 
 /**
  * SQL UPDATE command.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 public class OCommandExecutorSQLDelegate extends OCommandExecutorSQLAbstract implements OCommandDistributedReplicateRequest {
-  protected OCommandExecutor delegate;
+  protected OCommandExecutorSQLAbstract delegate;
 
   @SuppressWarnings("unchecked")
   public OCommandExecutorSQLDelegate parse(final OCommandRequest iCommand) {
@@ -49,17 +52,30 @@ public class OCommandExecutorSQLDelegate extends OCommandExecutorSQLAbstract imp
 
       final String textUpperCase = upperCase(text);
 
-      delegate = OSQLEngine.getInstance().getCommand(textUpperCase);
-      if (delegate == null)
-        throw new OCommandExecutorNotFoundException("Cannot find a command executor for the command request: " + iCommand);
+      if (textUpperCase.startsWith("SELECT") && false) {
+        InputStream is = new ByteArrayInputStream(text.getBytes());
+        OrientSql osql = new OrientSql(is);
+        try {
+          // TODO create a cache of parsed statements
+          OStatement stm = osql.parse();
+          delegate = stm.buildExecutor(iCommand);
+          delegate.setContext(context);
+          delegate.setLimit(iCommand.getLimit());
+          delegate.setProgressListener(progressListener);
+          is.close();
+        } catch (Exception e) {
+          throwParsingException(e.getMessage());
+        }
+      } else {
+        delegate = (OCommandExecutorSQLAbstract) OSQLEngine.getInstance().getCommand(textUpperCase);
+        if (delegate == null)
+          throw new OCommandExecutorNotFoundException("Cannot find a command executor for the command request: " + iCommand);
 
-      delegate.setContext(context);
-      delegate.setLimit(iCommand.getLimit());
-      delegate.parse(iCommand);
-      delegate.setProgressListener(progressListener);
-      if (delegate.getFetchPlan() != null)
-        textRequest.setFetchPlan(delegate.getFetchPlan());
-
+        delegate.setContext(context);
+        delegate.setLimit(iCommand.getLimit());
+        delegate.parse(iCommand);
+        delegate.setProgressListener(progressListener);
+      }
     } else
       throw new OCommandExecutionException("Cannot find a command executor for the command request: " + iCommand);
     return this;
@@ -93,18 +109,12 @@ public class OCommandExecutorSQLDelegate extends OCommandExecutorSQLAbstract imp
     return delegate.getFetchPlan();
   }
 
-  @Override
   public boolean isIdempotent() {
     return delegate.isIdempotent();
   }
 
-  public OCommandExecutor getDelegate() {
+  public OCommandExecutorSQLAbstract getDelegate() {
     return delegate;
-  }
-
-  @Override
-  public boolean isCacheable() {
-    return delegate.isCacheable();
   }
 
   @Override

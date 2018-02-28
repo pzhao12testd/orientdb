@@ -1,5 +1,13 @@
 package com.orientechnologies.orient.core.sql;
 
+import static org.testng.AssertJUnit.assertEquals;
+
+import java.util.List;
+
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
@@ -8,19 +16,12 @@ import com.orientechnologies.orient.core.metadata.schema.OProperty;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
 
 public class OChainIndexFetchTest {
 
   private ODatabaseDocument db;
 
-  @Before
+  @BeforeMethod
   public void before() {
     db = new ODatabaseDocumentTx("memory:" + OChainIndexFetchTest.class.getSimpleName());
     db.create();
@@ -34,7 +35,7 @@ public class OChainIndexFetchTest {
     OClass linkedClass = db.getMetadata().getSchema().createClass("LinkedClass");
     OProperty id = linkedClass.createProperty("id", OType.STRING);
     id.createIndex(INDEX_TYPE.UNIQUE);
-
+    
     propr.setLinkedClass(linkedClass);
     propr.createIndex(INDEX_TYPE.NOTUNIQUE);
 
@@ -53,7 +54,7 @@ public class OChainIndexFetchTest {
 
   }
 
-  @After
+  @AfterMethod
   public void after() {
     db.drop();
   }

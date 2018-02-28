@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2013 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,16 @@
  */
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.server.hazelcast.OHazelcastPlugin;
 import org.junit.Test;
 
 /**
  * Distributed TX test against "plocal" protocol + shutdown and restart of a node.
  */
-public class HATest extends AbstractHARemoveNode {
+public class HATest extends AbstractServerClusterTxTest {
   final static int SERVERS = 3;
 
   @Test
   public void test() throws Exception {
-    useTransactions = false;
-    count = 10;
     init(SERVERS);
     prepare(false);
     execute();
@@ -38,21 +35,22 @@ public class HATest extends AbstractHARemoveNode {
     banner("SIMULATE SOFT SHUTDOWN OF SERVER " + (SERVERS - 1));
     serverInstance.get(SERVERS - 1).shutdownServer();
 
+    Thread.sleep(1000);
+
     banner("RESTARTING TESTS WITH SERVER " + (SERVERS - 1) + " DOWN...");
 
-    count = 10;
+    // count = 1000;
 
     executeMultipleTest();
 
     banner("RESTARTING SERVER " + (SERVERS - 1) + "...");
-
     serverInstance.get(SERVERS - 1).startServer(getDistributedServerConfiguration(serverInstance.get(SERVERS - 1)));
-    if (serverInstance.get(SERVERS - 1).server.getPluginByClass(OHazelcastPlugin.class) != null)
-      serverInstance.get(SERVERS - 1).server.getPluginByClass(OHazelcastPlugin.class).waitUntilNodeOnline();
+
+    Thread.sleep(1000);
 
     banner("RESTARTING TESTS WITH SERVER " + (SERVERS - 1) + " UP...");
 
-    count = 10;
+    // count = 1000;
 
     executeMultipleTest();
   }
@@ -63,6 +61,6 @@ public class HATest extends AbstractHARemoveNode {
 
   @Override
   public String getDatabaseName() {
-    return "distributed-hatest";
+    return "distributed-inserttxha";
   }
 }

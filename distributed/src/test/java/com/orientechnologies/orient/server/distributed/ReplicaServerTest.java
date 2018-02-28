@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,20 +14,21 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.record.OVertex;
+import junit.framework.Assert;
 
-import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Set;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 
 /**
  * Start 3 servers with only "europe" as master and the others as REPLICA
@@ -48,53 +49,52 @@ public class ReplicaServerTest extends AbstractServerClusterTest {
 
   @Override
   protected void executeTest() throws Exception {
-    // CHECK REPLICA SERVERS HAVE NO CLUSTER OWNED
-    checkReplicasDontOwnAnyClusters();
-
     for (int s = 0; s < SERVERS; ++s) {
-      ODatabaseDocument g = serverInstance.get(s).getServerInstance().openDatabase(getDatabaseName(), "admin", "admin");
+      OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server" + s + "/databases/" + getDatabaseName());
+      OrientGraphNoTx g = factory.getNoTx();
 
       try {
         System.out.println("Creating vertex class Client" + s + " against server " + g + "...");
-        OClass t = g.createVertexClass("Client" + s);
+        OrientVertexType t = g.createVertexType("Client" + s);
 
         System.out.println("Creating vertex class Knows" + s + " against server " + g + "...");
-        g.createEdgeClass("Knows" + s);
+        g.createEdgeType("Knows" + s);
 
         Assert.assertTrue(s == 0);
 
       } catch (Exception e) {
         Assert.assertTrue(s > 0);
       } finally {
-        g.close();
+        g.shutdown();
       }
     }
 
     for (int s = 0; s < SERVERS; ++s) {
       System.out.println("Add vertices on server " + s + "...");
 
-      ODatabaseDocument g = serverInstance.get(s).getServerInstance().openDatabase(getDatabaseName(), "admin", "admin");
+      OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server" + s + "/databases/" + getDatabaseName());
+      OrientGraphNoTx g = factory.getNoTx();
 
       try {
-        final OVertex v = g.newVertex("Client" + s);
+        final OrientVertex v = g.addVertex("class:" + "Client" + s);
 
         Assert.assertTrue(s == 0);
 
       } catch (Exception e) {
         Assert.assertTrue(s > 0);
       } finally {
-        g.close();
+        g.shutdown();
       }
     }
 
     for (int s = 0; s < SERVERS; ++s) {
       System.out.println("Add vertices in TX on server " + s + "...");
 
-      ODatabaseDocument g = serverInstance.get(s).getServerInstance().openDatabase(getDatabaseName(), "admin", "admin");
-      g.begin();
+      OrientGraphFactory factory = new OrientGraphFactory("plocal:target/server" + s + "/databases/" + getDatabaseName());
+      OrientGraph g = factory.getTx();
 
       try {
-        final OVertex v = g.newVertex("Client" + s).save();
+        final OrientVertex v = g.addVertex("class:" + "Client" + s);
         g.commit();
         Assert.assertTrue(s == 0);
 
@@ -102,27 +102,8 @@ public class ReplicaServerTest extends AbstractServerClusterTest {
         Assert.assertTrue(s > 0);
 
       } finally {
-        g.close();
+        g.shutdown();
       }
-    }
-
-    serverInstance.get(1).shutdownServer();
-
-    checkReplicasDontOwnAnyClusters();
-
-    serverInstance.get(2).shutdownServer();
-
-    checkReplicasDontOwnAnyClusters();
-  }
-
-  private void checkReplicasDontOwnAnyClusters() {
-    final ODistributedServerManager dMgr = serverInstance.get(0).getServerInstance().getDistributedManager();
-    final ODistributedConfiguration dCfg = dMgr.getDatabaseConfiguration(getDatabaseName());
-
-    for (int s = 1; s < SERVERS; ++s) {
-      final Set<String> clusters = dCfg
-          .getClustersOwnedByServer(serverInstance.get(s).getServerInstance().getDistributedManager().getLocalNodeName());
-      Assert.assertTrue(clusters.isEmpty());
     }
   }
 

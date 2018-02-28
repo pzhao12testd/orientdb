@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Molino (molino.luca--at--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -225,7 +225,7 @@ public class OObjectEnumLazyList<TYPE extends Enum<?>> implements List<TYPE>, OO
     convertAll();
   }
 
-  public void detachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached, Map<Object, Object> lazyObjects) {
+  public void detachAll(boolean nonProxiedInstance, Map<Object, Object> alreadyDetached) {
     convertAll();
   }
 

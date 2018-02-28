@@ -28,8 +28,10 @@ import com.orientechnologies.orient.core.sql.operator.math.OQueryOperatorMinus;
 import com.orientechnologies.orient.core.sql.operator.math.OQueryOperatorMod;
 import com.orientechnologies.orient.core.sql.operator.math.OQueryOperatorMultiply;
 import com.orientechnologies.orient.core.sql.operator.math.OQueryOperatorPlus;
-import org.junit.Assert; import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
+@Test
 public class OOQueryOperatorTest {
 
     @Test

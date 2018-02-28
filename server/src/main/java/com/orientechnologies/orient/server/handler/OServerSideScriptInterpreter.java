@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.server.handler;
@@ -32,7 +32,6 @@ import com.orientechnologies.orient.server.plugin.OServerPluginAbstract;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -54,7 +53,7 @@ public class OServerSideScriptInterpreter extends OServerPluginAbstract {
           // ENABLE IT
           enabled = true;
       } else if (param.name.equalsIgnoreCase("allowedLanguages")) {
-        allowedLanguages = new HashSet<String>(Arrays.asList(param.value.toLowerCase(Locale.ENGLISH).split(",")));
+        allowedLanguages = new HashSet<String>(Arrays.asList(param.value.toLowerCase().split(",")));
       }
     }
   }
@@ -75,7 +74,7 @@ public class OServerSideScriptInterpreter extends OServerPluginAbstract {
         new OCallable<Void, OCommandRequest>() {
           @Override
           public Void call(OCommandRequest iArgument) {
-            final String language = ((OCommandScript) iArgument).getLanguage().toLowerCase(Locale.ENGLISH);
+            final String language = ((OCommandScript) iArgument).getLanguage().toLowerCase();
 
             if (!allowedLanguages.contains(language))
               throw new OSecurityException("Language '" + language + "' is not allowed to be executed");
@@ -84,9 +83,12 @@ public class OServerSideScriptInterpreter extends OServerPluginAbstract {
           }
         });
 
-    OLogManager.instance().warn(this,
-        "Authenticated clients can execute any kind of code into the server by using the following allowed languages: "
-            + allowedLanguages);
+    OLogManager
+        .instance()
+        .info(
+            this,
+            "Installing Script interpreter. WARN: authenticated clients can execute any kind of code into the server by using the following allowed languages: "
+                + allowedLanguages);
   }
 
   @Override

@@ -1,37 +1,9 @@
-/*
-  *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
-  *  *
-  *  *  Licensed under the Apache License, Version 2.0 (the "License");
-  *  *  you may not use this file except in compliance with the License.
-  *  *  You may obtain a copy of the License at
-  *  *
-  *  *       http://www.apache.org/licenses/LICENSE-2.0
-  *  *
-  *  *  Unless required by applicable law or agreed to in writing, software
-  *  *  distributed under the License is distributed on an "AS IS" BASIS,
-  *  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  *  *  See the License for the specific language governing permissions and
-  *  *  limitations under the License.
-  *  *
-  *  * For more information: http://orientdb.com
-  *
-  */
 package com.orientechnologies.orient.core.metadata.schema;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 
 import com.orientechnologies.common.util.OArrays;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.exception.OSchemaException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.schema.clusterselection.OClusterSelectionFactory;
@@ -39,30 +11,31 @@ import com.orientechnologies.orient.core.metadata.security.ORole;
 import com.orientechnologies.orient.core.metadata.security.ORule;
 import com.orientechnologies.orient.core.type.ODocumentWrapper;
 
+import java.util.*;
+
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 10/21/14
  */
 public class OImmutableSchema implements OSchema {
-  private final Map<Integer, OClass> clustersToClasses;
-  private final Map<String, OClass>  classes;
-  private final Set<Integer>         blogClusters;
+  private final Map<Integer, OClass>     clustersToClasses;
+  private final Map<String, OClass>      classes;
 
   public final int                       version;
   private final ORID                     identity;
+  private final boolean                  clustersCanNotBeSharedAmongClasses;
   private final List<OGlobalProperty>    properties;
   private final OClusterSelectionFactory clusterSelectionFactory;
 
   public OImmutableSchema(OSchemaShared schemaShared) {
     version = schemaShared.getVersion();
     identity = schemaShared.getIdentity();
+    clustersCanNotBeSharedAmongClasses = schemaShared.isClustersCanNotBeSharedAmongClasses();
     clusterSelectionFactory = schemaShared.getClusterSelectionFactory();
 
-    ODatabaseDocumentInternal database = getDatabase();
-    clustersToClasses = new HashMap<Integer, OClass>(schemaShared.getClasses(database).size() * 3);
-    classes = new HashMap<String, OClass>(schemaShared.getClasses(database).size());
-
-    for (OClass oClass : schemaShared.getClasses(database)) {
+    clustersToClasses = new HashMap<Integer, OClass>();
+    classes = new HashMap<String, OClass>();
+    for (OClass oClass : schemaShared.getClasses()) {
       final OImmutableClass immutableClass = new OImmutableClass(oClass, this);
 
       classes.put(immutableClass.getName().toLowerCase(Locale.ENGLISH), immutableClass);
@@ -80,7 +53,6 @@ public class OImmutableSchema implements OSchema {
     for (OClass cl : classes.values()) {
       ((OImmutableClass) cl).init();
     }
-    this.blogClusters = Collections.unmodifiableSet(new HashSet<Integer>(schemaShared.getBlobClusters()));
   }
 
   @Override
@@ -94,6 +66,16 @@ public class OImmutableSchema implements OSchema {
   }
 
   @Override
+  public OClass createClass(Class<?> iClass) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public OClass createClass(Class<?> iClass, int iDefaultClusterId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public OClass createClass(String iClassName) {
     throw new UnsupportedOperationException();
   }
@@ -102,9 +84,19 @@ public class OImmutableSchema implements OSchema {
   public OClass createClass(String iClassName, OClass iSuperClass) {
     throw new UnsupportedOperationException();
   }
-
+  
   @Override
   public OClass createClass(String iClassName, OClass... superClasses) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public OClass createClass(String iClassName, int iDefaultClusterId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public OClass createClass(String iClassName, OClass iSuperClass, int iDefaultClusterId) {
     throw new UnsupportedOperationException();
   }
 
@@ -112,14 +104,15 @@ public class OImmutableSchema implements OSchema {
   public OClass createClass(String iClassName, OClass iSuperClass, int[] iClusterIds) {
     throw new UnsupportedOperationException();
   }
+  
+  @Override
+	public OClass createClass(String className, int[] clusterIds,
+			OClass... superClasses) {
+	  throw new UnsupportedOperationException();
+	}
 
   @Override
-  public OClass createClass(String className, int clusters, OClass... superClasses) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public OClass createClass(String className, int[] clusterIds, OClass... superClasses) {
+  public OClass createAbstractClass(Class<?> iClass) {
     throw new UnsupportedOperationException();
   }
 
@@ -132,11 +125,11 @@ public class OImmutableSchema implements OSchema {
   public OClass createAbstractClass(String iClassName, OClass iSuperClass) {
     throw new UnsupportedOperationException();
   }
-
+  
   @Override
-  public OClass createAbstractClass(String iClassName, OClass... superClasses) {
-    throw new UnsupportedOperationException();
-  }
+	public OClass createAbstractClass(String iClassName, OClass... superClasses) {
+	  throw new UnsupportedOperationException();
+	}
 
   @Override
   public void dropClass(String iClassName) {
@@ -182,11 +175,11 @@ public class OImmutableSchema implements OSchema {
   public OClass getOrCreateClass(String iClassName, OClass iSuperClass) {
     throw new UnsupportedOperationException();
   }
-
+  
   @Override
-  public OClass getOrCreateClass(String iClassName, OClass... superClasses) {
-    throw new UnsupportedOperationException();
-  }
+	public OClass getOrCreateClass(String iClassName, OClass... superClasses) {
+	  throw new UnsupportedOperationException();
+	}
 
   @Override
   public Collection<OClass> getClasses() {
@@ -230,6 +223,9 @@ public class OImmutableSchema implements OSchema {
 
   @Override
   public OClass getClassByClusterId(int clusterId) {
+    if (!clustersCanNotBeSharedAmongClasses)
+      throw new OSchemaException("This feature is not supported in current version of binary format.");
+
     return clustersToClasses.get(clusterId);
 
   }
@@ -256,13 +252,16 @@ public class OImmutableSchema implements OSchema {
     return clusterSelectionFactory;
   }
 
+  @Override
+  public boolean isFullCheckpointOnChange() {
+    return false;
+  }
+
+  @Override
+  public void setFullCheckpointOnChange(boolean fullCheckpointOnChange) {
+  }
+
   private ODatabaseDocumentInternal getDatabase() {
-    return ODatabaseRecordThreadLocal.instance().get();
+    return ODatabaseRecordThreadLocal.INSTANCE.get();
   }
-
-  public Set<Integer> getBlobClusters() {
-    return blogClusters;
-  }
-
-
 }

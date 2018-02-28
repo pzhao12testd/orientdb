@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,21 +14,21 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.core.record.impl;
 
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
+import java.util.Collection;
+import java.util.Set;
+import java.util.Map.Entry;
+
 import com.orientechnologies.orient.core.db.record.ORecordElement;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OGlobalProperty;
 import com.orientechnologies.orient.core.metadata.schema.OImmutableClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.OElement;
-
-import java.util.Map.Entry;
-import java.util.Set;
 
 public class ODocumentInternal {
 
@@ -44,8 +44,7 @@ public class ODocumentInternal {
     oDocument.removeOwner(iOwner);
   }
 
-  public static void rawField(final ODocument oDocument, final String iFieldName, final Object iFieldValue,
-      final OType iFieldType) {
+  public static void rawField(final ODocument oDocument, final String iFieldName, final Object iFieldValue, final OType iFieldType) {
     oDocument.rawField(iFieldName, iFieldValue, iFieldType);
   }
 
@@ -54,9 +53,6 @@ public class ODocumentInternal {
   }
 
   public static OImmutableClass getImmutableSchemaClass(final ODocument oDocument) {
-    if (oDocument == null) {
-      return null;
-    }
     return oDocument.getImmutableSchemaClass();
   }
 
@@ -74,32 +70,6 @@ public class ODocumentInternal {
 
   public static void clearTrackData(final ODocument document) {
     document.clearTrackData();
-  }
-
-  public static void checkClass(ODocument doc, ODatabaseDocumentInternal database) {
-    doc.checkClass(database);
-  }
-
-  public static void autoConvertValueToClass(ODatabaseDocumentInternal database, ODocument doc) {
-    doc.autoConvertFieldsToClass(database);
-  }
-
-  public static Object getRawProperty(ODocument doc, String propertyName) {
-    if (doc == null) {
-      return null;
-    }
-    return doc.getRawProperty(propertyName);
-  }
-
-  public static ODocument toRawDocument(OElement element) {
-    if (element instanceof ODocument) {
-      return (ODocument) element;
-    } else if (element instanceof OVertexDelegate) {
-      return ((OVertexDelegate) element).element;
-    } else if (element instanceof OEdgeDelegate) {
-      return ((OEdgeDelegate) element).element;
-    }
-    return null;
   }
 
 }

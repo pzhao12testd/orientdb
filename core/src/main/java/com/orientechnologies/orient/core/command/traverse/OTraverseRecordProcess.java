@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.command.traverse;
@@ -26,7 +26,6 @@ import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
-import com.orientechnologies.orient.core.serialization.serializer.OStringSerializerHelper;
 import com.orientechnologies.orient.core.sql.filter.OSQLFilterItem;
 import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemFieldAll;
 import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemFieldAny;
@@ -57,7 +56,7 @@ public class OTraverseRecordProcess extends OTraverseAbstractProcess<OIdentifiab
     if (command.getPredicate() != null) {
       final Object conditionResult = command.getPredicate().evaluate(target, null, command.getContext());
       if (conditionResult != Boolean.TRUE)
-        return drop();
+        return pop();
     }
 
     // UPDATE ALL TRAVERSED RECORD TO AVOID RECURSION
@@ -91,8 +90,7 @@ public class OTraverseRecordProcess extends OTraverseAbstractProcess<OIdentifiab
 
         } else {
           // SINGLE FIELD
-          final int pos = OStringSerializerHelper
-              .parse(cfgField, new StringBuilder(), 0, -1, new char[] { '.' }, true, true, true, 0, true) - 1;
+          final int pos = cfgField.indexOf('.');
           if (pos > -1) {
             // FOUND <CLASS>.<FIELD>
             final OClass cls = ODocumentInternal.getImmutableSchemaClass(targetDoc);
@@ -146,7 +144,7 @@ public class OTraverseRecordProcess extends OTraverseAbstractProcess<OIdentifiab
           if (fieldValue instanceof ORecordLazyMultiValue)
             coll = ((ORecordLazyMultiValue) fieldValue).rawIterator();
           else
-            coll = OMultiValue.getMultiValueIterator(fieldValue, false);
+            coll = OMultiValue.getMultiValueIterator(fieldValue);
 
           subProcess = new OTraverseMultiValueProcess(command, (Iterator<Object>) coll, getPath().appendField(field.toString()));
         } else if (fieldValue instanceof OIdentifiable && ((OIdentifiable) fieldValue).getRecord() instanceof ODocument) {

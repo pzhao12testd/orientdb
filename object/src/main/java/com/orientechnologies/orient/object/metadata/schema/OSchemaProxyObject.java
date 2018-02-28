@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,20 +30,24 @@ import com.orientechnologies.common.reflection.OReflectionHelper;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.entity.OEntityManager;
-import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.id.ORID;
-import com.orientechnologies.orient.core.metadata.schema.*;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.metadata.schema.OGlobalProperty;
+import com.orientechnologies.orient.core.metadata.schema.OImmutableSchema;
+import com.orientechnologies.orient.core.metadata.schema.OSchema;
+import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.metadata.schema.clusterselection.OClusterSelectionFactory;
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 import com.orientechnologies.orient.core.type.ODocumentWrapper;
 import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
 import com.orientechnologies.orient.object.enhancement.OObjectEntitySerializer;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
+ * 
  */
-public class OSchemaProxyObject implements OSchemaObject {
+public class OSchemaProxyObject implements OSchema {
 
   protected OSchema underlying;
 
@@ -62,6 +66,16 @@ public class OSchemaProxyObject implements OSchemaObject {
   }
 
   @Override
+  public OClass createClass(Class<?> iClass) {
+    return underlying.createClass(iClass);
+  }
+
+  @Override
+  public OClass createClass(Class<?> iClass, int iDefaultClusterId) {
+    return underlying.createClass(iClass, iDefaultClusterId);
+  }
+
+  @Override
   public OClass createClass(String iClassName) {
     return underlying.createClass(iClassName);
   }
@@ -70,32 +84,36 @@ public class OSchemaProxyObject implements OSchemaObject {
   public OClass createClass(String iClassName, OClass iSuperClass) {
     return underlying.createClass(iClassName, iSuperClass);
   }
-
+  
   @Override
   public OClass createClass(String iClassName, OClass... superClasses) {
-    return underlying.createClass(iClassName, superClasses);
+	return underlying.createClass(iClassName, superClasses);
+  }
+
+  @Override
+  public OClass createClass(String iClassName, int iDefaultClusterId) {
+    return underlying.createClass(iClassName, iDefaultClusterId);
+  }
+
+  @Override
+  public OClass createClass(String iClassName, OClass iSuperClass, int iDefaultClusterId) {
+    return underlying.createClass(iClassName, iSuperClass, iDefaultClusterId);
   }
 
   @Override
   public OClass createClass(String iClassName, OClass iSuperClass, int[] iClusterIds) {
     return underlying.createClass(iClassName, iSuperClass, iClusterIds);
   }
-
+  
   @Override
-  public OClass createClass(String className, int[] clusterIds, OClass... superClasses) {
-    return underlying.createClass(className, clusterIds, superClasses);
-  }
+	public OClass createClass(String className, int[] clusterIds,
+			OClass... superClasses) {
+		return underlying.createClass(className, clusterIds, superClasses);
+	}
 
   @Override
   public OClass createAbstractClass(Class<?> iClass) {
-    OClass cls = null;
-    int[] clusterIds = new int[] { -1 };
-    // TODO: revisit this logic: interfaces should be also taken into consideration
-    final Class<?> superClass = iClass.getSuperclass();
-    if (superClass != null && superClass != Object.class && existsClass(superClass.getSimpleName()))
-      cls = getClass(superClass.getSimpleName());
-    cls = createClass(iClass.getSimpleName(), clusterIds, cls);
-    return cls;
+    return underlying.createAbstractClass(iClass);
   }
 
   @Override
@@ -107,11 +125,11 @@ public class OSchemaProxyObject implements OSchemaObject {
   public OClass createAbstractClass(String iClassName, OClass iSuperClass) {
     return underlying.createAbstractClass(iClassName, iSuperClass);
   }
-
+  
   @Override
-  public OClass createAbstractClass(String iClassName, OClass... superClasses) {
-    return underlying.createAbstractClass(iClassName, superClasses);
-  }
+	public OClass createAbstractClass(String iClassName, OClass... superClasses) {
+		return underlying.createAbstractClass(iClassName, superClasses);
+	}
 
   @Override
   public void dropClass(String iClassName) {
@@ -147,11 +165,11 @@ public class OSchemaProxyObject implements OSchemaObject {
   public OClass getOrCreateClass(String iClassName, OClass iSuperClass) {
     return underlying.getOrCreateClass(iClassName, iSuperClass);
   }
-
+  
   @Override
-  public OClass getOrCreateClass(String iClassName, OClass... superClasses) {
-    return underlying.getOrCreateClass(iClassName, superClasses);
-  }
+	public OClass getOrCreateClass(String iClassName, OClass... superClasses) {
+	  return underlying.getOrCreateClass(iClassName, superClasses);
+	}
 
   @Override
   public OGlobalProperty getGlobalPropertyById(int id) {
@@ -189,11 +207,6 @@ public class OSchemaProxyObject implements OSchemaObject {
     return underlying.getClassesRelyOnCluster(iClusterName);
   }
 
-  @Override
-  public OClass createClass(String className, int clusters, OClass... superClasses) {
-    return underlying.createClass(className, clusters, superClasses);
-  }
-
   public OSchema getUnderlying() {
     return underlying;
   }
@@ -208,10 +221,21 @@ public class OSchemaProxyObject implements OSchemaObject {
     return underlying.getClusterSelectionFactory();
   }
 
+  @Override
+  public boolean isFullCheckpointOnChange() {
+    return underlying.isFullCheckpointOnChange();
+  }
+
+  @Override
+  public void setFullCheckpointOnChange(boolean fullCheckpointOnChange) {
+    underlying.setFullCheckpointOnChange(fullCheckpointOnChange);
+  }
+
   /**
    * Scans all classes accessible from the context class loader which belong to the given package and subpackages.
-   *
-   * @param iPackageName The base package
+   * 
+   * @param iPackageName
+   *          The base package
    */
   public synchronized void generateSchema(final String iPackageName) {
     generateSchema(iPackageName, Thread.currentThread().getContextClassLoader());
@@ -219,8 +243,9 @@ public class OSchemaProxyObject implements OSchemaObject {
 
   /**
    * Scans all classes accessible from the context class loader which belong to the given package and subpackages.
-   *
-   * @param iPackageName The base package
+   * 
+   * @param iPackageName
+   *          The base package
    */
   public synchronized void generateSchema(final String iPackageName, final ClassLoader iClassLoader) {
     OLogManager.instance().debug(this, "Generating schema inside package: %s", iPackageName);
@@ -229,7 +254,7 @@ public class OSchemaProxyObject implements OSchemaObject {
     try {
       classes = OReflectionHelper.getClassesFor(iPackageName, iClassLoader);
     } catch (ClassNotFoundException e) {
-      throw OException.wrapException(new ODatabaseException("Classes cannot be loaded during schema generation"), e);
+      throw new OException(e);
     }
     for (Class<?> c : classes) {
       generateSchema(c);
@@ -238,17 +263,19 @@ public class OSchemaProxyObject implements OSchemaObject {
 
   /**
    * Generate/updates the SchemaClass and properties from given Class<?>.
-   *
-   * @param iClass :- the Class<?> to generate
+   * 
+   * @param iClass
+   *          :- the Class<?> to generate
    */
   public synchronized void generateSchema(final Class<?> iClass) {
-    generateSchema(iClass, ODatabaseRecordThreadLocal.instance().get());
+    generateSchema(iClass, ODatabaseRecordThreadLocal.INSTANCE.get());
   }
 
   /**
    * Generate/updates the SchemaClass and properties from given Class<?>.
-   *
-   * @param iClass :- the Class<?> to generate
+   * 
+   * @param iClass
+   *          :- the Class<?> to generate
    */
   public synchronized void generateSchema(final Class<?> iClass, ODatabaseDocument database) {
     if (iClass == null || iClass.isInterface() || iClass.isPrimitive() || iClass.isEnum() || iClass.isAnonymousClass())
@@ -266,7 +293,7 @@ public class OSchemaProxyObject implements OSchemaObject {
         if (OObjectEntitySerializer.isVersionField(iClass, field) || OObjectEntitySerializer.isIdField(iClass, field))
           continue;
         Field f = OObjectEntitySerializer.getField(field, iClass);
-        if (f.getType().equals(Object.class) || f.getType().equals(ODocument.class) || OBlob.class.isAssignableFrom(f.getType())) {
+        if (f.getType().equals(Object.class) || f.getType().equals(ODocument.class) || f.getType().equals(ORecordBytes.class)) {
           continue;
         }
         OType t = OObjectEntitySerializer.getTypeByClass(iClass, field, f);
@@ -304,8 +331,8 @@ public class OSchemaProxyObject implements OSchemaObject {
 
         case EMBEDDED:
           linkedClazz = f.getType();
-          if (linkedClazz == null || linkedClazz.equals(Object.class) || linkedClazz.equals(ODocument.class) || OBlob.class
-              .isAssignableFrom(f.getType())) {
+          if (linkedClazz == null || linkedClazz.equals(Object.class) || linkedClazz.equals(ODocument.class)
+              || f.getType().equals(ORecordBytes.class)) {
             continue;
           } else {
             generateLinkProperty(database, schema, field, t, linkedClazz);
@@ -316,8 +343,8 @@ public class OSchemaProxyObject implements OSchemaObject {
         case EMBEDDEDSET:
         case EMBEDDEDMAP:
           linkedClazz = OReflectionHelper.getGenericMultivalueType(f);
-          if (linkedClazz == null || linkedClazz.equals(Object.class) || linkedClazz.equals(ODocument.class) || OBlob.class
-              .isAssignableFrom(f.getType())) {
+          if (linkedClazz == null || linkedClazz.equals(Object.class) || linkedClazz.equals(ODocument.class)
+              || f.getType().equals(ORecordBytes.class)) {
             continue;
           } else {
             if (OReflectionHelper.isJavaType(linkedClazz)) {
@@ -341,13 +368,13 @@ public class OSchemaProxyObject implements OSchemaObject {
    * Checks if all registered entities has schema generated, if not it generates it
    */
   public synchronized void synchronizeSchema() {
-    OObjectDatabaseTx database = ((OObjectDatabaseTx) ODatabaseRecordThreadLocal.instance().get().getDatabaseOwner());
+    OObjectDatabaseTx database = ((OObjectDatabaseTx) ODatabaseRecordThreadLocal.INSTANCE.get().getDatabaseOwner());
     Collection<Class<?>> registeredEntities = database.getEntityManager().getRegisteredEntities();
     boolean automaticSchemaGeneration = database.isAutomaticSchemaGeneration();
     boolean reloadSchema = false;
     for (Class<?> iClass : registeredEntities) {
-      if (Proxy.class.isAssignableFrom(iClass) || iClass.isEnum() || OReflectionHelper.isJavaType(iClass) || iClass
-          .isAnonymousClass())
+      if (Proxy.class.isAssignableFrom(iClass) || iClass.isEnum() || OReflectionHelper.isJavaType(iClass)
+          || iClass.isAnonymousClass())
         return;
 
       if (!database.getMetadata().getSchema().existsClass(iClass.getSimpleName())) {
@@ -355,7 +382,7 @@ public class OSchemaProxyObject implements OSchemaObject {
         reloadSchema = true;
       }
 
-      for (Class<?> currentClass = iClass; currentClass != Object.class; ) {
+      for (Class<?> currentClass = iClass; currentClass != Object.class;) {
 
         if (automaticSchemaGeneration && !currentClass.equals(Object.class) && !currentClass.equals(ODocument.class)) {
           ((OSchemaProxyObject) database.getMetadata().getSchema()).generateSchema(currentClass, database.getUnderlying());
@@ -395,7 +422,7 @@ public class OSchemaProxyObject implements OSchemaObject {
 
   protected static void generateOClass(Class<?> iClass, ODatabaseDocument database) {
     boolean reloadSchema = false;
-    for (Class<?> currentClass = iClass; currentClass != Object.class; ) {
+    for (Class<?> currentClass = iClass; currentClass != Object.class;) {
       String iClassName = currentClass.getSimpleName();
       currentClass = currentClass.getSuperclass();
 
@@ -404,7 +431,7 @@ public class OSchemaProxyObject implements OSchemaObject {
         // ODOCUMENT FIELDS
         currentClass = Object.class;
 
-      if (ODatabaseRecordThreadLocal.instance().get() != null && !ODatabaseRecordThreadLocal.instance().get().isClosed()
+      if (ODatabaseRecordThreadLocal.INSTANCE.get() != null && !ODatabaseRecordThreadLocal.INSTANCE.get().isClosed()
           && !currentClass.equals(Object.class)) {
         OClass oSuperClass;
         OClass currentOClass = database.getMetadata().getSchema().getClass(iClassName);
@@ -429,8 +456,7 @@ public class OSchemaProxyObject implements OSchemaObject {
     }
   }
 
-  protected static void generateLinkProperty(ODatabaseDocument database, OClass schema, String field, OType t,
-      Class<?> linkedClazz) {
+  protected static void generateLinkProperty(ODatabaseDocument database, OClass schema, String field, OType t, Class<?> linkedClazz) {
     OClass linkedClass = database.getMetadata().getSchema().getClass(linkedClazz);
     if (linkedClass == null) {
       OObjectEntitySerializer.registerClass(linkedClazz);
@@ -446,21 +472,6 @@ public class OSchemaProxyObject implements OSchemaObject {
 
   public OGlobalProperty createGlobalProperty(String name, OType type, Integer id) {
     return underlying.createGlobalProperty(name, type, id);
-  }
-
-  public OClass createClass(final Class<?> clazz) {
-    OClass result;
-
-    final Class<?> superClass = clazz.getSuperclass();
-    final OClass cls;
-    if (superClass != null && superClass != Object.class && existsClass(superClass.getSimpleName()))
-      cls = getClass(superClass.getSimpleName());
-    else
-      cls = null;
-
-    result = createClass(clazz.getSimpleName(), cls);
-
-    return result;
   }
 
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
@@ -31,61 +31,41 @@ import java.util.Map;
 
 /**
  * SQL CREATE CLUSTER command: Creates a new cluster.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 @SuppressWarnings("unchecked")
 public class OCommandExecutorSQLCreateCluster extends OCommandExecutorSQLAbstract implements OCommandDistributedReplicateRequest {
   public static final String KEYWORD_CREATE  = "CREATE";
-  public static final String KEYWORD_BLOB    = "BLOB";
   public static final String KEYWORD_CLUSTER = "CLUSTER";
   public static final String KEYWORD_ID      = "ID";
 
-  private String clusterName;
-  private int     requestedId = -1;
-  private boolean blob        = false;
+  private String             clusterName;
+  private int                requestedId     = -1;
 
   public OCommandExecutorSQLCreateCluster parse(final OCommandRequest iRequest) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iRequest;
+    final ODatabaseDocumentInternal database = getDatabase();
 
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
-    try {
-      queryText = preParse(queryText, iRequest);
-      textRequest.setText(queryText);
+    init((OCommandRequestText) iRequest);
 
-      final ODatabaseDocumentInternal database = getDatabase();
+    parserRequiredKeyword(KEYWORD_CREATE);
+    parserRequiredKeyword(KEYWORD_CLUSTER);
 
-      init((OCommandRequestText) iRequest);
+    clusterName = parserRequiredWord(false);
+    if (!clusterName.isEmpty() && Character.isDigit(clusterName.charAt(0)))
+      throw new IllegalArgumentException("Cluster name cannot begin with a digit");
 
-      parserRequiredKeyword(KEYWORD_CREATE);
-      String nextWord = parserRequiredWord(true);
-      if (nextWord.equals("BLOB")) {
-        parserRequiredKeyword(KEYWORD_CLUSTER);
-        blob = true;
-      } else if (!nextWord.equals(KEYWORD_CLUSTER)) {
-        throw new OCommandSQLParsingException("Invalid Syntax: " + queryText);
+    String temp = parseOptionalWord(true);
+
+    while (temp != null) {
+      if (temp.equals(KEYWORD_ID)) {
+        requestedId = Integer.parseInt(parserRequiredWord(false));
       }
 
-      clusterName = parserRequiredWord(false);
-      clusterName = decodeClassName(clusterName);
-      if (!clusterName.isEmpty() && Character.isDigit(clusterName.charAt(0)))
-        throw new IllegalArgumentException("Cluster name cannot begin with a digit");
-
-      String temp = parseOptionalWord(true);
-
-      while (temp != null) {
-        if (temp.equals(KEYWORD_ID)) {
-          requestedId = Integer.parseInt(parserRequiredWord(false));
-        }
-
-        temp = parseOptionalWord(true);
-        if (parserIsEnded())
-          break;
-      }
-
-    } finally {
-      textRequest.setText(originalQuery);
+      temp = parseOptionalWord(true);
+      if (parserIsEnded())
+        break;
     }
 
     return this;
@@ -93,7 +73,7 @@ public class OCommandExecutorSQLCreateCluster extends OCommandExecutorSQLAbstrac
 
   @Override
   public long getDistributedTimeout() {
-    return getDatabase().getConfiguration().getValueAsLong(OGlobalConfiguration.DISTRIBUTED_COMMAND_QUICK_TASK_SYNCH_TIMEOUT);
+    return OGlobalConfiguration.DISTRIBUTED_COMMAND_TASK_SYNCH_TIMEOUT.getValueAsLong();
   }
 
   @Override
@@ -114,24 +94,11 @@ public class OCommandExecutorSQLCreateCluster extends OCommandExecutorSQLAbstrac
     if (clusterId > -1)
       throw new OCommandSQLParsingException("Cluster '" + clusterName + "' already exists");
 
-    if (blob) {
-      if (requestedId == -1) {
-        return database.addBlobCluster(clusterName);
-      } else {
-        throw new OCommandExecutionException("Request id not supported by blob cluster creation.");
-      }
+    if (requestedId == -1) {
+      return database.addCluster(clusterName);
     } else {
-      if (requestedId == -1) {
-        return database.addCluster(clusterName);
-      } else {
-        return database.addCluster(clusterName, requestedId, null);
-      }
+      return database.addCluster(clusterName, requestedId, null);
     }
-  }
-
-  @Override
-  public String getUndoCommand() {
-    return "drop cluster " + clusterName;
   }
 
   @Override

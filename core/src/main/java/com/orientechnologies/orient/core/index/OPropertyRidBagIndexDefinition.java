@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -33,12 +33,10 @@ import java.util.Map;
 /**
  * Index definition for index which is bound to field with type {@link OType#LINKBAG} .
  * 
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 1/30/14
  */
-public class OPropertyRidBagIndexDefinition extends OAbstractIndexDefinitionMultiValue {
-  private static final long serialVersionUID = -8315498456603024776L;
-
+public class OPropertyRidBagIndexDefinition extends OAbstractIndexDefinitionMultiValue implements OIndexDefinitionMultiValue {
   public OPropertyRidBagIndexDefinition() {
   }
 
@@ -69,7 +67,7 @@ public class OPropertyRidBagIndexDefinition extends OAbstractIndexDefinitionMult
 
   @Override
   public Object getDocumentValueToIndex(ODocument iDocument) {
-    return createValue(iDocument.<Object>field(field));
+    return createValue(iDocument.field(field));
   }
 
   @Override

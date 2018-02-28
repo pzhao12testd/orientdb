@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,18 +19,16 @@ package com.orientechnologies.orient.core.sql.method.misc;
 import com.orientechnologies.common.util.OSizeable;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.record.impl.ODocument;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
 /**
  * Transforms current value in a List.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodAsList extends OAbstractSQLMethod {
 
@@ -50,14 +48,14 @@ public class OSQLMethodAsList extends OAbstractSQLMethod {
     }
 
     if (ioResult == null)
-    // NULL VALUE, RETURN AN EMPTY LIST
+    // NULL VALUE, RETURN AN EMPTY SET
     {
-      return Collections.EMPTY_LIST;
+      return new ArrayList<Object>();
     }
 
     if (ioResult instanceof Collection<?>) {
       return new ArrayList<Object>((Collection<Object>) ioResult);
-    } else if (!(ioResult instanceof ODocument) && ioResult instanceof Iterable<?>) {
+    } else if (ioResult instanceof Iterable<?>) {
       ioResult = ((Iterable<?>) ioResult).iterator();
     }
 
@@ -72,6 +70,8 @@ public class OSQLMethodAsList extends OAbstractSQLMethod {
     }
 
     // SINGLE ITEM: ADD IT AS UNIQUE ITEM
-    return Collections.singletonList(ioResult);
+    final List<Object> list = new ArrayList<Object>();
+    list.add(ioResult);
+    return list;
   }
 }

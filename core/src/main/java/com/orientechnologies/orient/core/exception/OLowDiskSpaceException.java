@@ -16,15 +16,15 @@
 package com.orientechnologies.orient.core.exception;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 10/6/14
  */
 public class OLowDiskSpaceException extends OStorageException {
-  public OLowDiskSpaceException(OLowDiskSpaceException exception) {
-    super(exception);
-  }
-
   public OLowDiskSpaceException(String string) {
     super(string);
+  }
+
+  public OLowDiskSpaceException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -25,12 +25,16 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.serialization.types.*;
+import com.orientechnologies.common.serialization.types.legacy.OStringSerializer_1_5_1;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.serialization.serializer.binary.impl.OLinkSerializer;
 import com.orientechnologies.orient.core.serialization.serializer.binary.impl.index.OCompositeKeySerializer;
 import com.orientechnologies.orient.core.serialization.serializer.binary.impl.index.OSimpleKeySerializer;
+import com.orientechnologies.orient.core.serialization.serializer.binary.impl.legacy.OStreamSerializerSBTreeIndexRIDContainer_1_7_9;
+import com.orientechnologies.orient.core.serialization.serializer.stream.OStreamSerializerListRID;
+import com.orientechnologies.orient.core.serialization.serializer.stream.OStreamSerializerOldRIDContainer;
 import com.orientechnologies.orient.core.serialization.serializer.stream.OStreamSerializerRID;
 import com.orientechnologies.orient.core.serialization.serializer.stream.OStreamSerializerSBTreeIndexRIDContainer;
 
@@ -67,7 +71,10 @@ public class OBinarySerializerFactory {
     factory.registerSerializer(ODoubleSerializer.INSTANCE, OType.DOUBLE);
     factory.registerSerializer(ODateTimeSerializer.INSTANCE, OType.DATETIME);
     factory.registerSerializer(OCharSerializer.INSTANCE, null);
-    factory.registerSerializer(OStringSerializer.INSTANCE, OType.STRING);
+    if (binaryFormatVersion <= 8)
+      factory.registerSerializer(OStringSerializer_1_5_1.INSTANCE, OType.STRING);
+    else
+      factory.registerSerializer(OStringSerializer.INSTANCE, OType.STRING);
 
     factory.registerSerializer(OByteSerializer.INSTANCE, OType.BYTE);
     factory.registerSerializer(ODateSerializer.INSTANCE, OType.DATE);
@@ -77,7 +84,13 @@ public class OBinarySerializerFactory {
     factory.registerSerializer(OBinaryTypeSerializer.INSTANCE, OType.BINARY);
     factory.registerSerializer(ODecimalSerializer.INSTANCE, OType.DECIMAL);
 
-    factory.registerSerializer(OStreamSerializerSBTreeIndexRIDContainer.INSTANCE, null);
+    factory.registerSerializer(OStreamSerializerListRID.INSTANCE, null);
+    factory.registerSerializer(OStreamSerializerOldRIDContainer.INSTANCE, null);
+
+    if (binaryFormatVersion <= 11)
+      factory.registerSerializer(OStreamSerializerSBTreeIndexRIDContainer_1_7_9.INSTANCE, null);
+    else
+      factory.registerSerializer(OStreamSerializerSBTreeIndexRIDContainer.INSTANCE, null);
 
     // STATEFUL SERIALIER
     factory.registerSerializer(OSimpleKeySerializer.ID, OSimpleKeySerializer.class);
@@ -86,7 +99,7 @@ public class OBinarySerializerFactory {
   }
 
   public static OBinarySerializerFactory getInstance() {
-    final ODatabaseDocumentInternal database = ODatabaseRecordThreadLocal.instance().getIfDefined();
+    final ODatabaseDocumentInternal database = ODatabaseRecordThreadLocal.INSTANCE.getIfDefined();
     if (database != null)
       return database.getSerializerFactory();
     else
@@ -125,7 +138,7 @@ public class OBinarySerializerFactory {
         try {
           impl = cls.newInstance();
         } catch (Exception e) {
-          OLogManager.instance().error(this, "Cannot create an instance of class %s invoking the empty constructor", e, cls);
+          OLogManager.instance().error(this, "Cannot create an instance of class %s invoking the empty constructor", cls);
         }
     }
     return impl;

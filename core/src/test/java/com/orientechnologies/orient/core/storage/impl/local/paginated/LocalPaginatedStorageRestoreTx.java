@@ -1,7 +1,31 @@
 package com.orientechnologies.orient.core.storage.impl.local.paginated;
 
-import com.orientechnologies.orient.core.command.OCommandOutputListener;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import com.orientechnologies.orient.core.command.OCommandOutputListener;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.tool.ODatabaseCompare;
@@ -15,44 +39,20 @@ import com.orientechnologies.orient.core.record.ORecordInternal;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.storage.OStorage;
 import com.orientechnologies.orient.core.tx.OTransaction;
-import org.junit.*;
-
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 14.06.13
  */
+@Test
 public class LocalPaginatedStorageRestoreTx {
   private ODatabaseDocumentTx testDocumentTx;
   private ODatabaseDocumentTx baseDocumentTx;
   private File                buildDir;
 
-  private ExecutorService executorService = Executors.newCachedThreadPool();
+  private ExecutorService     executorService = Executors.newCachedThreadPool();
 
-  private static void copyFile(String from, String to) throws IOException {
-    final File fromFile = new File(from);
-    FileInputStream fromInputStream = new FileInputStream(fromFile);
-    BufferedInputStream fromBufferedStream = new BufferedInputStream(fromInputStream);
-
-    FileOutputStream toOutputStream = new FileOutputStream(to);
-    byte[] data = new byte[1024];
-    int bytesRead = fromBufferedStream.read(data);
-    while (bytesRead > 0) {
-      toOutputStream.write(data, 0, bytesRead);
-      bytesRead = fromBufferedStream.read(data);
-    }
-
-    fromBufferedStream.close();
-    toOutputStream.close();
-  }
-
-  @Before
+  @BeforeClass
   public void beforeClass() {
     OGlobalConfiguration.FILE_LOCK.setValue(false);
 
@@ -64,7 +64,15 @@ public class LocalPaginatedStorageRestoreTx {
       buildDir.delete();
 
     buildDir.mkdir();
+  }
 
+  @AfterClass
+  public void afterClass() {
+    buildDir.delete();
+  }
+
+  @BeforeMethod
+  public void beforeMethod() {
     baseDocumentTx = new ODatabaseDocumentTx("plocal:" + buildDir.getAbsolutePath() + "/baseLocalPaginatedStorageRestoreFromTx");
     if (baseDocumentTx.exists()) {
       baseDocumentTx.open("admin", "admin");
@@ -74,22 +82,17 @@ public class LocalPaginatedStorageRestoreTx {
     baseDocumentTx.create();
 
     createSchema(baseDocumentTx);
-
   }
 
-  @After
+  @AfterMethod
   public void afterMethod() {
     testDocumentTx.open("admin", "admin");
     testDocumentTx.drop();
 
     baseDocumentTx.open("admin", "admin");
     baseDocumentTx.drop();
-
-    buildDir.delete();
   }
 
-  @Test
-  @Ignore
   public void testSimpleRestore() throws Exception {
     List<Future<Void>> futures = new ArrayList<Future<Void>>();
 
@@ -118,7 +121,7 @@ public class LocalPaginatedStorageRestoreTx {
             System.out.println(text);
           }
         });
-    databaseCompare.setCompareIndexMetadata(true);
+		databaseCompare.setCompareIndexMetadata(true);
 
     Assert.assertTrue(databaseCompare.compare());
   }
@@ -170,8 +173,25 @@ public class LocalPaginatedStorageRestoreTx {
     }
   }
 
+  private static void copyFile(String from, String to) throws IOException {
+    final File fromFile = new File(from);
+    FileInputStream fromInputStream = new FileInputStream(fromFile);
+    BufferedInputStream fromBufferedStream = new BufferedInputStream(fromInputStream);
+
+    FileOutputStream toOutputStream = new FileOutputStream(to);
+    byte[] data = new byte[1024];
+    int bytesRead = fromBufferedStream.read(data);
+    while (bytesRead > 0) {
+      toOutputStream.write(data, 0, bytesRead);
+      bytesRead = fromBufferedStream.read(data);
+    }
+
+    fromBufferedStream.close();
+    toOutputStream.close();
+  }
+
   private void createSchema(ODatabaseDocumentTx databaseDocumentTx) {
-    ODatabaseRecordThreadLocal.instance().set(databaseDocumentTx);
+    ODatabaseRecordThreadLocal.INSTANCE.set(databaseDocumentTx);
 
     OSchema schema = databaseDocumentTx.getMetadata().getSchema();
     OClass testOneClass = schema.createClass("TestOne");

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command.get;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.index.OIndex;
@@ -40,7 +39,7 @@ public class OServerCommandGetIndex extends OServerCommandDocumentAbstract {
 
     iRequest.data.commandInfo = "Index get";
 
-    ODatabaseDocument db = null;
+    ODatabaseDocumentTx db = null;
 
     try {
       db = getProfiledDatabaseInstance(iRequest);
@@ -52,21 +51,16 @@ public class OServerCommandGetIndex extends OServerCommandDocumentAbstract {
       final Object content = index.get(urlParts[3]);
 
       if (content == null)
-        iResponse.send(OHttpUtils.STATUS_NOTFOUND_CODE, OHttpUtils.STATUS_NOTFOUND_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, null,
-            null);
+        iResponse.send(OHttpUtils.STATUS_NOTFOUND_CODE, OHttpUtils.STATUS_NOTFOUND_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN,
+            null, null);
       else {
         final StringBuilder buffer = new StringBuilder(128);
         buffer.append('[');
 
         if (content instanceof Collection<?>) {
           Collection<OIdentifiable> collection = (Collection<OIdentifiable>) content;
-          int count = 0;
           for (OIdentifiable item : collection) {
-            if (count > 0) {
-              buffer.append(", ");
-            }
             buffer.append(item.getRecord().toJSON());
-            count++;
           }
         } else
           buffer.append(((OIdentifiable) content).getRecord().toJSON());
@@ -74,16 +68,17 @@ public class OServerCommandGetIndex extends OServerCommandDocumentAbstract {
         buffer.append(']');
 
         if (isJsonResponse(iResponse)) {
-          iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_JSON, buffer.toString(), null);
+          iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_JSON, buffer.toString(), null);
         } else {
-          iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, buffer.toString(), null);
+          iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, buffer.toString(), null);
         }
 
       }
     } finally {
       if (db != null)
         db.close();
-    } return false;
+    }
+    return false;
   }
 
   @Override

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command.get;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.OMetadataInternal;
@@ -34,7 +33,7 @@ public class OServerCommandGetDocumentByClass extends OServerCommandAuthenticate
 
   @Override
   public boolean execute(final OHttpRequest iRequest, OHttpResponse iResponse) throws Exception {
-    ODatabaseDocument db = null;
+    ODatabaseDocumentTx db = null;
 
     final String[] urlParts = checkSyntax(iRequest.url, 4,
         "Syntax error: documentbyclass/<database>/<class-name>/<record-position>[/fetchPlan]");
@@ -54,7 +53,7 @@ public class OServerCommandGetDocumentByClass extends OServerCommandAuthenticate
       rec = db.load(new ORecordId(rid), fetchPlan);
 
       if (rec == null)
-        iResponse.send(OHttpUtils.STATUS_NOTFOUND_CODE, OHttpUtils.STATUS_NOTFOUND_DESCRIPTION, OHttpUtils.CONTENT_JSON, "Record with id '" + rid
+        iResponse.send(OHttpUtils.STATUS_NOTFOUND_CODE, "Not Found", OHttpUtils.CONTENT_JSON, "Record with id '" + rid
             + "' was not found.", null);
       else if (iRequest.httpMethod.equals("HEAD"))
         // JUST SEND HTTP CODE 200

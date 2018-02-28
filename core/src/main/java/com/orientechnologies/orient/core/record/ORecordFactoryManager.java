@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,14 +14,17 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.record;
 
-import com.orientechnologies.common.exception.OSystemException;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.record.impl.*;
+import com.orientechnologies.common.exception.OException;
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
+import com.orientechnologies.orient.core.record.impl.ORecordFlat;
 
 /**
  * Record factory. To use your own record implementation use the declareRecordType() method. Example of registration of the record
@@ -31,9 +34,10 @@ import com.orientechnologies.orient.core.record.impl.*;
  * declareRecordType('m', "myrecord", MyRecord.class);
  * </code>
  * </p>
- *
+ * 
  * @author Sylvain Spinelli
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
+ * 
  */
 @SuppressWarnings("unchecked")
 public class ORecordFactoryManager {
@@ -41,25 +45,26 @@ public class ORecordFactoryManager {
   protected final Class<? extends ORecord>[] recordTypes     = new Class[Byte.MAX_VALUE];
   protected final ORecordFactory[]           recordFactories = new ORecordFactory[Byte.MAX_VALUE];
 
-  private enum RecType {RECORD, VERTEX, EDGE}
-
   public interface ORecordFactory {
-    ORecord newRecord(int cluster, ODatabaseDocumentInternal database);
+    public ORecord newRecord();
   }
 
   public ORecordFactoryManager() {
-    declareRecordType(ODocument.RECORD_TYPE, "document", ODocument.class, (cluster, database) -> {
-      if (database != null && cluster >= 0) {
-        if (database.isClusterVertex(cluster)) {
-          return new OVertexDocument();
-        } else if (database.isClusterEdge(cluster)) {
-          return new OEdgeDocument();
-        }
+    declareRecordType(ODocument.RECORD_TYPE, "document", ODocument.class, new ORecordFactory() {
+      public ORecord newRecord() {
+        return new ODocument();
       }
-      return new ODocument();
     });
-    declareRecordType(OBlob.RECORD_TYPE, "bytes", OBlob.class, (cluster, database) -> new ORecordBytes());
-    declareRecordType(ORecordFlat.RECORD_TYPE, "flat", ORecordFlat.class, (cluster, database) -> new ORecordFlat());
+    declareRecordType(ORecordFlat.RECORD_TYPE, "flat", ORecordFlat.class, new ORecordFactory() {
+      public ORecord newRecord() {
+        return new ORecordFlat();
+      }
+    });
+    declareRecordType(ORecordBytes.RECORD_TYPE, "bytes", ORecordBytes.class, new ORecordFactory() {
+      public ORecord newRecord() {
+        return new ORecordBytes();
+      }
+    });
   }
 
   public String getRecordTypeName(final byte iRecordType) {
@@ -76,17 +81,18 @@ public class ORecordFactoryManager {
     return cls;
   }
 
-  public ORecord newInstance(int cluster, ODatabaseDocumentInternal database) {
+  public ORecord newInstance() {
+    final ODatabaseDocument database = ODatabaseRecordThreadLocal.INSTANCE.get();
     try {
-      return (ORecord) getFactory(database.getRecordType()).newRecord(cluster, database);
+      return (ORecord) getFactory(database.getRecordType()).newRecord();
     } catch (Exception e) {
       throw new IllegalArgumentException("Unsupported record type: " + database.getRecordType(), e);
     }
   }
 
-  public ORecord newInstance(final byte iRecordType, int cluster, ODatabaseDocumentInternal database) {
+  public ORecord newInstance(final byte iRecordType) {
     try {
-      return (ORecord) getFactory(iRecordType).newRecord(cluster, database);
+      return (ORecord) getFactory(iRecordType).newRecord();
     } catch (Exception e) {
       throw new IllegalArgumentException("Unsupported record type: " + iRecordType, e);
     }
@@ -94,7 +100,7 @@ public class ORecordFactoryManager {
 
   public void declareRecordType(byte iByte, String iName, Class<? extends ORecord> iClass, final ORecordFactory iFactory) {
     if (recordTypes[iByte] != null)
-      throw new OSystemException("Record type byte '" + iByte + "' already in use : " + recordTypes[iByte].getName());
+      throw new OException("Record type byte '" + iByte + "' already in use : " + recordTypes[iByte].getName());
     recordTypeNames[iByte] = iName;
     recordTypes[iByte] = iClass;
     recordFactories[iByte] = iFactory;

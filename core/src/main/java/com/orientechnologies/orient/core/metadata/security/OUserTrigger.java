@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,25 +14,22 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.metadata.security;
 
-import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.OSecurityException;
 import com.orientechnologies.orient.core.hook.ODocumentHookAbstract;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.metadata.schema.OImmutableClass;
-import com.orientechnologies.orient.core.record.ORecord;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
+import com.orientechnologies.orient.core.security.OSecurityManager;
 
 /**
  * Encrypt the password using the SHA-256 algorithm.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OUserTrigger extends ODocumentHookAbstract {
   private OClass userClass;
@@ -40,21 +37,8 @@ public class OUserTrigger extends ODocumentHookAbstract {
 
   public OUserTrigger(ODatabaseDocument database) {
     super(database);
-  }
 
-  @Override
-  public SCOPE[] getScopes() {
-    return new SCOPE[] { SCOPE.CREATE, SCOPE.UPDATE };
-  }
-
-  @Override
-  public RESULT onTrigger(TYPE iType, ORecord iRecord) {
-    OImmutableClass clazz = null;
-    if (iRecord instanceof ODocument)
-      clazz = ODocumentInternal.getImmutableSchemaClass((ODocument) iRecord);
-    if (clazz == null || (!clazz.isOuser() && !clazz.isOrole()))
-      return RESULT.RECORD_NOT_CHANGED;
-    return super.onTrigger(iType, iRecord);
+    setIncludeClasses(OUser.CLASS_NAME, ORole.CLASS_NAME);
   }
 
   public DISTRIBUTED_EXECUTION_MODE getDistributedExecutionMode() {
@@ -63,7 +47,9 @@ public class OUserTrigger extends ODocumentHookAbstract {
 
   @Override
   public RESULT onRecordBeforeCreate(final ODocument iDocument) {
-    if (ODocumentInternal.getImmutableSchemaClass(iDocument).isOuser())
+    init();
+
+    if (iDocument.getSchemaClass().isSubClassOf(userClass))
       return encodePassword(iDocument);
 
     return RESULT.RECORD_NOT_CHANGED;
@@ -71,7 +57,9 @@ public class OUserTrigger extends ODocumentHookAbstract {
 
   @Override
   public RESULT onRecordBeforeUpdate(final ODocument iDocument) {
-    if (ODocumentInternal.getImmutableSchemaClass(iDocument).isOuser())
+    init();
+
+    if (iDocument.getSchemaClass().isSubClassOf(userClass))
       return encodePassword(iDocument);
 
     return RESULT.RECORD_NOT_CHANGED;
@@ -86,16 +74,18 @@ public class OUserTrigger extends ODocumentHookAbstract {
     if (password == null)
       throw new OSecurityException("User '" + iDocument.field("name") + "' has no password");
 
-    if(Orient.instance().getSecurity() != null)
-    {
-      Orient.instance().getSecurity().validatePassword(password);
-    }
-
-    if (!password.startsWith("{")) {
+    if (!password.startsWith(OSecurityManager.ALGORITHM_PREFIX)) {
       iDocument.field("password", OUser.encryptPassword(password));
       return RESULT.RECORD_CHANGED;
     }
 
     return RESULT.RECORD_NOT_CHANGED;
+  }
+
+  private void init() {
+    if (userClass == null)
+      userClass = database.getMetadata().getSchema().getClass(OUser.CLASS_NAME);
+    if (roleClass == null)
+      roleClass = database.getMetadata().getSchema().getClass(ORole.CLASS_NAME);
   }
 }

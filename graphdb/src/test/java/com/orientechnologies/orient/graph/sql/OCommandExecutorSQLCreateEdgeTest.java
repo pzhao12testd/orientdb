@@ -1,10 +1,8 @@
 package com.orientechnologies.orient.graph.sql;
 
-import com.orientechnologies.orient.core.command.OCommandManager;
-import com.orientechnologies.orient.core.command.script.OCommandExecutorScript;
+import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.command.script.OCommandScript;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.db.record.ridbag.ORidBag;
 import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
@@ -16,7 +14,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -32,8 +29,8 @@ public class OCommandExecutorSQLCreateEdgeTest {
 
   @Before
   public void setUp() throws Exception {
-    OCommandManager.instance().registerExecutor(OCommandScript.class, OCommandExecutorScript.class);
-    db = new ODatabaseDocumentTx("memory:" + OCommandExecutorSQLCreateEdgeTest.class.getSimpleName());
+    db = Orient.instance().getDatabaseFactory()
+        .createDatabase("graph", "memory:" + OCommandExecutorSQLCreateEdgeTest.class.getSimpleName());
 
     if (db.exists()) {
       db.open("admin", "admin");
@@ -96,34 +93,14 @@ public class OCommandExecutorSQLCreateEdgeTest {
   }
 
   @Test
-  public void testBatch() throws Exception {
-    for (int i = 0; i < 20; ++i) {
-      db.command(new OCommandSQL("CREATE VERTEX Owner SET testbatch = true, id = ?")).execute(i);
-    }
-
-    Collection edges = db
-        .command(
-            new OCommandSQL(
-                "CREATE EDGE link from (select from owner where testbatch = true and id > 0) TO (select from owner where testbatch = true and id = 0) batch 10"))
-        .execute("456");
-
-    Assert.assertEquals(edges.size(), 19);
-
-    final List<ODocument> list = db.query(new OSQLSynchQuery<Object>("select from owner where testbatch = true and id = 0"));
-
-    Assert.assertEquals(list.size(), 1);
-    Assert.assertEquals(((ORidBag) list.get(0).field("in_link")).size(), 19);
-  }
-
-  @Test
   public void testEdgeConstraints() {
     db.command(
         new OCommandScript("sql", "create class E2 extends E;" + "create property E2.x LONG;" + "create property E2.in LINK;"
-            + "alter property E2.in MANDATORY true;" + "create property E2.out LINK;" + "alter property E2.out MANDATORY true;"
-            + "create class E1 extends E;" + "create property E1.x LONG;" + "alter property E1.x MANDATORY true;"
-            + "create property E1.in LINK;" + "alter property E1.in MANDATORY true;" + "create property E1.out LINK;"
-            + "alter property E1.out MANDATORY true;" + "create class FooType extends V;" + "create property FooType.name STRING;"
-            + "alter property FooType.name MANDATORY true;")).execute();
+            + "alter property E2.in MANDATORY=true;" + "create property E2.out LINK;" + "alter property E2.out MANDATORY=true;"
+            + "create class E1 extends E;" + "create property E1.x LONG;" + "alter property E1.x MANDATORY=true;"
+            + "create property E1.in LINK;" + "alter property E1.in MANDATORY=true;" + "create property E1.out LINK;"
+            + "alter property E1.out MANDATORY=true;" + "create class FooType extends V;" + "create property FooType.name STRING;"
+            + "alter property FooType.name MANDATORY=true;")).execute();
 
     db.command(
         new OCommandScript("sql", "let $v1 = create vertex FooType content {'name':'foo1'};"

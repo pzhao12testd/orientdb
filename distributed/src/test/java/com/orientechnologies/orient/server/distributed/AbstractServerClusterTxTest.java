@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli(at)orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,142 +16,125 @@
 
 package com.orientechnologies.orient.server.distributed;
 
-import com.orientechnologies.common.concur.ONeedRetryException;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
-import com.orientechnologies.orient.core.exception.ORecordNotFoundException;
-import com.orientechnologies.orient.core.exception.OTransactionException;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.storage.ORecordDuplicatedException;
-
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+
+import junit.framework.Assert;
+
+import com.orientechnologies.orient.core.command.script.OCommandScript;
+import com.orientechnologies.orient.core.db.OPartitionedDatabasePoolFactory;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.record.ORecord;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.storage.ORecordDuplicatedException;
 
 /**
  * Test distributed TX
  */
 public abstract class AbstractServerClusterTxTest extends AbstractServerClusterInsertTest {
-  protected int printBlocksOf = 100;
+  private final OPartitionedDatabasePoolFactory poolFactory = new OPartitionedDatabasePoolFactory();
 
-  protected AbstractServerClusterTxTest() {
-    useTransactions = true;
-  }
+  class TxWriter implements Callable<Void> {
+    private final String databaseUrl;
+    private int          serverId;
 
-  class TxWriter extends BaseWriter {
-    public TxWriter(final int iServerId, final int iThreadId, final ServerRun serverRun) {
-      super(iServerId, iThreadId, serverRun);
+    public TxWriter(final int iServerId, final String db) {
+      serverId = iServerId;
+      databaseUrl = db;
     }
 
     @Override
     public Void call() throws Exception {
-      final String name = Integer.toString(threadId);
-      Set<Integer> clusters = new LinkedHashSet<Integer>();
-      LinkedHashMap<String, Long> clusterNames = new LinkedHashMap<String, Long>();
+      String name = Integer.toString(serverId);
       for (int i = 0; i < count; i++) {
-        final ODatabaseDocument database = getDatabase(serverRun);
-
+        final ODatabaseDocumentTx database = poolFactory.get(databaseUrl, "admin", "admin").acquire();
         try {
+          if ((i + 1) % 100 == 0)
+            System.out.println("\nWriter " + database.getURL() + " managed " + (i + 1) + "/" + count + " records so far");
+
           final int id = baseCount + i;
+          database.begin();
+          try {
+            ODocument person = createRecord(database, serverId, id);
+            updateRecord(database, person);
+            checkRecord(database, person);
+            deleteRecord(database, person);
+            checkRecordIsDeleted(database, person);
+            // checkIndex(database, (String) person.field("name"), person.getIdentity());
 
-          final String uid = UUID.randomUUID().toString();
+            // ASSURE THE UPDATE IS EXECUTED CORRECTLY IN TX
+            String sql = "UPDATE Person SET PostalCode = \"78001\" WHERE id = \"" + person.field("id") + "\"";
+            OCommandScript cmdScript = new OCommandScript("sql", sql);
+            database.command(cmdScript).execute();
 
-          int retry;
-          for (retry = 0; retry < maxRetries; retry++) {
-            database.activateOnCurrentThread();
-            if ((i + 1) % printBlocksOf == 0)
-              System.out.println("\nWriter " + database.getURL() + "(thread=" + threadId + ") managed " + (i + 1) + "/" + count
-                  + " records so far");
+            database.commit();
 
-            if (useTransactions)
-              database.begin();
-
-            try {
-              ODocument person = createRecord(database, id, uid);
-              updateRecord(database, person);
-              checkRecord(database, person);
-              deleteRecord(database, person);
-              checkRecordIsDeleted(database, person);
-              person = createRecord(database, id, uid);
-              updateRecord(database, person);
-              checkRecord(database, person);
-
-              if (useTransactions)
-                database.commit();
-
-              if (delayWriter > 0)
-                Thread.sleep(delayWriter);
-              clusters.add(person.getIdentity().getClusterId());
-
-              String clusterName = database.getClusterNameById(person.getIdentity().getClusterId());
-              Long counter = clusterNames.get(clusterName);
-              if (counter == null)
-                counter = 0L;
-
-              clusterNames.put(clusterName, counter + 1);
-
-              // OK
-              break;
-
-            } catch (InterruptedException e) {
-              // STOP IT
-              System.out.println("Writer received interrupt (db=" + database.getURL());
-              Thread.currentThread().interrupt();
-              break;
-            } catch (ORecordNotFoundException e) {
-              // IGNORE IT AND RETRY
-              System.out
-                  .println("ORecordNotFoundException Exception caught on writer thread " + threadId + " (db=" + database.getURL());
-              // e.printStackTrace();
-            } catch (ORecordDuplicatedException e) {
-              // IGNORE IT AND RETRY
-              System.out.println(
-                  "ORecordDuplicatedException Exception caught on writer thread " + threadId + " (db=" + database.getURL());
-              // e.printStackTrace();
-            } catch (OTransactionException e) {
-              if (e.getCause() instanceof ORecordDuplicatedException)
-                // IGNORE IT AND RETRY
-                ;
-              else
-                throw e;
-            } catch (ONeedRetryException e) {
-              // System.out.println("ONeedRetryException Exception caught on writer thread " + threadId + " (db=" +
-              // database.getURL());
-
-              if (retry >= maxRetries)
-                e.printStackTrace();
-
-            } catch (ODistributedException e) {
-              System.out
-                  .println("ODistributedException Exception caught on writer thread " + threadId + " (db=" + database.getURL());
-              if (!(e.getCause() instanceof ORecordDuplicatedException)) {
-                database.rollback();
-                throw e;
-              }
-
-              // RETRY
-            } catch (Throwable e) {
-              System.out.println(e.getClass() + " Exception caught on writer thread " + threadId + " (db=" + database.getURL());
-              e.printStackTrace();
-              return null;
+            Assert.assertTrue(person.getIdentity().isPersistent());
+          } catch (ORecordDuplicatedException e) {
+            // IGNORE IT
+          } catch (ODistributedException e) {
+            if (!(e.getCause() instanceof ORecordDuplicatedException)) {
+              database.rollback();
+              throw e;
             }
+          } catch (Exception e) {
+            database.rollback();
+            throw e;
           }
+
+          if (delayWriter > 0)
+            Thread.sleep(delayWriter);
+
+        } catch (InterruptedException e) {
+          System.out.println("Writer received interrupt (db=" + database.getURL());
+          Thread.currentThread().interrupt();
+          break;
+        } catch (Exception e) {
+          System.out.println("Writer received exception (db=" + database.getURL());
+          e.printStackTrace();
+          break;
         } finally {
           runningWriters.countDown();
-          database.activateOnCurrentThread();
           database.close();
         }
       }
 
-      System.out.println("\nWriter " + name + " END total:" + count + " clusters:" + clusters + " names:" + clusterNames);
+      System.out.println("\nWriter " + name + " END");
       return null;
     }
 
   }
 
-  @Override
-  protected Callable createWriter(final int i, final int threadId, final ServerRun serverRun) {
-    return new TxWriter(i, threadId, serverRun);
+  protected Callable createWriter(int i, String databaseURL) {
+    return new TxWriter(i, databaseURL);
+  }
+
+  protected ODocument createRecord(ODatabaseDocumentTx database, int serverId, int i) {
+    final int uniqueId = count * serverId + i;
+
+    ODocument person = new ODocument("Person").fields("id", UUID.randomUUID().toString(), "name", "Billy" + uniqueId, "surname",
+        "Mayes" + uniqueId, "birthday", new Date(), "children", uniqueId, "serverId", serverId);
+    database.save(person);
+    return person;
+  }
+
+  protected void updateRecord(ODatabaseDocumentTx database, ODocument doc) {
+    doc.field("updated", true);
+    doc.save();
+  }
+
+  protected void checkRecord(ODatabaseDocumentTx database, ODocument doc) {
+    doc.reload();
+    Assert.assertEquals(doc.field("updated"), Boolean.TRUE);
+  }
+
+  protected void deleteRecord(ODatabaseDocumentTx database, ODocument doc) {
+    doc.delete();
+  }
+
+  protected void checkRecordIsDeleted(ODatabaseDocumentTx database, ODocument doc) {
+    final ORecord r = doc.reload();
+    Assert.assertNull(r);
   }
 }

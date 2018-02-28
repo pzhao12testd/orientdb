@@ -149,10 +149,4 @@ public class OBinaryToken implements OToken {
     return serverUser;
   }
 
-  @Override
-  public boolean isNowValid() {
-    long now =System.currentTimeMillis();
-    return getExpiry() > now;
-  }
-  
 }

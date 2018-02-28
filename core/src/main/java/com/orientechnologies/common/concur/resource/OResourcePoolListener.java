@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,29 +14,24 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.common.concur.resource;
 
-/**
- * Interface to manage resources in the pool.
- * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
- */
 public interface OResourcePoolListener<K, V> {
 
-  /**
-   * Creates a new resource to be used and to be pooled when the client finishes with it.
-   * 
-   * @return The new resource
-   */
-  V createNewResource(K iKey, Object... iAdditionalArgs);
+	/**
+	 * Creates a new resource to be used and to be pooled when the client finishes with it.
+	 * 
+	 * @return The new resource
+	 */
+	public V createNewResource(K iKey, Object... iAdditionalArgs);
 
-  /**
-   * Reuses the pooled resource.
-   * 
-   * @return true if can be reused, otherwise false. In this case the resource will be removed from the pool
-   */
-  boolean reuseResource(K iKey, Object[] iAdditionalArgs, V iValue);
+	/**
+	 * Reuses the pooled resource.
+	 * 
+	 * @return true if can be reused, otherwise false. In this case the resource will be removed from the pool
+	 */
+	public boolean reuseResource(K iKey, Object[] iAdditionalArgs, V iValue);
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql.functions;
 
+import java.util.List;
+
 import com.orientechnologies.common.collection.OMultiValue;
-import com.orientechnologies.common.io.OIOUtils;
 import com.orientechnologies.common.parser.OBaseParser;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.command.OCommandExecutorNotFoundException;
@@ -39,12 +40,10 @@ import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemField;
 import com.orientechnologies.orient.core.sql.filter.OSQLFilterItemVariable;
 import com.orientechnologies.orient.core.sql.filter.OSQLPredicate;
 
-import java.util.List;
-
 /**
  * Wraps function managing the binding of parameters.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * 
  */
 public class OSQLFunctionRuntime extends OSQLFilterItemAbstract {
@@ -96,7 +95,7 @@ public class OSQLFunctionRuntime extends OSQLFilterItemAbstract {
       } else if (configuredParameters[i] instanceof OCommandSQL) {
         try {
           runtimeParameters[i] = ((OCommandSQL) configuredParameters[i]).setContext(iContext).execute();
-        } catch (OCommandExecutorNotFoundException ignore) {
+        } catch (OCommandExecutorNotFoundException e) {
           // TRY WITH SIMPLE CONDITION
           final String text = ((OCommandSQL) configuredParameters[i]).getText();
           final OSQLPredicate pred = new OSQLPredicate(text);
@@ -111,7 +110,7 @@ public class OSQLFunctionRuntime extends OSQLFilterItemAbstract {
             (iCurrentRecord instanceof ODocument ? (ODocument) iCurrentResult : null), iContext);
       else if (configuredParameters[i] instanceof String) {
         if (configuredParameters[i].toString().startsWith("\"") || configuredParameters[i].toString().startsWith("'"))
-          runtimeParameters[i] = OIOUtils.getStringContent(configuredParameters[i]);
+          runtimeParameters[i] = OStringSerializerHelper.getStringContent(configuredParameters[i]);
       }
     }
 
@@ -158,9 +157,9 @@ public class OSQLFunctionRuntime extends OSQLFilterItemAbstract {
     for (int i = 0; i < iParameters.length; ++i) {
       this.configuredParameters[i] = iParameters[i];
 
-      if (iEvaluate)
+      if (i > 0 || iEvaluate)
         if (iParameters[i] != null) {
-          if (iParameters[i] instanceof String) {
+          if (iParameters[i] instanceof String && !iParameters[i].toString().startsWith("[")) {
             final Object v = OSQLHelper.parseValue(null, null, iParameters[i].toString(), null);
             if (v == OSQLHelper.VALUE_NOT_PARSED
                 || (v != null && OMultiValue.isMultiValue(v) && OMultiValue.getFirstValue(v) == OSQLHelper.VALUE_NOT_PARSED))

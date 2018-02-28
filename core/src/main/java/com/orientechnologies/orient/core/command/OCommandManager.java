@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.command;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.util.OCallable;
 import com.orientechnologies.orient.core.command.script.OCommandExecutorScript;
 import com.orientechnologies.orient.core.command.script.OCommandScript;
@@ -31,19 +30,15 @@ import com.orientechnologies.orient.core.sql.query.OSQLNonBlockingQuery;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 public class OCommandManager {
-  private static OCommandManager                                                          instance          = new OCommandManager();
-  private        Map<String, Class<? extends OCommandRequest>>                            commandRequesters = new HashMap<String, Class<? extends OCommandRequest>>();
-  private        Map<Class<? extends OCommandRequest>, OCallable<Void, OCommandRequest>>  configCallbacks   = new HashMap<Class<? extends OCommandRequest>, OCallable<Void, OCommandRequest>>();
-  private        Map<Class<? extends OCommandRequest>, Class<? extends OCommandExecutor>> commandReqExecMap = new HashMap<Class<? extends OCommandRequest>, Class<? extends OCommandExecutor>>();
-  private        Map<String, OScriptExecutor>                                             scriptExecutors   = new HashMap<>();
+  private static OCommandManager                                                   instance          = new OCommandManager();
+  private Map<String, Class<? extends OCommandRequest>>                            commandRequesters = new HashMap<String, Class<? extends OCommandRequest>>();
+  private Map<Class<? extends OCommandRequest>, OCallable<Void, OCommandRequest>>  configCallbacks   = new HashMap<Class<? extends OCommandRequest>, OCallable<Void, OCommandRequest>>();
+  private Map<Class<? extends OCommandRequest>, Class<? extends OCommandExecutor>> commandReqExecMap = new HashMap<Class<? extends OCommandRequest>, Class<? extends OCommandExecutor>>();
 
   protected OCommandManager() {
-    registerScriptExecutor("sql", new OSqlScriptExecutor());
-    registerScriptExecutor("script", new OSqlScriptExecutor());
     registerRequester("sql", OCommandSQL.class);
     registerRequester("script", OCommandScript.class);
 
@@ -65,18 +60,8 @@ public class OCommandManager {
     return this;
   }
 
-  public OScriptExecutor getScriptExecutor(String language) {
-    if (language == null) {
-      throw new IllegalArgumentException("Invalid script languange: null");
-    }
-    OScriptExecutor scriptExecutor = this.scriptExecutors.get(language);
-    if (scriptExecutor == null) {
-      scriptExecutor = this.scriptExecutors.get(language.toLowerCase(Locale.ENGLISH));
-    }
-    if (scriptExecutor == null)
-      throw new IllegalArgumentException("Cannot find a script executor requester for language: " + language);
-
-    return scriptExecutor;
+  public boolean existsRequester(final String iType) {
+    return commandRequesters.containsKey(iType);
   }
 
   public OCommandRequest getRequester(final String iType) {
@@ -97,10 +82,6 @@ public class OCommandManager {
     registerExecutor(iRequest, iExecutor);
     configCallbacks.put(iRequest, iConfigCallback);
     return this;
-  }
-
-  public void registerScriptExecutor(String language, OScriptExecutor executor) {
-    this.scriptExecutors.put(language, executor);
   }
 
   public OCommandManager registerExecutor(final Class<? extends OCommandRequest> iRequest,
@@ -131,8 +112,8 @@ public class OCommandManager {
       return exec;
 
     } catch (Exception e) {
-      throw OException.wrapException(new OCommandExecutionException(
-          "Cannot create the command executor of class " + executorClass + " for the command request: " + iCommand), e);
+      throw new OCommandExecutionException("Cannot create the command executor of class " + executorClass
+          + " for the command request: " + iCommand, e);
     }
   }
 }

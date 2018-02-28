@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
@@ -32,7 +33,6 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 @Test(groups = "sql-select")
@@ -41,6 +41,17 @@ public class SQLSelectProjectionsTest extends DocumentDBBaseTest {
   @Parameters(value = "url")
   public SQLSelectProjectionsTest(@Optional String url) {
     super(url);
+  }
+
+  @BeforeClass
+  @Override
+  public void beforeClass() throws Exception {
+    super.beforeClass();
+
+    if( !database.getMetadata().getSchema().existsClass("V") )
+      database.getMetadata().getSchema().createClass("V");
+    if( !database.getMetadata().getSchema().existsClass("E") )
+      database.getMetadata().getSchema().createClass("E");
   }
 
   @Test
@@ -87,14 +98,14 @@ public class SQLSelectProjectionsTest extends DocumentDBBaseTest {
   @Test
   public void queryProjectionLinkedAndFunction() {
     List<ODocument> result = database.command(
-        new OSQLSynchQuery<ODocument>("select name.toUpperCase(Locale.ENGLISH), address.city.country.name from Profile")).execute();
+        new OSQLSynchQuery<ODocument>("select name.toUppercase(), address.city.country.name from Profile")).execute();
 
     Assert.assertTrue(result.size() != 0);
 
     for (ODocument d : result) {
       Assert.assertTrue(d.fieldNames().length <= 2);
       if (d.field("name") != null)
-        Assert.assertTrue(d.field("name").equals(((String) d.field("name")).toUpperCase(Locale.ENGLISH)));
+        Assert.assertTrue(d.field("name").equals(((String) d.field("name")).toUpperCase()));
 
       Assert.assertNull(d.getClassName());
       Assert.assertEquals(ORecordInternal.getRecordType(d), ODocument.RECORD_TYPE);
@@ -104,7 +115,7 @@ public class SQLSelectProjectionsTest extends DocumentDBBaseTest {
   @Test
   public void queryProjectionSameFieldTwice() {
     List<ODocument> result = database.command(
-        new OSQLSynchQuery<ODocument>("select name, name.toUpperCase(Locale.ENGLISH) from Profile where name is not null")).execute();
+        new OSQLSynchQuery<ODocument>("select name, name.toUppercase() from Profile where name is not null")).execute();
 
     Assert.assertTrue(result.size() != 0);
 
@@ -172,24 +183,25 @@ public class SQLSelectProjectionsTest extends DocumentDBBaseTest {
     }
   }
 
-  // TODO invalid test, invalid integer alias
-  // @Test
-  // public void queryProjectionAliases() {
-  // List<ODocument> result = database.command(
-  // new OSQLSynchQuery<ODocument>(
-  // "select name.append('!') as 1, surname as 2 from Profile where name is not null and surname is not null")).execute();
-  //
-  // Assert.assertTrue(result.size() != 0);
-  //
-  // for (ODocument d : result) {
-  // Assert.assertTrue(d.fieldNames().length <= 2);
-  // Assert.assertTrue(d.field("1").toString().endsWith("!"));
-  // Assert.assertNotNull(d.field("2"));
-  //
-  // Assert.assertNull(d.getClassName());
-  // Assert.assertEquals(ORecordInternal.getRecordType(d), ODocument.RECORD_TYPE);
-  // }
-  // }
+
+  //TODO invalid test, invalid integer alias
+//  @Test
+//  public void queryProjectionAliases() {
+//    List<ODocument> result = database.command(
+//        new OSQLSynchQuery<ODocument>(
+//            "select name.append('!') as 1, surname as 2 from Profile where name is not null and surname is not null")).execute();
+//
+//    Assert.assertTrue(result.size() != 0);
+//
+//    for (ODocument d : result) {
+//      Assert.assertTrue(d.fieldNames().length <= 2);
+//      Assert.assertTrue(d.field("1").toString().endsWith("!"));
+//      Assert.assertNotNull(d.field("2"));
+//
+//      Assert.assertNull(d.getClassName());
+//      Assert.assertEquals(ORecordInternal.getRecordType(d), ODocument.RECORD_TYPE);
+//    }
+//  }
 
   @Test
   public void queryProjectionSimpleValues() {
@@ -250,7 +262,7 @@ public class SQLSelectProjectionsTest extends DocumentDBBaseTest {
     Assert.assertEquals(result.size(), 1);
 
     for (ODocument d : result)
-      Assert.assertEquals(d.<Object>field("result"), 5);
+      Assert.assertEquals(d.field("result"), 5);
 
   }
 
@@ -289,21 +301,21 @@ public class SQLSelectProjectionsTest extends DocumentDBBaseTest {
     List<ODocument> result = database.command(new OSQLSynchQuery<ODocument>("SELECT set(name)[0-1] as set from OUser")).execute();
     Assert.assertEquals(result.size(), 1);
     for (ODocument d : result) {
-      Assert.assertTrue(OMultiValue.isMultiValue(d.<Object>field("set")));
+      Assert.assertTrue(OMultiValue.isMultiValue(d.field("set")));
       Assert.assertTrue(OMultiValue.getSize(d.field("set")) <= 2);
     }
 
     result = database.command(new OSQLSynchQuery<ODocument>("SELECT set(name)[0,1] as set from OUser")).execute();
     Assert.assertEquals(result.size(), 1);
     for (ODocument d : result) {
-      Assert.assertTrue(OMultiValue.isMultiValue(d.<Object>field("set")));
+      Assert.assertTrue(OMultiValue.isMultiValue(d.field("set")));
       Assert.assertTrue(OMultiValue.getSize(d.field("set")) <= 2);
     }
 
     result = database.command(new OSQLSynchQuery<ODocument>("SELECT set(name)[0] as unique from OUser")).execute();
     Assert.assertEquals(result.size(), 1);
     for (ODocument d : result) {
-      Assert.assertFalse(OMultiValue.isMultiValue(d.<Object>field("unique")));
+      Assert.assertFalse(OMultiValue.isMultiValue(d.field("unique")));
     }
   }
 
@@ -416,7 +428,7 @@ public class SQLSelectProjectionsTest extends DocumentDBBaseTest {
       Assert.assertFalse(embeddedList.isEmpty());
 
       for (OIdentifiable embedded : embeddedList) {
-        if (embedded != null) {
+        if( embedded != null ) {
           final ORID embeddedRid = embedded.getIdentity();
 
           Assert.assertFalse(rids.contains(embeddedRid));

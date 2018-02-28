@@ -1,31 +1,30 @@
 /*
- *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
- *  *
- *  *  Licensed under the Apache License, Version 2.0 (the "License");
- *  *  you may not use this file except in compliance with the License.
- *  *  You may obtain a copy of the License at
- *  *
- *  *       http://www.apache.org/licenses/LICENSE-2.0
- *  *
- *  *  Unless required by applicable law or agreed to in writing, software
- *  *  distributed under the License is distributed on an "AS IS" BASIS,
- *  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  *  See the License for the specific language governing permissions and
- *  *  limitations under the License.
- *  *
- *  * For more information: http://orientdb.com
- *
- */
+  *
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
+  *  *
+  *  *  Licensed under the Apache License, Version 2.0 (the "License");
+  *  *  you may not use this file except in compliance with the License.
+  *  *  You may obtain a copy of the License at
+  *  *
+  *  *       http://www.apache.org/licenses/LICENSE-2.0
+  *  *
+  *  *  Unless required by applicable law or agreed to in writing, software
+  *  *  distributed under the License is distributed on an "AS IS" BASIS,
+  *  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *  *  See the License for the specific language governing permissions and
+  *  *  limitations under the License.
+  *  *
+  *  * For more information: http://www.orientechnologies.com
+  *
+  */
 package com.orientechnologies.orient.core.serialization.serializer.string;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.orient.core.exception.OSerializationException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.serialization.OBase64Utils;
 import com.orientechnologies.orient.core.serialization.OSerializableStream;
-
-import java.util.Base64;
+import com.orientechnologies.orient.core.serialization.serializer.stream.OStreamSerializerHelper;
 
 public class OStringSerializerAnyStreamable implements OStringSerializer {
   public static final OStringSerializerAnyStreamable INSTANCE = new OStringSerializerAnyStreamable();
@@ -42,7 +41,7 @@ public class OStringSerializerAnyStreamable implements OStringSerializer {
     OSerializableStream instance = null;
 
     int propertyPos = iStream.indexOf(':');
-    int pos = iStream.indexOf(OStringSerializerEmbedded.SEPARATOR);
+    int pos = iStream.indexOf(OStreamSerializerHelper.SEPARATOR);
     if (pos < 0 || propertyPos > -1 && pos > propertyPos) {
       instance = new ODocument();
       pos = -1;
@@ -52,13 +51,11 @@ public class OStringSerializerAnyStreamable implements OStringSerializer {
         final Class<?> clazz = Class.forName(className);
         instance = (OSerializableStream) clazz.newInstance();
       } catch (Exception e) {
-        final String message = "Error on unmarshalling content. Class: " + className;
-        OLogManager.instance().error(this, message, e);
-        throw OException.wrapException(new OSerializationException(message), e);
+        OLogManager.instance().error(this, "Error on unmarshalling content. Class: " + className, e, OSerializationException.class);
       }
     }
 
-    instance.fromStream(Base64.getDecoder().decode(iStream.substring(pos + 1)));
+    instance.fromStream(OBase64Utils.decode(iStream.substring(pos + 1)));
     return instance;
   }
 
@@ -74,8 +71,8 @@ public class OStringSerializerAnyStreamable implements OStringSerializer {
 
       OSerializableStream stream = (OSerializableStream) iValue;
       iOutput.append(iValue.getClass().getName());
-      iOutput.append(OStringSerializerEmbedded.SEPARATOR);
-      iOutput.append(Base64.getEncoder().encodeToString(stream.toStream()));
+      iOutput.append(OStreamSerializerHelper.SEPARATOR);
+      iOutput.append(OBase64Utils.encodeBytes(stream.toStream()));
     }
     return iOutput;
   }

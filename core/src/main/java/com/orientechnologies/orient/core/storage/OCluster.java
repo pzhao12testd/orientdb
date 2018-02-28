@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,21 +14,23 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.storage;
 
+import com.orientechnologies.common.concur.lock.OModificationLock;
 import com.orientechnologies.orient.core.config.OStorageClusterConfiguration;
 import com.orientechnologies.orient.core.conflict.ORecordConflictStrategy;
 import com.orientechnologies.orient.core.exception.ORecordNotFoundException;
+import com.orientechnologies.orient.core.version.ORecordVersion;
 
 import java.io.IOException;
 
 public interface OCluster {
 
   enum ATTRIBUTES {
-    NAME, RECORD_GROW_FACTOR, RECORD_OVERFLOW_GROW_FACTOR, CONFLICTSTRATEGY, STATUS, ENCRYPTION
+    NAME, USE_WAL, RECORD_GROW_FACTOR, RECORD_OVERFLOW_GROW_FACTOR, COMPRESSION, CONFLICTSTRATEGY, STATUS
   }
 
   void configure(OStorage iStorage, int iId, String iClusterName, Object... iParameters) throws IOException;
@@ -45,65 +47,42 @@ public interface OCluster {
 
   void delete() throws IOException;
 
+  OModificationLock getExternalModificationLock();
+
   Object set(ATTRIBUTES iAttribute, Object iValue) throws IOException;
 
-  String encryption();
+  void convertToTombstone(long iPosition) throws IOException;
 
   long getTombstonesCount();
+
+  boolean hasTombstonesSupport();
 
   /**
    * Truncates the cluster content. All the entries will be removed.
    *
+   * @throws IOException
    */
   void truncate() throws IOException;
 
-  /**
-   * Allocates a physical position pointer on the storage for generate an id without a content.
-   *
-   * @param recordType the type of record of which allocate the position.
-   *
-   * @return the allocated position.
-   */
-  OPhysicalPosition allocatePosition(byte recordType) throws IOException;
-
-  /**
-   * Creates a new record in the cluster.
-   *
-   * @param content           the content of the record.
-   * @param recordVersion     the current version
-   * @param recordType        the type of the record
-   * @param allocatedPosition the eventual allocated position or null if there is no allocated position.
-   *
-   * @return the position where the record si created.
-   */
-  OPhysicalPosition createRecord(byte[] content, int recordVersion, byte recordType, OPhysicalPosition allocatedPosition)
-      throws IOException;
+  OPhysicalPosition createRecord(byte[] content, ORecordVersion recordVersion, byte recordType) throws IOException;
 
   boolean deleteRecord(long clusterPosition) throws IOException;
 
-  void updateRecord(long clusterPosition, byte[] content, int recordVersion, byte recordType) throws IOException;
+  void updateRecord(long clusterPosition, byte[] content, ORecordVersion recordVersion, byte recordType) throws IOException;
 
-  /**
-   * Recycling a record position that was deleted.
-   */
-  void recycleRecord(long clusterPosition, byte[] content, int recordVersion, byte recordType) throws IOException;
+  ORawBuffer readRecord(long clusterPosition) throws IOException;
 
-  ORawBuffer readRecord(long clusterPosition, boolean prefetchRecords) throws IOException;
-
-  ORawBuffer readRecordIfVersionIsNotLatest(long clusterPosition, int recordVersion) throws IOException, ORecordNotFoundException;
+  ORawBuffer readRecordIfVersionIsNotLatest(long clusterPosition, ORecordVersion recordVersion) throws IOException,
+      ORecordNotFoundException;
 
   boolean exists();
 
   /**
    * Fills and return the PhysicalPosition object received as parameter with the physical position of logical record iPosition
+   *
+   * @throws IOException
    */
   OPhysicalPosition getPhysicalPosition(OPhysicalPosition iPPosition) throws IOException;
-
-  /** Check if a rid is existent and deleted or not existent
-   *
-   *  return true only if delete flag is set.
-   */
-  boolean isDeleted(OPhysicalPosition iPPosition) throws IOException;
 
   long getEntries();
 
@@ -111,26 +90,32 @@ public interface OCluster {
 
   long getLastPosition() throws IOException;
 
-  long getNextPosition() throws IOException;
-
   String getFileName();
 
   int getId();
 
   void synch() throws IOException;
 
+  void setSoftlyClosed(boolean softlyClosed) throws IOException;
+
+  boolean wasSoftlyClosed() throws IOException;
+
   String getName();
 
   /**
    * Returns the size of the records contained in the cluster in bytes.
+   *
+   * @return
    */
   long getRecordsSize() throws IOException;
 
+  boolean useWal();
+
   float recordGrowFactor();
 
-  String compression();
-
   float recordOverflowGrowFactor();
+
+  String compression();
 
   boolean isHashBased();
 
@@ -148,21 +133,16 @@ public interface OCluster {
 
   /**
    * Hides records content by putting tombstone on the records position but does not delete record itself.
+   * <p>
+   * This method is used in case of record content itself is broken and cannot be read or deleted. So it is emergence method.
    *
-   * <p>This method is used in case of record content itself is broken and cannot be read or deleted. So it is emergence method.
-   *
-   * @param position Position of record in cluster
-   *
+   * @param position
+   *          Position of record in cluster
    * @return false if record does not exist.
-   *
-   * @throws java.lang.UnsupportedOperationException In case current version of cluster does not support given operation.
+   * @throws java.lang.UnsupportedOperationException
+   *           In case current version of cluster does not support given operation.
    */
   boolean hideRecord(long position) throws IOException;
 
   ORecordConflictStrategy getRecordConflictStrategy();
-
-  /**
-   * Acquires exclusive lock in the active atomic operation running on the current thread for this cluster.
-   */
-  void acquireAtomicExclusiveLock();
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,34 +14,32 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.core.config;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 09.07.13
  */
 public class OStoragePaginatedClusterConfiguration implements OStorageClusterConfiguration {
-  public static final float DEFAULT_GROW_FACTOR      = (float) 1.2;
-  public              float recordOverflowGrowFactor = DEFAULT_GROW_FACTOR;
-  public              float recordGrowFactor         = DEFAULT_GROW_FACTOR;
-  public           String                    compression;
-  public           String                    encryption;
-  public           String                    encryptionKey;
-  public transient OStorageConfigurationImpl root;
-  public           int                       id;
-  public           String                    name;
-  public           String                    location;
-  public boolean useWal = true;
-  public String conflictStrategy;
-  private STATUS status = STATUS.ONLINE;
+  public static float                    DEFAULT_GROW_FACTOR      = (float) 1.2;
+  public float                           recordOverflowGrowFactor = DEFAULT_GROW_FACTOR;
+  public float                           recordGrowFactor         = DEFAULT_GROW_FACTOR;
+  public String                          compression;
+  public transient OStorageConfiguration root;
+  public int                             id;
+  public String                          name;
+  public String                          location;
+  public boolean                         useWal                   = true;
+  public String                          conflictStrategy;
+  private STATUS                         status                   = STATUS.ONLINE;
 
-  public OStoragePaginatedClusterConfiguration(final OStorageConfigurationImpl root, final int id, final String name,
+  public OStoragePaginatedClusterConfiguration(final OStorageConfiguration root, final int id, final String name,
       final String location, final boolean useWal, final float recordOverflowGrowFactor, final float recordGrowFactor,
-      final String compression, final String iEncryption, final String iEncryptionKey, final String conflictStrategy, final STATUS iStatus) {
+      final String compression, final String conflictStrategy, final STATUS iStatus) {
     this.root = root;
     this.id = id;
     this.name = name;
@@ -50,8 +48,6 @@ public class OStoragePaginatedClusterConfiguration implements OStorageClusterCon
     this.recordOverflowGrowFactor = recordOverflowGrowFactor;
     this.recordGrowFactor = recordGrowFactor;
     this.compression = compression;
-    this.encryption = iEncryption;
-    this.encryptionKey = iEncryptionKey;
     this.conflictStrategy = conflictStrategy;
     this.status = iStatus;
   }

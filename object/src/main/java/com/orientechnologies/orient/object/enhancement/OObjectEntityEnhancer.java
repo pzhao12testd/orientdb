@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,6 @@
  */
 package com.orientechnologies.orient.object.enhancement;
 
-import com.orientechnologies.common.log.OLogManager;
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.orientechnologies.orient.core.db.object.ODatabaseObject;
-import com.orientechnologies.orient.core.entity.OEntityManager;
-import com.orientechnologies.orient.core.exception.OSerializationException;
-import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.object.serialization.OObjectCustomSerializerList;
-import com.orientechnologies.orient.object.serialization.OObjectCustomSerializerMap;
-import com.orientechnologies.orient.object.serialization.OObjectCustomSerializerSet;
-import javassist.util.proxy.MethodHandler;
-import javassist.util.proxy.Proxy;
-import javassist.util.proxy.ProxyFactory;
-import javassist.util.proxy.ProxyObject;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -42,8 +27,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javassist.util.proxy.MethodHandler;
+import javassist.util.proxy.Proxy;
+import javassist.util.proxy.ProxyFactory;
+import javassist.util.proxy.ProxyObject;
+
+import com.orientechnologies.common.log.OLogManager;
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.object.ODatabaseObject;
+import com.orientechnologies.orient.core.entity.OEntityManager;
+import com.orientechnologies.orient.core.exception.OSerializationException;
+import com.orientechnologies.orient.core.metadata.schema.OType;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.object.serialization.OObjectCustomSerializerList;
+import com.orientechnologies.orient.object.serialization.OObjectCustomSerializerMap;
+import com.orientechnologies.orient.object.serialization.OObjectCustomSerializerSet;
+
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class OObjectEntityEnhancer {
@@ -79,11 +80,11 @@ public class OObjectEntityEnhancer {
   public <T> T getProxiedInstance(final Class<T> iClass, Object iEnclosingInstance, final ODocument doc, final ProxyObject parent,
       Object... iArgs) {
     if (iClass == null) {
-      throw new OSerializationException("Type '" + doc.getClassName()
-          + "' cannot be serialized because is not part of registered entities. To fix this error register this class");
+      throw new OSerializationException("Type " + doc.getClassName()
+          + " cannot be serialized because is not part of registered entities. To fix this error register this class");
     }
     final Class<T> c;
-    boolean isInnerClass = OObjectEntitySerializer.getEnclosingClass(iClass) != null;
+    boolean isInnerClass = iClass.getEnclosingClass() != null;
     if (Proxy.class.isAssignableFrom(iClass)) {
       c = iClass;
     } else {
@@ -138,7 +139,7 @@ public class OObjectEntityEnhancer {
         }
         if (constructor != null) {
           newEntity = (T) constructor.newInstance(iArgs);
-          initDocument(iClass, newEntity, doc, (ODatabaseObject) ODatabaseRecordThreadLocal.instance().get().getDatabaseOwner());
+          initDocument(iClass, newEntity, doc, (ODatabaseObject) ODatabaseRecordThreadLocal.INSTANCE.get().getDatabaseOwner());
         } else {
           if (iEnclosingInstance != null)
             newEntity = createInstanceNoParameters(c, iEnclosingInstance);
@@ -154,7 +155,6 @@ public class OObjectEntityEnhancer {
       ((Proxy) newEntity).setHandler(mi);
       if (OObjectEntitySerializer.hasBoundedDocumentField(iClass))
         OObjectEntitySerializer.setFieldValue(OObjectEntitySerializer.getBoundedDocumentField(iClass), newEntity, doc);
-      OObjectEntitySerializer.setVersionField(iClass, newEntity, doc.getVersion());
       return newEntity;
     } catch (InstantiationException ie) {
       OLogManager.instance().error(this, "Error creating proxied instance for class " + iClass.getName(), ie);
@@ -256,7 +256,7 @@ public class OObjectEntityEnhancer {
   protected <T> T createInstanceNoParameters(Class<T> iProxiedClass, Class<?> iOriginalClass) throws SecurityException,
       NoSuchMethodException, IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException {
     T instanceToReturn = null;
-    final Class<?> enclosingClass = OObjectEntitySerializer.getEnclosingClass(iOriginalClass);
+    final Class<?> enclosingClass = iOriginalClass.getEnclosingClass();
 
     if (enclosingClass != null && !Modifier.isStatic(iOriginalClass.getModifiers())) {
       Object instanceOfEnclosingClass = createInstanceNoParameters(enclosingClass, enclosingClass);
@@ -270,7 +270,7 @@ public class OObjectEntityEnhancer {
       try {
         instanceToReturn = iProxiedClass.newInstance();
       } catch (InstantiationException e) {
-        OLogManager.instance().error(this, "Cannot create an instance of the enclosing class '%s'", e, iOriginalClass);
+        OLogManager.instance().error(this, "Cannot create an instance of the enclosing class '%s'", iOriginalClass);
         throw e;
       }
     }

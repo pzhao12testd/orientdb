@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,18 +14,21 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.orient.core.storage.impl.local.paginated;
 
+import java.io.IOException;
+
 import com.orientechnologies.common.serialization.types.OLongSerializer;
 import com.orientechnologies.orient.core.storage.cache.OCacheEntry;
 import com.orientechnologies.orient.core.storage.impl.local.paginated.base.ODurablePage;
+import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChangesTree;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 20.08.13
  */
 public class OPaginatedClusterState extends ODurablePage {
@@ -33,11 +36,11 @@ public class OPaginatedClusterState extends ODurablePage {
   private static final int SIZE_OFFSET         = RECORDS_SIZE_OFFSET + OLongSerializer.LONG_SIZE;
   private static final int FREE_LIST_OFFSET    = SIZE_OFFSET + OLongSerializer.LONG_SIZE;
 
-  public OPaginatedClusterState(OCacheEntry cacheEntry) {
-    super(cacheEntry);
+  public OPaginatedClusterState(OCacheEntry cacheEntry, OWALChangesTree changesTree) {
+    super(cacheEntry, changesTree);
   }
 
-  public void setSize(long size) {
+  public void setSize(long size) throws IOException {
     setLongValue(SIZE_OFFSET, size);
   }
 
@@ -45,7 +48,7 @@ public class OPaginatedClusterState extends ODurablePage {
     return getLongValue(SIZE_OFFSET);
   }
 
-  public void setRecordsSize(long recordsSize) {
+  public void setRecordsSize(long recordsSize) throws IOException {
     setLongValue(RECORDS_SIZE_OFFSET, recordsSize);
   }
 
@@ -53,7 +56,7 @@ public class OPaginatedClusterState extends ODurablePage {
     return getLongValue(RECORDS_SIZE_OFFSET);
   }
 
-  public void setFreeListPage(int index, long pageIndex) {
+  public void setFreeListPage(int index, long pageIndex) throws IOException {
     setLongValue(FREE_LIST_OFFSET + index * OLongSerializer.LONG_SIZE, pageIndex);
   }
 

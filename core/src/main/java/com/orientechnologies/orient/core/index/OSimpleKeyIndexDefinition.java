@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -33,7 +33,6 @@ import java.util.Collections;
 import java.util.List;
 
 public class OSimpleKeyIndexDefinition extends OAbstractIndexDefinition {
-  private static final long serialVersionUID = -1264300379465791244L;
   private OType[] keyTypes;
 
   public OSimpleKeyIndexDefinition(int version, final OType... keyTypes) {
@@ -48,8 +47,7 @@ public class OSimpleKeyIndexDefinition extends OAbstractIndexDefinition {
   public OSimpleKeyIndexDefinition(OType[] keyTypes2, List<OCollate> collatesList, int version) {
     super();
 
-    this.keyTypes = Arrays.copyOf(keyTypes2, keyTypes2.length);
-
+    this.keyTypes = keyTypes2;
     if (keyTypes.length > 1) {
       OCompositeCollate collate = new OCompositeCollate(this);
       if (collatesList != null) {
@@ -57,10 +55,8 @@ public class OSimpleKeyIndexDefinition extends OAbstractIndexDefinition {
           collate.addCollate(oCollate);
         }
       } else {
-        final int typesSize = keyTypes.length;
-        final OCollate defCollate = OSQLEngine.getCollate(ODefaultCollate.NAME);
-        for (int i = 0; i < typesSize; i++) {
-          collate.addCollate(defCollate);
+        for (OType type : keyTypes) {
+          collate.addCollate(OSQLEngine.getCollate(ODefaultCollate.NAME));
         }
       }
       this.collate = collate;
@@ -109,7 +105,7 @@ public class OSimpleKeyIndexDefinition extends OAbstractIndexDefinition {
   }
 
   public OType[] getTypes() {
-    return Arrays.copyOf(keyTypes, keyTypes.length);
+    return keyTypes;
   }
 
   @Override
@@ -165,16 +161,14 @@ public class OSimpleKeyIndexDefinition extends OAbstractIndexDefinition {
     if (collate != null) {
       setCollate(collate);
     } else {
-      final List<String> collatesNames = document.field("collates");
-      if( collatesNames != null ) {
-        OCompositeCollate collates = new OCompositeCollate(this);
-        for (String collateName : collatesNames)
-          collates.addCollate(OSQLEngine.getCollate(collateName));
-        this.collate = collates;
-      }
+      List<String> collatesNames = document.field("collates");
+      OCompositeCollate collates = new OCompositeCollate(this);
+      for (String collateName : collatesNames)
+        collates.addCollate(OSQLEngine.getCollate(collateName));
+      this.collate = collates;
     }
 
-    setNullValuesIgnored(!Boolean.FALSE.equals(document.<Boolean>field("nullValuesIgnored")));
+    setNullValuesIgnored(!Boolean.FALSE.equals(document.<Boolean> field("nullValuesIgnored")));
   }
 
   public Object getDocumentValueToIndex(final ODocument iDocument) {
@@ -209,13 +203,13 @@ public class OSimpleKeyIndexDefinition extends OAbstractIndexDefinition {
 
   /**
    * {@inheritDoc}
-   *
+   * 
    * @param indexName
    * @param indexType
    */
   public String toCreateIndexDDL(final String indexName, final String indexType, final String engine) {
-    final StringBuilder ddl = new StringBuilder("create index `");
-    ddl.append(indexName).append("` ").append(indexType).append(' ');
+    final StringBuilder ddl = new StringBuilder("create index ");
+    ddl.append(indexName).append(' ').append(indexType).append(' ');
 
     if (keyTypes != null && keyTypes.length > 0) {
       ddl.append(keyTypes[0].toString());

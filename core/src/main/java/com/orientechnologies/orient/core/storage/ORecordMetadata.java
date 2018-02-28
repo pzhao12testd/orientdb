@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,32 +14,33 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 
 package com.orientechnologies.orient.core.storage;
 
 import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.version.ORecordVersion;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin
  * @since 18.12.12
  */
 public final class ORecordMetadata {
-  private final ORID recordId;
-  private final int  recordVersion;
+	private final ORID recordId;
+	private final ORecordVersion recordVersion;
 
-  public ORecordMetadata(ORID recordId, int recordVersion) {
-    this.recordId = recordId;
-    this.recordVersion = recordVersion;
-  }
+	public ORecordMetadata(ORID recordId, ORecordVersion recordVersion) {
+		this.recordId = recordId;
+		this.recordVersion = recordVersion;
+	}
 
-  public ORID getRecordId() {
-    return recordId;
-  }
+	public ORID getRecordId() {
+		return recordId;
+	}
 
-  public int getVersion() {
-    return recordVersion;
-  }
+	public ORecordVersion getRecordVersion() {
+		return recordVersion;
+	}
 }

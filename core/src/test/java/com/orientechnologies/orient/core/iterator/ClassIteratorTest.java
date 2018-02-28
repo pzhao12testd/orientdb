@@ -1,58 +1,30 @@
 package com.orientechnologies.orient.core.iterator;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.metadata.schema.clusterselection.ODefaultClusterSelectionStrategy;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.util.HashSet;
-import java.util.Set;
+import com.orientechnologies.orient.core.storage.OStorage.LOCKING_STRATEGY;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
 /**
  * @author Artem Loginov
  */
+@Test
 public class ClassIteratorTest {
-  private static final boolean             RECREATE_DATABASE = true;
-  private static       ODatabaseDocumentTx db                = null;
-  private Set<String> names;
+  private static final boolean       RECREATE_DATABASE = true;
+  private static ODatabaseDocumentTx db                = null;
+  private Set<String>                names;
 
-  private static void initializeDatabase() {
-    db = new ODatabaseDocumentTx("memory:" + ClassIteratorTest.class.getSimpleName());
-    if (db.exists() && RECREATE_DATABASE) {
-      db.open("admin", "admin");
-      db.drop();
-      System.out.println("Dropped database.");
-    }
-    if (!db.exists()) {
-      db.create();
-      System.out.println("Created database.");
-
-      final OSchema schema = db.getMetadata().getSchema();
-
-      // Create Person class
-      final OClass personClass = schema.createClass("Person");
-      personClass.createProperty("First", OType.STRING).setMandatory(true).setNotNull(true).setMin("1");
-
-      System.out.println("Created schema.");
-    } else {
-      db.open("admin", "admin");
-    }
-  }
-
-  private static void createPerson(final String iClassName, final String first) {
-    // Create Person document
-    final ODocument personDoc = db.newInstance(iClassName);
-    personDoc.field("First", first);
-    personDoc.save();
-  }
-
-  @Before
+  @BeforeMethod
   public void setUp() throws Exception {
     initializeDatabase();
 
@@ -64,11 +36,11 @@ public class ClassIteratorTest {
     names.add("Daniel");
 
     for (String name : names) {
-      createPerson("Person", name);
+      createPerson(name);
     }
   }
 
-  @After
+  @AfterClass
   public void tearDown() throws Exception {
     if (!db.isClosed())
       db.close();
@@ -133,11 +105,13 @@ public class ClassIteratorTest {
     personClass.setDefaultClusterId(testClusterId);
 
     for (String name : names) {
-      createPerson("Person", name);
+      createPerson(name);
     }
 
     // Use descending class iterator.
-    final ORecordIteratorClass<ODocument> personIter = new ORecordIteratorClassDescendentOrder<ODocument>(db, db, "Person", true);
+    final ORecordIteratorClass<ODocument> personIter =
+        new ORecordIteratorClassDescendentOrder<ODocument>(
+            db, db, "Person", true, true, false, LOCKING_STRATEGY.DEFAULT);
 
     personIter.setRange(null, null); // open range
 
@@ -153,24 +127,33 @@ public class ClassIteratorTest {
     Assert.assertTrue(names.isEmpty());
   }
 
-  @Test
-  public void testMultipleClusters() throws Exception {
-    final OClass personClass = db.getMetadata().getSchema().createClass("PersonMultipleClusters", 4, null);
-    for (String name : names) {
-      createPerson("PersonMultipleClusters", name);
+  private static void initializeDatabase() {
+    db = new ODatabaseDocumentTx("memory:" + ClassIteratorTest.class.getSimpleName());
+    if (db.exists() && RECREATE_DATABASE) {
+      db.open("admin", "admin");
+      db.drop();
+      System.out.println("Dropped database.");
     }
+    if (!db.exists()) {
+      db.create();
+      System.out.println("Created database.");
 
-    final ORecordIteratorClass<ODocument> personIter = new ORecordIteratorClass<ODocument>(db, db, "PersonMultipleClusters", true);
+      final OSchema schema = db.getMetadata().getSchema();
 
-    int docNum = 0;
+      // Create Person class
+      final OClass personClass = schema.createClass("Person");
+      personClass.createProperty("First", OType.STRING).setMandatory(true).setNotNull(true).setMin("1");
 
-    while (personIter.hasNext()) {
-      final ODocument personDoc = personIter.next();
-      Assert.assertTrue(names.contains(personDoc.field("First")));
-      Assert.assertTrue(names.remove(personDoc.field("First")));
-      System.out.printf("Doc %d: %s\n", docNum++, personDoc.toString());
+      System.out.println("Created schema.");
+    } else {
+      db.open("admin", "admin");
     }
+  }
 
-    Assert.assertTrue(names.isEmpty());
+  private static void createPerson(final String first) {
+    // Create Person document
+    final ODocument personDoc = db.newInstance("Person");
+    personDoc.field("First", first);
+    personDoc.save();
   }
 }

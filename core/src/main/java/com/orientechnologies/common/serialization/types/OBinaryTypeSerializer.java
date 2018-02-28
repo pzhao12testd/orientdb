@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,17 +14,17 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.common.serialization.types;
 
+import com.orientechnologies.common.directmemory.ODirectMemoryPointer;
 import com.orientechnologies.common.serialization.OBinaryConverter;
 import com.orientechnologies.common.serialization.OBinaryConverterFactory;
-import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChanges;
+import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.OWALChangesTree;
 
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
@@ -35,9 +35,9 @@ import java.util.Arrays;
  * @since 20.01.12
  */
 public class OBinaryTypeSerializer implements OBinarySerializer<byte[]> {
-  public static final  OBinaryTypeSerializer INSTANCE  = new OBinaryTypeSerializer();
-  public static final  byte                  ID        = 17;
-  private static final OBinaryConverter      CONVERTER = OBinaryConverterFactory.getConverter();
+  public static final OBinaryTypeSerializer INSTANCE  = new OBinaryTypeSerializer();
+  public static final byte                  ID        = 17;
+  private static final OBinaryConverter     CONVERTER = OBinaryConverterFactory.getConverter();
 
   public int getObjectSize(int length) {
     return length + OIntegerSerializer.INT_SIZE;
@@ -55,8 +55,8 @@ public class OBinaryTypeSerializer implements OBinarySerializer<byte[]> {
 
   public byte[] deserialize(final byte[] stream, final int startPosition) {
     final int len = OIntegerSerializer.INSTANCE.deserializeLiteral(stream, startPosition);
-    return Arrays
-        .copyOfRange(stream, startPosition + OIntegerSerializer.INT_SIZE, startPosition + OIntegerSerializer.INT_SIZE + len);
+    return Arrays.copyOfRange(stream, startPosition + OIntegerSerializer.INT_SIZE, startPosition + OIntegerSerializer.INT_SIZE
+        + len);
   }
 
   public int getObjectSize(final byte[] stream, final int startPosition) {
@@ -75,8 +75,43 @@ public class OBinaryTypeSerializer implements OBinarySerializer<byte[]> {
 
   public byte[] deserializeNativeObject(byte[] stream, int startPosition) {
     final int len = CONVERTER.getInt(stream, startPosition, ByteOrder.nativeOrder());
-    return Arrays
-        .copyOfRange(stream, startPosition + OIntegerSerializer.INT_SIZE, startPosition + OIntegerSerializer.INT_SIZE + len);
+    return Arrays.copyOfRange(stream, startPosition + OIntegerSerializer.INT_SIZE, startPosition + OIntegerSerializer.INT_SIZE
+        + len);
+  }
+
+  @Override
+  public void serializeInDirectMemoryObject(final byte[] object, final ODirectMemoryPointer pointer, long offset,
+      final Object... hints) {
+    final int len = object.length;
+    pointer.setInt(offset, len);
+    offset += OIntegerSerializer.INT_SIZE;
+    pointer.set(offset, object, 0, len);
+  }
+
+  @Override
+  public byte[] deserializeFromDirectMemoryObject(ODirectMemoryPointer pointer, long offset) {
+    int len = pointer.getInt(offset);
+    offset += OIntegerSerializer.INT_SIZE;
+
+    return pointer.get(offset, len);
+  }
+
+  @Override
+  public byte[] deserializeFromDirectMemoryObject(OWALChangesTree.PointerWrapper wrapper, long offset) {
+    int len = wrapper.getShort(offset);
+    offset += OIntegerSerializer.INT_SIZE;
+
+    return wrapper.get(offset, len);
+  }
+
+  @Override
+  public int getObjectSizeInDirectMemory(ODirectMemoryPointer pointer, long offset) {
+    return pointer.getInt(offset) + OIntegerSerializer.INT_SIZE;
+  }
+
+  @Override
+  public int getObjectSizeInDirectMemory(OWALChangesTree.PointerWrapper wrapper, long offset) {
+    return wrapper.getInt(offset) + OIntegerSerializer.INT_SIZE;
   }
 
   public byte getId() {
@@ -94,52 +129,5 @@ public class OBinaryTypeSerializer implements OBinarySerializer<byte[]> {
   @Override
   public byte[] preprocess(byte[] value, Object... hints) {
     return value;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void serializeInByteBufferObject(byte[] object, ByteBuffer buffer, Object... hints) {
-    final int len = object.length;
-    buffer.putInt(len);
-    buffer.put(object);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public byte[] deserializeFromByteBufferObject(ByteBuffer buffer) {
-    final int len = buffer.getInt();
-    final byte[] result = new byte[len];
-    buffer.get(result);
-    return result;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getObjectSizeInByteBuffer(ByteBuffer buffer) {
-    return buffer.getInt() + OIntegerSerializer.INT_SIZE;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public byte[] deserializeFromByteBufferObject(ByteBuffer buffer, OWALChanges walChanges, int offset) {
-    final int len = walChanges.getIntValue(buffer, offset);
-    offset += OIntegerSerializer.INT_SIZE;
-    return walChanges.getBinaryValue(buffer, offset, len);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getObjectSizeInByteBuffer(ByteBuffer buffer, OWALChanges walChanges, int offset) {
-    return walChanges.getIntValue(buffer, offset) + OIntegerSerializer.INT_SIZE;
   }
 }

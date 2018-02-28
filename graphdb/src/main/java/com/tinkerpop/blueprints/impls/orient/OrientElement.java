@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
@@ -34,9 +34,9 @@ import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 import com.orientechnologies.orient.core.serialization.OSerializableStream;
 import com.orientechnologies.orient.core.storage.OStorage;
 import com.tinkerpop.blueprints.Edge;
@@ -55,18 +55,18 @@ import java.util.Map;
 
 /**
  * Base Graph Element where OrientVertex and OrientEdge classes extends from. Labels are managed as OrientDB classes.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com) (http://orientdb.com)
+ * 
+ * @author Luca Garulli (http://www.orientechnologies.com)
  */
-@SuppressWarnings("unchecked") public abstract class OrientElement
-    implements Element, OSerializableStream, Externalizable, OIdentifiable {
-  public static final  String  LABEL_FIELD_NAME          = "label";
-  public static final  Object  DEF_ORIGINAL_ID_FIELDNAME = "origId";
-  private static final long    serialVersionUID          = 1L;
-  protected            boolean classicDetachMode         = false;
+@SuppressWarnings("unchecked")
+public abstract class OrientElement implements Element, OSerializableStream, Externalizable, OIdentifiable {
+  public static final String                   LABEL_FIELD_NAME          = "label";
+  public static final Object                   DEF_ORIGINAL_ID_FIELDNAME = "origId";
+  private static final long                    serialVersionUID          = 1L;
+  protected boolean                            classicDetachMode         = false;
   protected transient OrientBaseGraph.Settings settings;
-  protected           OIdentifiable            rawElement;
-  private transient   OrientBaseGraph          graph;
+  protected OIdentifiable                      rawElement;
+  private transient OrientBaseGraph            graph;
 
   protected OrientElement(final OrientBaseGraph rawGraph, final OIdentifiable iRawElement) {
     if (classicDetachMode)
@@ -74,13 +74,11 @@ import java.util.Map;
     else
       graph = null;
 
-    if (graph == null)
-      graph = getGraph();
+    rawElement = iRawElement;
 
+    final OrientBaseGraph graph = getGraph();
     if (graph != null)
       settings = graph.settings;
-
-    rawElement = iRawElement;
   }
 
   public abstract String getLabel();
@@ -93,17 +91,11 @@ import java.util.Map;
   public abstract String getElementType();
 
   /**
-   * (Blueprints Extension) Gets all the properties from a Vertex or Edge in one shot.
-   *
-   * @return a map containing all the properties of the Vertex/Edge.
-   */
-  public abstract Map<String, Object> getProperties();
-
-  /**
    * Removes the Element from the Graph. In case the element is a Vertex, all the incoming and outgoing edges are automatically
    * removed too.
    */
-  void removeRecord() {
+  @Override
+  public void remove() {
     checkIfAttached();
 
     final OrientBaseGraph graph = getGraph();
@@ -111,13 +103,14 @@ import java.util.Map;
     graph.autoStartTransaction();
 
     if (checkDeletedInTx())
-      graph.throwRecordNotFoundException(getIdentity(), "The graph element with id " + getIdentity() + " not found");
+      throw new IllegalStateException("The elements " + getIdentity() + " has already been deleted");
 
     try {
       getRecord().load();
     } catch (ORecordNotFoundException e) {
-      graph.throwRecordNotFoundException(getIdentity(), e.getMessage());
+      throw new IllegalStateException("The elements " + getIdentity() + " has already been deleted", e);
     }
+
     getRecord().delete();
   }
 
@@ -143,12 +136,12 @@ import java.util.Map;
    * (Blueprints Extension) Sets multiple properties in one shot against Vertices and Edges. This improves performance avoiding to
    * save the graph element at every property set.<br>
    * Example:
-   * <p>
+   * 
    * <code>
    * vertex.setProperties( "name", "Jill", "age", 33, "city", "Rome", "born", "Victoria, TX" );
    * </code> You can also pass a Map of values as first argument. In this case all the map entries will be set as element
    * properties:
-   * <p>
+   * 
    * <code>
    * Map<String,Object> props = new HashMap<String,Object>();
    * props.put("name", "Jill");
@@ -157,30 +150,47 @@ import java.util.Map;
    * props.put("born", "Victoria, TX");
    * vertex.setProperties(props);
    * </code>
-   *
-   * @param fields Odd number of fields to set as repeating pairs of key, value, or if one parameter is received and it's a Map, the Map
-   *               entries are used as field key/value pairs.
+   * 
+   * @param fields
+   *          Odd number of fields to set as repeating pairs of key, value, or if one parameter is received and it's a Map, the Map
+   *          entries are used as field key/value pairs.
    * @param <T>
    * @return
    */
   public <T extends OrientElement> T setProperties(final Object... fields) {
     if (checkDeletedInTx())
-      graph.throwRecordNotFoundException(getIdentity(), "The graph element " + getIdentity() + " has been deleted");
-
+      throw new IllegalStateException("The vertex " + getIdentity() + " has been deleted");
     setPropertiesInternal(fields);
     save();
     return (T) this;
   }
 
   /**
-   * Sets a Property value.
-   *
-   * @param key   Property name
-   * @param value Property value
+   * (Blueprints Extension) Gets all the properties from a Vertex or Edge in one shot.
+   * 
+   * @return a map containing all the properties of the Vertex/Edge.
    */
-  @Override public void setProperty(final String key, final Object value) {
+  public Map<String, Object> getProperties() {
+    if (this.rawElement == null)
+      return null;
+    ODocument raw = this.rawElement.getRecord();
+    if (raw == null)
+      return null;
+    return raw.toMap();
+  }
+
+  /**
+   * Sets a Property value.
+   * 
+   * @param key
+   *          Property name
+   * @param value
+   *          Property value
+   */
+  @Override
+  public void setProperty(final String key, final Object value) {
     if (checkDeletedInTx())
-      graph.throwRecordNotFoundException(getIdentity(), "The graph element " + getIdentity() + " has been deleted");
+      throw new IllegalStateException("The vertex " + getIdentity() + " has been deleted");
 
     validateProperty(this, key, value);
     final OrientBaseGraph graph = getGraph();
@@ -196,13 +206,16 @@ import java.util.Map;
    * Sets a Property value specifying a type. This is useful when you don't have a schema on this property but you want to force the
    * type.
    *
-   * @param key   Property name
-   * @param value Property value
-   * @param iType Type to set
+   * @param key
+   *          Property name
+   * @param value
+   *          Property value
+   * @param iType
+   *          Type to set
    */
   public void setProperty(final String key, final Object value, final OType iType) {
     if (checkDeletedInTx())
-      graph.throwRecordNotFoundException(getIdentity(), "The graph element " + getIdentity() + " has been deleted");
+      throw new IllegalStateException("The vertex " + getIdentity() + " has been deleted");
 
     validateProperty(this, key, value);
 
@@ -216,11 +229,13 @@ import java.util.Map;
 
   /**
    * Removes a Property.
-   *
-   * @param key Property name
+   * 
+   * @param key
+   *          Property name
    * @return Old value if any
    */
-  @Override public <T> T removeProperty(final String key) {
+  @Override
+  public <T> T removeProperty(final String key) {
     if (checkDeletedInTx())
       throw new IllegalStateException("The vertex " + getIdentity() + " has been deleted");
 
@@ -237,11 +252,13 @@ import java.util.Map;
 
   /**
    * Returns a Property value.
-   *
-   * @param key Property name
+   * 
+   * @param key
+   *          Property name
    * @return Property value if any, otherwise NULL.
    */
-  @Override public <T> T getProperty(final String key) {
+  @Override
+  public <T> T getProperty(final String key) {
     if (key == null)
       return null;
 
@@ -253,32 +270,17 @@ import java.util.Map;
     else if (key.equals("_rid"))
       return (T) rawElement.getIdentity().toString();
 
-    final ODocument record = getRecord();
-    if (record == null)
-      // NO RECORD
-      return null;
-
-    final Object fieldValue = record.field(key);
-    if (graph != null && fieldValue instanceof OIdentifiable && !(((OIdentifiable) fieldValue).getRecord() instanceof OBlob)) {
-      ODocument fieldRecord = ((OIdentifiable) fieldValue).getRecord();
-      if (fieldRecord != null) {
-        final OClass schemaClass = fieldRecord.getSchemaClass();
-        if (schemaClass != null && (schemaClass.isVertexType() || schemaClass.isEdgeType())) {
-          // CONVERT IT TO VERTEX/EDGE
-          return (T) graph.getElement(fieldValue);
-        }
-      }
-      return (T) fieldValue;
-    } else if (!(fieldValue instanceof Map) && OMultiValue.isMultiValue(fieldValue) && OMultiValue
-        .getFirstValue(fieldValue) instanceof OIdentifiable) {
+    final Object fieldValue = getRecord().field(key);
+    if (graph != null && fieldValue instanceof OIdentifiable && !(((OIdentifiable) fieldValue).getRecord() instanceof ORecordBytes))
+      // CONVERT IT TO VERTEX/EDGE
+      return (T) graph.getElement(fieldValue);
+    else if (OMultiValue.isMultiValue(fieldValue) && OMultiValue.getFirstValue(fieldValue) instanceof OIdentifiable) {
       final OIdentifiable firstValue = (OIdentifiable) OMultiValue.getFirstValue(fieldValue);
 
       if (firstValue instanceof ODocument) {
         final ODocument document = (ODocument) firstValue;
 
-        /// clusterId -2 Is considered a projection so does not have a class but is a not embedded record
-        if (document.getIdentity().getClusterId() != -2 && (document.isEmbedded()
-            || ODocumentInternal.getImmutableSchemaClass(document) == null))
+        if (document.isEmbedded() || ODocumentInternal.getImmutableSchemaClass(document) == null)
           return (T) fieldValue;
       }
 
@@ -293,7 +295,8 @@ import java.util.Map;
   /**
    * Returns the Element Id assuring to save it if it's transient yet.
    */
-  @Override public Object getId() {
+  @Override
+  public Object getId() {
     return getIdentity();
   }
 
@@ -307,11 +310,14 @@ import java.util.Map;
   /**
    * (Blueprints Extension) Saves current element to a particular cluster. You don't need to call save() unless you're working
    * against Temporary Vertices.
-   *
-   * @param iClusterName Cluster name or null to use the default "E"
+   * 
+   * @param iClusterName
+   *          Cluster name or null to use the default "E"
    */
   public void save(final String iClusterName) {
-    final OrientBaseGraph graph = checkIfAttached();
+    checkIfAttached();
+
+    final OrientBaseGraph graph = getGraph();
     graph.setCurrentGraphInThreadLocal();
 
     if (rawElement instanceof ODocument)
@@ -322,35 +328,40 @@ import java.util.Map;
   }
 
   public int hashCode() {
-    return ((rawElement == null) ? toString().hashCode() : rawElement.hashCode());
+    return ((rawElement == null) ? 0 : rawElement.hashCode());
   }
 
   /**
    * (Blueprints Extension) Serializes the Element as byte[]
-   *
+   * 
    * @throws OSerializationException
    */
-  @Override public byte[] toStream() throws OSerializationException {
+  @Override
+  public byte[] toStream() throws OSerializationException {
     return rawElement.getIdentity().toString().getBytes();
   }
 
   /**
    * (Blueprints Extension) Fills the Element from a byte[]
-   *
-   * @param stream byte array representation of the object
+   * 
+   * @param stream
+   *          byte array representation of the object
    * @throws OSerializationException
    */
-  @Override public OSerializableStream fromStream(final byte[] stream) throws OSerializationException {
+  @Override
+  public OSerializableStream fromStream(final byte[] stream) throws OSerializationException {
     final ODocument record = getRecord();
     ((ORecordId) record.getIdentity()).fromString(new String(stream));
     return this;
   }
 
-  @Override public void writeExternal(final ObjectOutput out) throws IOException {
+  @Override
+  public void writeExternal(final ObjectOutput out) throws IOException {
     out.writeObject(rawElement != null ? rawElement.getIdentity() : null);
   }
 
-  @Override public void readExternal(final ObjectInput in) throws IOException, ClassNotFoundException {
+  @Override
+  public void readExternal(final ObjectInput in) throws IOException, ClassNotFoundException {
     rawElement = (OIdentifiable) in.readObject();
   }
 
@@ -358,51 +369,56 @@ import java.util.Map;
    * (Blueprints Extension) Locks current Element to prevent concurrent access. If lock is exclusive, then no concurrent threads can
    * read/write it. If the lock is shared, then concurrent threads can only read Element properties, but can't change them. Locks
    * can be freed by calling @unlock or when the current transaction is closed (committed or rollbacked).
-   *
-   * @param iExclusive True = Exclusive Lock, False = Shared Lock
+   * 
    * @see #lock(boolean)
+   * @param iExclusive
+   *          True = Exclusive Lock, False = Shared Lock
    */
-  @Override public void lock(final boolean iExclusive) {
-    ODatabaseRecordThreadLocal.instance().get().getTransaction()
+  @Override
+  public void lock(final boolean iExclusive) {
+    ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction()
         .lockRecord(this, iExclusive ? OStorage.LOCKING_STRATEGY.EXCLUSIVE_LOCK : OStorage.LOCKING_STRATEGY.SHARED_LOCK);
   }
 
   /**
    * (Blueprints Extension) Checks if an Element is locked
    */
-  @Override public boolean isLocked() {
-    return ODatabaseRecordThreadLocal.instance().get().getTransaction().isLockedRecord(this);
+  @Override
+  public boolean isLocked() {
+    return ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().isLockedRecord(this);
   }
 
-  @Override public OStorage.LOCKING_STRATEGY lockingStrategy() {
-    return ODatabaseRecordThreadLocal.instance().get().getTransaction().lockingStrategy(this);
+  @Override
+  public OStorage.LOCKING_STRATEGY lockingStrategy() {
+    return ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().lockingStrategy(this);
   }
 
   /**
    * (Blueprints Extension) Unlocks previous acquired @lock against the Element.
-   *
+   * 
    * @see #lock(boolean)
    */
-  @Override public void unlock() {
-    ODatabaseRecordThreadLocal.instance().get().getTransaction().unlockRecord(this);
+  @Override
+  public void unlock() {
+    ODatabaseRecordThreadLocal.INSTANCE.get().getTransaction().unlockRecord(this);
   }
 
   /**
    * (Blueprints Extension) Returns the record's identity.
    */
-  @Override public ORID getIdentity() {
+  @Override
+  public ORID getIdentity() {
     if (rawElement == null)
       return ORecordId.EMPTY_RECORD_ID;
 
     final ORID rid = rawElement.getIdentity();
-    if (!rid.isValid()) {
-      final OrientBaseGraph graph = getGraph();
-      if (graph != null) {
-        // SAVE THE RECORD TO OBTAIN A VALID RID
-        graph.setCurrentGraphInThreadLocal();
-        graph.autoStartTransaction();
-        save();
-      }
+    final OrientBaseGraph graph = getGraph();
+
+    if (!rid.isValid() && graph != null) {
+      // SAVE THE RECORD TO OBTAIN A VALID RID
+      graph.setCurrentGraphInThreadLocal();
+      graph.autoStartTransaction();
+      save();
     }
     return rid;
   }
@@ -410,7 +426,8 @@ import java.util.Map;
   /**
    * (Blueprints Extension) Returns the underlying record.
    */
-  @Override public ODocument getRecord() {
+  @Override
+  public ODocument getRecord() {
     if (rawElement == null)
       return null;
 
@@ -428,7 +445,7 @@ import java.util.Map;
 
   /**
    * (Blueprints Extension) Removes the reference to the current graph instance to let working offline. To reattach it use @attach.
-   * <p>
+   *
    * This methods works only in "classic detach/attach mode" when dettachment/attachment is done manually, by default it is done
    * automatically, and currently active graph connection will be used as graph elements owner.
    *
@@ -466,13 +483,14 @@ import java.util.Map;
   /**
    * (Blueprints Extension) Replaces current graph instance with new one on @detach -ed elements. Use this method to pass elements
    * between graphs or to switch between Tx and NoTx instances.
-   * <p>
+   * 
    * This methods works only in "classic detach/attach mode" when detachment/attachment is done manually, by default it is done
    * automatically, and currently active graph connection will be used as graph elements owner.
-   * <p>
-   * To set "classic detach/attach mode" please set custom database parameter <code>classicDetachMode</code> to <code>true</code>.
    *
-   * @param iNewGraph The new Graph instance to use.
+   * To set "classic detach/attach mode" please set custom database parameter <code>classicDetachMode</code> to <code>true</code>.
+   * 
+   * @param iNewGraph
+   *          The new Graph instance to use.
    * @return Current object to allow chained calls.
    * @see #detach(), #isDetached
    */
@@ -490,10 +508,10 @@ import java.util.Map;
 
   /**
    * (Blueprints Extension) Tells if the current element has been @detach ed.
-   * <p>
+   *
    * This methods works only in "classic detach/attach mode" when detachment/attachment is done manually, by default it is done
    * automatically, and currently active graph connection will be used as graph elements owner.
-   * <p>
+   * 
    * To set "classic detach/attach mode" please set custom database parameter <code>classicDetachMode</code> to <code>true</code>.
    *
    * @return True if detached, otherwise false
@@ -532,24 +550,24 @@ import java.util.Map;
 
   /**
    * (Blueprints Extension) Returns the Graph instance associated to the current element. On @detach ed elements returns NULL.
+   * 
    */
   public OrientBaseGraph getGraph() {
     if (classicDetachMode)
       return graph;
 
-    OrientBaseGraph result = OrientBaseGraph.getActiveGraph();
-    if (result == null && this.graph != null && !graph.isClosed()) {
-      result = graph;
-    }
-    return result;
+    return OrientBaseGraph.getActiveGraph();
   }
 
   /**
    * (Blueprints Extension) Validates an Element property.
-   *
-   * @param element Element instance
-   * @param key     Property name
-   * @param value   property value
+   * 
+   * @param element
+   *          Element instance
+   * @param key
+   *          Property name
+   * @param value
+   *          property value
    * @throws IllegalArgumentException
    */
   public final void validateProperty(final Element element, final String key, final Object value) throws IllegalArgumentException {
@@ -596,8 +614,9 @@ import java.util.Map;
   /**
    * Check if a class already exists, otherwise create it at the fly. If a transaction is running commit changes, create the class
    * and begin a new transaction.
-   *
-   * @param className Class's name
+   * 
+   * @param className
+   *          Class's name
    */
   protected String checkForClassInSchema(final String className) {
     if (className == null)
@@ -612,14 +631,16 @@ import java.util.Map;
     if (!schema.existsClass(className)) {
       // CREATE A NEW CLASS AT THE FLY
       try {
-        graph.executeOutsideTx(new OCallable<OClass, OrientBaseGraph>() {
+        graph
+            .executeOutsideTx(new OCallable<OClass, OrientBaseGraph>() {
 
-                                 @Override public OClass call(final OrientBaseGraph g) {
-                                   return schema.createClass(className, schema.getClass(getBaseClassName()));
+              @Override
+              public OClass call(final OrientBaseGraph g) {
+                return schema.createClass(className, schema.getClass(getBaseClassName()));
 
-                                 }
-                               }, "Committing the active transaction to create the new type '", className, "' as subclass of '", getBaseClassName(),
-            "'. The transaction will be reopen right after that. To avoid this behavior create the classes outside the transaction");
+              }
+            }, "Committing the active transaction to create the new type '", className, "' as subclass of '", getBaseClassName(),
+                "'. The transaction will be reopen right after that. To avoid this behavior create the classes outside the transaction");
 
       } catch (OSchemaException e) {
         if (!schema.existsClass(className))
@@ -658,12 +679,12 @@ import java.util.Map;
   /**
    * (Blueprints Extension) Sets multiple properties in one shot against Vertices and Edges without saving the element. This
    * improves performance avoiding to save the graph element at every property set. Example:
-   * <p>
+   *
    * <code>
    * vertex.setProperties( "name", "Jill", "age", 33, "city", "Rome", "born", "Victoria, TX" );
    * </code> You can also pass a Map of values as first argument. In this case all the map entries will be set as element
    * properties:
-   * <p>
+   *
    * <code>
    * Map<String,Object> props = new HashMap<String,Object>();
    * props.put("name", "Jill");
@@ -673,8 +694,9 @@ import java.util.Map;
    * vertex.setProperties(props);
    * </code>
    *
-   * @param fields Odd number of fields to set as repeating pairs of key, value, or if one parameter is received and it's a Map, the Map
-   *               entries are used as field key/value pairs.
+   * @param fields
+   *          Odd number of fields to set as repeating pairs of key, value, or if one parameter is received and it's a Map, the Map
+   *          entries are used as field key/value pairs.
    * @param <T>
    * @return
    */
@@ -706,8 +728,8 @@ import java.util.Map;
       } else {
         if (fields.length % 2 != 0)
           throw new IllegalArgumentException(
-              "Invalid fields: expecting a pairs of fields as String,Object or a single Map<String,Object>, but found: " + Arrays
-                  .toString(fields));
+              "Invalid fields: expecting a pairs of fields as String,Object or a single Map<String,Object>, but found: "
+                  + Arrays.toString(fields));
 
         // SET THE FIELDS
         for (int i = 0; i < fields.length; i += 2)

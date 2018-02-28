@@ -1,6 +1,6 @@
 /*
     *
-    *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+    *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
     *  *
     *  *  Licensed under the Apache License, Version 2.0 (the "License");
     *  *  you may not use this file except in compliance with the License.
@@ -14,61 +14,51 @@
     *  *  See the License for the specific language governing permissions and
     *  *  limitations under the License.
     *  *
-    *  * For more information: http://orientdb.com
+    *  * For more information: http://www.orientechnologies.com
     *
     */
 package com.orientechnologies.orient.server.network.protocol.http;
 
-import com.orientechnologies.orient.client.binary.OBinaryRequestExecutor;
-import com.orientechnologies.orient.core.config.OContextConfiguration;
-import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.orientechnologies.orient.server.OClientConnection;
-import com.orientechnologies.orient.server.OServer;
-import com.orientechnologies.orient.server.network.OServerNetworkListener;
-import com.orientechnologies.orient.server.network.protocol.http.command.post.OServerCommandPostImportDatabase;
-import com.orientechnologies.orient.server.network.protocol.http.command.post.OServerCommandPostUploadSingleFile;
+import com.orientechnologies.orient.core.OConstants;
+ import com.orientechnologies.orient.core.config.OContextConfiguration;
+ import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+ import com.orientechnologies.orient.server.OServer;
+ import com.orientechnologies.orient.server.network.OServerNetworkListener;
+ import com.orientechnologies.orient.server.network.protocol.http.command.post.OServerCommandPostImportDatabase;
+ import com.orientechnologies.orient.server.network.protocol.http.command.post.OServerCommandPostUploadSingleFile;
 
-import java.io.IOException;
-import java.net.Socket;
+ import java.io.IOException;
+ import java.net.Socket;
 
 public class ONetworkProtocolHttpDb extends ONetworkProtocolHttpAbstract {
-  private static final int CURRENT_PROTOCOL_VERSION = 10;
+   private static final String ORIENT_SERVER_DB         = "OrientDB Server v." + OConstants.getVersion();
+   private static final int    CURRENT_PROTOCOL_VERSION = 10;
 
-  public ONetworkProtocolHttpDb(OServer server) {
-    super(server);
-  }
+   @Override
+   public void config(final OServerNetworkListener iListener, final OServer iServer, final Socket iSocket,
+       final OContextConfiguration iConfiguration) throws IOException {
+     server = iServer;
+     setName("OrientDB HTTP Connection " + iSocket.getLocalAddress() + ":" + iSocket.getLocalPort() + "<-"
+         + iSocket.getRemoteSocketAddress());
 
-  @Override
-  public void config(final OServerNetworkListener iListener, final OServer iServer, final Socket iSocket,
-      final OContextConfiguration iConfiguration) throws IOException {
-    server = iServer;
-    setName("OrientDB HTTP Connection " + iSocket.getLocalAddress() + ":" + iSocket.getLocalPort() + "<-" + iSocket
-        .getRemoteSocketAddress());
+     super.config(iListener, server, iSocket, iConfiguration);
+     cmdManager.registerCommand(new OServerCommandPostImportDatabase());
+     cmdManager.registerCommand(new OServerCommandPostUploadSingleFile());
 
-    super.config(iListener, server, iSocket, iConfiguration);
-    cmdManager.registerCommand(new OServerCommandPostImportDatabase());
-    cmdManager.registerCommand(new OServerCommandPostUploadSingleFile());
+     connection.data.serverInfo = ORIENT_SERVER_DB;
+   }
 
-    connection.getData().serverInfo = iConfiguration.getValueAsString(OGlobalConfiguration.NETWORK_HTTP_SERVER_INFO);
-  }
+   @Override
+   public int getVersion() {
+     return CURRENT_PROTOCOL_VERSION;
+   }
 
-  @Override
-  public int getVersion() {
-    return CURRENT_PROTOCOL_VERSION;
-  }
+   public String getType() {
+     return "http";
+   }
 
-  public String getType() {
-    return "http";
-  }
-
-  @Override
-  protected void afterExecution() throws InterruptedException {
-    ODatabaseRecordThreadLocal.instance().remove();
-  }
-
-  @Override
-  public OBinaryRequestExecutor executor(OClientConnection connection) {
-    return null;
-  }
-}
+   @Override
+   protected void afterExecution() throws InterruptedException {
+     ODatabaseRecordThreadLocal.INSTANCE.remove();
+   }
+ }

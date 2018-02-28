@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,13 +27,13 @@ import javax.persistence.Embedded;
 import javax.persistence.Id;
 import javax.persistence.Version;
 
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 import com.orientechnologies.orient.test.domain.business.Child;
 import com.orientechnologies.orient.test.domain.business.IdentityChild;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class JavaComplexTestClass {
@@ -45,7 +45,7 @@ public class JavaComplexTestClass {
   @Embedded
   private ODocument                 embeddedDocument;
   private ODocument                 document;
-  private OBlob                     byteArray;
+  private ORecordBytes              byteArray;
   private String                    name;
   private EnumTest                  enumField;
   private Child                     child;
@@ -135,11 +135,11 @@ public class JavaComplexTestClass {
     this.embeddedDocument = embeddedDocument;
   }
 
-  public OBlob getByteArray() {
+  public ORecordBytes getByteArray() {
     return byteArray;
   }
 
-  public void setByteArray(OBlob byteArray) {
+  public void setByteArray(ORecordBytes byteArray) {
     this.byteArray = byteArray;
   }
 

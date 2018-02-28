@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,12 +30,14 @@ import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.orientechnologies.orient.core.util.ODateHelper;
 import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
+
 import org.testng.Assert;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 @SuppressWarnings("unchecked")
 @Test
@@ -397,7 +399,7 @@ public class JSONTest extends DocumentDBBaseTest {
 
   public void testSpecialChar() {
     ODocument doc = new ODocument().fromJSON("{name:{\"%Field\":[\"value1\",\"value2\"],\"%Field2\":{},\"%Field3\":\"value3\"}}");
-    doc.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc.save();
 
     ODocument doc2 = database.load(doc.getIdentity());
     Assert.assertEquals(doc, doc2);
@@ -432,7 +434,7 @@ public class JSONTest extends DocumentDBBaseTest {
   public void testSpecialChars() {
     ODocument doc = new ODocument()
         .fromJSON("{Field:{\"Key1\":[\"Value1\",\"Value2\"],\"Key2\":{\"%%dummy%%\":null},\"Key3\":\"Value3\"}}");
-    doc.save(database.getClusterNameById(database.getDefaultClusterId()));
+    doc.save();
 
     ODocument doc2 = database.load(doc.getIdentity());
     Assert.assertEquals(doc, doc2);

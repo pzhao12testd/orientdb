@@ -1,18 +1,19 @@
 package com.orientechnologies.orient.core.sql.functions.stat;
 
-import org.junit.Before;
-import org.junit.Test;
+import static org.testng.Assert.*;
 
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
+@Test
 public class OSQLFunctionModeTest {
 
   private OSQLFunctionMode mode;
 
-  @Before
+  @BeforeMethod
   public void setup() {
     mode = new OSQLFunctionMode() {
       @Override

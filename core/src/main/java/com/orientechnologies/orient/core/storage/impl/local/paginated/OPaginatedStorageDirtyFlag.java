@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,85 +14,66 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 
 package com.orientechnologies.orient.core.storage.impl.local.paginated;
 
-import com.orientechnologies.common.io.OIOUtils;
-import com.orientechnologies.common.log.OLogManager;
-import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.orientechnologies.orient.core.exception.OStorageException;
-
+import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.OverlappingFileLockException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.io.RandomAccessFile;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 5/6/14
  */
 public class OPaginatedStorageDirtyFlag {
-  private final Path        dirtyFilePath;
-  private       FileChannel channel;
-  private       FileLock    fileLock;
+  private final String     dirtyFilePath;
 
+  private File             dirtyFile;
+  private RandomAccessFile dirtyFileData;
   private volatile boolean dirtyFlag;
 
-  private final Lock lock = new ReentrantLock();
+  private final Lock       lock = new ReentrantLock();
 
-  public OPaginatedStorageDirtyFlag(Path dirtyFilePath) {
+  public OPaginatedStorageDirtyFlag(String dirtyFilePath) {
     this.dirtyFilePath = dirtyFilePath;
   }
 
   public void create() throws IOException {
     lock.lock();
     try {
+      dirtyFile = new File(dirtyFilePath);
 
-      if (Files.exists(dirtyFilePath)) {
-        Files.delete(dirtyFilePath);
+      if (dirtyFile.exists()) {
+        final boolean fileDeleted = dirtyFile.delete();
+
+        if (!fileDeleted)
+          throw new IllegalStateException("Cannot delete file : " + dirtyFilePath);
       }
 
-      channel = FileChannel.open(dirtyFilePath, StandardOpenOption.READ, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-      if (OGlobalConfiguration.FILE_LOCK.getValueAsBoolean()) {
-        lockFile();
-      }
+      final boolean fileCreated = dirtyFile.createNewFile();
+      if (!fileCreated)
+        throw new IllegalStateException("Cannot create file : " + dirtyFilePath);
 
-      final ByteBuffer buffer = ByteBuffer.allocate(1);
-      buffer.put((byte) 1);
-      buffer.position(0);
+      dirtyFileData = new RandomAccessFile(dirtyFile, "rwd");
 
-      OIOUtils.writeByteBuffer(buffer, channel, 0);
-
+      dirtyFileData.seek(0);
+      dirtyFileData.writeBoolean(true);
       dirtyFlag = true;
+
     } finally {
       lock.unlock();
     }
   }
 
-  private void lockFile() throws IOException {
-    try {
-      fileLock = channel.tryLock();
-    } catch (OverlappingFileLockException e) {
-      OLogManager.instance().warn(this, "File is already locked by other thread", e);
-    }
-
-    if (fileLock == null)
-      throw new OStorageException("Database is locked by another process, please shutdown process and try again");
-  }
-
   public boolean exists() {
     lock.lock();
     try {
-      return Files.exists(dirtyFilePath);
+      return new File(dirtyFilePath).exists();
     } finally {
       lock.unlock();
     }
@@ -101,24 +82,14 @@ public class OPaginatedStorageDirtyFlag {
   public void open() throws IOException {
     lock.lock();
     try {
-      if (!Files.exists(dirtyFilePath)) {
-        channel = FileChannel.open(dirtyFilePath, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.CREATE);
+      dirtyFile = new File(dirtyFilePath);
+      if (!dirtyFile.exists())
+        throw new IllegalStateException("File '" + dirtyFilePath + "' does not exist.");
 
-        ByteBuffer buffer = ByteBuffer.allocate(1);
-        OIOUtils.writeByteBuffer(buffer, channel, 0);
-      } else {
-        channel = FileChannel.open(dirtyFilePath, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.CREATE);
-      }
+      dirtyFileData = new RandomAccessFile(dirtyFile, "rwd");
 
-      if (OGlobalConfiguration.FILE_LOCK.getValueAsBoolean()) {
-        lockFile();
-      }
-
-      ByteBuffer buffer = ByteBuffer.allocate(1);
-      OIOUtils.readByteBuffer(buffer, channel, 0, true);
-
-      buffer.position(0);
-      dirtyFlag = buffer.get() > 0;
+      dirtyFileData.seek(0);
+      dirtyFlag = dirtyFileData.readBoolean();
     } finally {
       lock.unlock();
     }
@@ -127,18 +98,11 @@ public class OPaginatedStorageDirtyFlag {
   public void close() throws IOException {
     lock.lock();
     try {
-      if (channel == null)
+      if (dirtyFile == null)
         return;
 
-      if (Files.exists(dirtyFilePath)) {
-        if (fileLock != null) {
-          fileLock.release();
-          fileLock = null;
-        }
-
-        channel.close();
-        channel = null;
-      }
+      if (dirtyFile.exists())
+        dirtyFileData.close();
 
     } finally {
       lock.unlock();
@@ -148,20 +112,17 @@ public class OPaginatedStorageDirtyFlag {
   public void delete() throws IOException {
     lock.lock();
     try {
-      if (channel == null)
+      if (dirtyFile == null)
         return;
 
-      if (Files.exists(dirtyFilePath)) {
+      if (dirtyFile.exists()) {
 
-        if (fileLock != null) {
-          fileLock.release();
-          fileLock = null;
+        dirtyFileData.close();
+
+        boolean deleted = dirtyFile.delete();
+        while (!deleted) {
+          deleted = !dirtyFile.exists() || dirtyFile.delete();
         }
-
-        channel.close();
-        channel = null;
-
-        Files.delete(dirtyFilePath);
       }
     } finally {
       lock.unlock();
@@ -177,12 +138,8 @@ public class OPaginatedStorageDirtyFlag {
       if (dirtyFlag)
         return;
 
-      final ByteBuffer buffer = ByteBuffer.allocate(1);
-      buffer.put((byte) 1);
-      buffer.position(0);
-
-      OIOUtils.writeByteBuffer(buffer, channel, 0);
-
+      dirtyFileData.seek(0);
+      dirtyFileData.writeBoolean(true);
       dirtyFlag = true;
     } finally {
       lock.unlock();
@@ -198,9 +155,8 @@ public class OPaginatedStorageDirtyFlag {
       if (!dirtyFlag)
         return;
 
-      final ByteBuffer buffer = ByteBuffer.allocate(1);
-      OIOUtils.writeByteBuffer(buffer, channel, 0);
-
+      dirtyFileData.seek(0);
+      dirtyFileData.writeBoolean(false);
       dirtyFlag = false;
     } finally {
       lock.unlock();

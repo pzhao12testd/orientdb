@@ -10,26 +10,16 @@ public class OInsertSetExpression {
   protected OIdentifier left;
   protected OExpression right;
 
-  public void toString(Map<Object, Object> params, StringBuilder builder) {
-    left.toString(params, builder);
-    builder.append(" = ");
-    right.toString(params, builder);
-
+  public void replaceParameters(Map<Object, Object> params) {
+    right.replaceParameters(params);
   }
 
-  public OInsertSetExpression copy() {
-    OInsertSetExpression result = new OInsertSetExpression();
-    result.left = left == null ? null : left.copy();
-    result.right = right == null ? null : right.copy();
-    return result;
-  }
-
-  public OIdentifier getLeft() {
-    return left;
-  }
-
-  public OExpression getRight() {
-    return right;
+  @Override
+  public String toString() {
+    StringBuilder result = new StringBuilder();
+    result.append(left.toString());
+    result.append(" = ");
+    result.append(right.toString());
+    return result.toString();
   }
 }
-

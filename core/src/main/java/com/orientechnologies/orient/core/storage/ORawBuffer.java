@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,83 +14,58 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.storage;
-
-import com.orientechnologies.orient.core.record.ORecord;
-import com.orientechnologies.orient.core.record.ORecordInternal;
-import com.orientechnologies.orient.core.type.OBuffer;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
+import com.orientechnologies.orient.core.record.ORecord;
+import com.orientechnologies.orient.core.record.ORecordInternal;
+import com.orientechnologies.orient.core.type.OBuffer;
+import com.orientechnologies.orient.core.version.ORecordVersion;
+import com.orientechnologies.orient.core.version.OVersionFactory;
+
 public class ORawBuffer extends OBuffer {
-  public int  version;
-  public byte recordType;
+  public ORecordVersion version;
+  public byte           recordType;
 
   /**
    * Constructor used by serialization.
    */
   public ORawBuffer() {
-    version = 0;
+    version = OVersionFactory.instance().createVersion();
   }
 
-  @SuppressFBWarnings("EI_EXPOSE_REP2")
-  public ORawBuffer(final byte[] buffer, final int version, final byte recordType) {
+  public ORawBuffer(final byte[] buffer, final ORecordVersion version, final byte recordType) {
     this.buffer = buffer;
-    this.version = version;
+    this.version = version.copy();
     this.recordType = recordType;
   }
 
   /**
    * Creates a new object by the record received.
+   * 
+   * @param iRecord
    */
   public ORawBuffer(final ORecord iRecord) {
     this.buffer = iRecord.toStream();
-    this.version = iRecord.getVersion();
+    this.version = iRecord.getRecordVersion().copy();
     this.recordType = ORecordInternal.getRecordType(iRecord);
   }
 
-  @Override
   public void readExternal(final ObjectInput iInput) throws IOException, ClassNotFoundException {
     super.readExternal(iInput);
-    version = iInput.readInt();
+    version.getSerializer().readFrom(iInput, version);
     recordType = iInput.readByte();
   }
 
-  @Override
   public void writeExternal(final ObjectOutput iOutput) throws IOException {
     super.writeExternal(iOutput);
-    iOutput.writeInt(version);
-    iOutput.writeByte(recordType);
-  }
-
-  @Override
-  public boolean equals(final Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-    if (!super.equals(o))
-      return false;
-
-    ORawBuffer that = (ORawBuffer) o;
-
-    if (recordType != that.recordType)
-      return false;
-    return version == that.version;
-
-  }
-
-  @Override
-  public int hashCode() {
-    int result = super.hashCode();
-    result = 31 * result + version;
-    result = 31 * result + (int) recordType;
-    return result;
+    version.getSerializer().writeTo(iOutput, version);
+    iOutput.write(recordType);
   }
 }

@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.metadata.security;
@@ -22,7 +22,7 @@ package com.orientechnologies.orient.core.metadata.security;
 /**
  * Contains all the resources used by the Database instance to check permissions
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * @see OUser, OSecurity
  */
 public class ODatabaseSecurityResources {
@@ -36,7 +36,6 @@ public class ODatabaseSecurityResources {
   public final static String ALL_CLUSTERS      = "database.cluster.*";
   public final static String SYSTEMCLUSTERS    = "database.systemclusters";
   public final static String COMMAND           = "database.command";
-  public final static String COMMAND_GREMLIN   = "database.command.gremlin";
   public final static String FUNCTION          = "database.function";
   public final static String DATABASE_CONFIG   = "database.config";
   public final static String BYPASS_RESTRICTED = "database.bypassRestricted";

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,16 +14,15 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server;
 
+import com.orientechnologies.common.console.DefaultConsoleReader;
 import com.orientechnologies.common.console.OConsoleReader;
-import com.orientechnologies.common.console.ODefaultConsoleReader;
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.io.OFileUtils;
-import com.orientechnologies.common.log.OAnsiCode;
+import com.orientechnologies.common.io.OIOUtils;
 import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.parser.OSystemVariableResolver;
 import com.orientechnologies.common.profiler.OAbstractProfiler.OProfilerHookValue;
@@ -32,27 +31,36 @@ import com.orientechnologies.orient.core.OConstants;
 import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.config.OContextConfiguration;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.orientechnologies.orient.core.db.*;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTxInternal;
+import com.orientechnologies.orient.core.db.ODatabase;
+import com.orientechnologies.orient.core.db.ODatabaseInternal;
+import com.orientechnologies.orient.core.db.OPartitionedDatabasePoolFactory;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.exception.OConfigurationException;
 import com.orientechnologies.orient.core.exception.ODatabaseException;
+import com.orientechnologies.orient.core.exception.OSecurityAccessException;
+import com.orientechnologies.orient.core.exception.OSecurityException;
 import com.orientechnologies.orient.core.exception.OStorageException;
+import com.orientechnologies.orient.core.metadata.security.ORole;
 import com.orientechnologies.orient.core.metadata.security.OToken;
+import com.orientechnologies.orient.core.metadata.security.OUser;
 import com.orientechnologies.orient.core.security.OSecurityManager;
+import com.orientechnologies.orient.core.storage.OStorage;
+import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
+import com.orientechnologies.orient.core.storage.impl.local.paginated.OLocalPaginatedStorage;
+import com.orientechnologies.orient.core.storage.impl.memory.ODirectMemoryStorage;
 import com.orientechnologies.orient.server.config.*;
+import com.orientechnologies.orient.server.distributed.ODistributedAbstractPlugin;
 import com.orientechnologies.orient.server.distributed.ODistributedServerManager;
 import com.orientechnologies.orient.server.handler.OConfigurableHooksManager;
 import com.orientechnologies.orient.server.network.OServerNetworkListener;
 import com.orientechnologies.orient.server.network.OServerSocketFactory;
 import com.orientechnologies.orient.server.network.protocol.ONetworkProtocol;
 import com.orientechnologies.orient.server.network.protocol.ONetworkProtocolData;
-import com.orientechnologies.orient.server.network.protocol.http.ONetworkProtocolHttpDb;
 import com.orientechnologies.orient.server.plugin.OServerPlugin;
 import com.orientechnologies.orient.server.plugin.OServerPluginInfo;
 import com.orientechnologies.orient.server.plugin.OServerPluginManager;
-import com.orientechnologies.orient.server.security.ODefaultServerSecurity;
-import com.orientechnologies.orient.server.security.OServerSecurity;
-import com.orientechnologies.orient.server.token.OTokenHandlerImpl;
+import com.orientechnologies.orient.server.security.OSecurityServerUser;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
@@ -63,67 +71,57 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.security.SecureRandom;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class OServer {
-  private static final String ROOT_PASSWORD_VAR = "ORIENTDB_ROOT_PASSWORD";
-  private static ThreadGroup threadGroup;
-  private static Map<String, OServer> distributedServers = new ConcurrentHashMap<String, OServer>();
-  private       CountDownLatch startupLatch;
-  private       CountDownLatch shutdownLatch;
-  private final boolean        shutdownEngineOnExit;
-  protected          ReentrantLock lock           = new ReentrantLock();
-  protected volatile boolean       running        = false;
-  protected volatile boolean       rejectRequests = true;
-  protected OServerConfigurationManager serverCfg;
-  protected OContextConfiguration       contextConfiguration;
-  protected OServerShutdownHook         shutdownHook;
+  private static final String                              ROOT_PASSWORD_VAR      = "ORIENTDB_ROOT_PASSWORD";
+  private static ThreadGroup                               threadGroup;
+  private static Map<String, OServer>                      distributedServers     = new ConcurrentHashMap<String, OServer>();
+  private final CountDownLatch                             startupLatch           = new CountDownLatch(1);
+  protected ReentrantLock                                  lock                   = new ReentrantLock();
+  protected volatile boolean                               running                = false;
+  protected OServerConfigurationLoaderXml                  configurationLoader;
+  protected OServerConfiguration                           configuration;
+  protected OContextConfiguration                          contextConfiguration;
+  protected OServerShutdownHook                            shutdownHook;
   protected Map<String, Class<? extends ONetworkProtocol>> networkProtocols       = new HashMap<String, Class<? extends ONetworkProtocol>>();
   protected Map<String, OServerSocketFactory>              networkSocketFactories = new HashMap<String, OServerSocketFactory>();
   protected List<OServerNetworkListener>                   networkListeners       = new ArrayList<OServerNetworkListener>();
   protected List<OServerLifecycleListener>                 lifecycleListeners     = new ArrayList<OServerLifecycleListener>();
-  protected OServerPluginManager      pluginManager;
-  protected OConfigurableHooksManager hookManager;
-  protected ODistributedServerManager distributedManager;
-  protected OServerSecurity           serverSecurity;
-  private SecureRandom        random    = new SecureRandom();
-  private Map<String, Object> variables = new HashMap<String, Object>();
-  private String                   serverRootDirectory;
-  private String                   databaseDirectory;
-  private OClientConnectionManager clientConnectionManager;
-  private OPushManager             pushManager;
-  private ClassLoader              extensionClassLoader;
-  private OTokenHandler            tokenHandler;
-  private OSystemDatabase          systemDatabase;
-  private OrientDB                 context;
-  private OrientDBInternal         databases;
-  protected Date startedOn = new Date();
+  protected OServerPluginManager                           pluginManager;
+  protected OConfigurableHooksManager                      hookManager;
+  protected ODistributedServerManager                      distributedManager;
+  private OPartitionedDatabasePoolFactory                  dbPoolFactory;
+  private Random                                           random                 = new Random();
+  private Map<String, Object>                              variables              = new HashMap<String, Object>();
+  private String                                           serverRootDirectory;
+  private String                                           databaseDirectory;
+  private final boolean                                    shutdownEngineOnExit;
+  private OClientConnectionManager                         clientConnectionManager;
 
-  public OServer()
-      throws ClassNotFoundException, MalformedObjectNameException, NullPointerException, InstanceAlreadyExistsException,
-      MBeanRegistrationException, NotCompliantMBeanException {
-    this(!Orient.instance().isInsideWebContainer());
+  private ClassLoader                                      extensionClassLoader;
+
+  public OServer() throws ClassNotFoundException, MalformedObjectNameException, NullPointerException,
+      InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+    this(true);
   }
 
-  public OServer(boolean shutdownEngineOnExit)
-      throws ClassNotFoundException, MalformedObjectNameException, NullPointerException, InstanceAlreadyExistsException,
-      MBeanRegistrationException, NotCompliantMBeanException {
-    final boolean insideWebContainer = Orient.instance().isInsideWebContainer();
-
-    if (insideWebContainer && shutdownEngineOnExit) {
-      OLogManager.instance().warnNoDb(this, "OrientDB instance is running inside of web application, "
-          + "it is highly unrecommended to force to shutdown OrientDB engine on server shutdown");
-    }
-
+  public OServer(boolean shutdownEngineOnExit) throws ClassNotFoundException, MalformedObjectNameException, NullPointerException,
+      InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
     this.shutdownEngineOnExit = shutdownEngineOnExit;
 
     serverRootDirectory = OSystemVariableResolver.resolveSystemVariables("${" + Orient.ORIENTDB_HOME + "}", ".");
 
-    OLogManager.instance().installCustomFormatter();
+    OLogManager.installCustomFormatter();
 
     defaultSettings();
 
@@ -136,59 +134,7 @@ public class OServer {
     if (OGlobalConfiguration.PROFILER_ENABLED.getValueAsBoolean() && !Orient.instance().getProfiler().isRecording())
       Orient.instance().getProfiler().startRecording();
 
-    if (shutdownEngineOnExit) {
-      shutdownHook = new OServerShutdownHook(this);
-    }
-  }
-
-  public static OServer startFromFileConfig(String config)
-      throws ClassNotFoundException, MalformedObjectNameException, InstanceAlreadyExistsException, NotCompliantMBeanException,
-      MBeanRegistrationException, InvocationTargetException, NoSuchMethodException, InstantiationException, IOException,
-      IllegalAccessException {
-    OServer server = new OServer(false);
-    server.startup(config);
-    server.activate();
-    return server;
-  }
-
-  public static OServer startFromClasspathConfig(String config)
-      throws ClassNotFoundException, MalformedObjectNameException, InstanceAlreadyExistsException, NotCompliantMBeanException,
-      MBeanRegistrationException, InvocationTargetException, NoSuchMethodException, InstantiationException, IOException,
-      IllegalAccessException {
-    OServer server = new OServer(false);
-    server.startup(Thread.currentThread().getContextClassLoader().getResourceAsStream(config));
-    server.activate();
-    return server;
-  }
-
-  public static OServer startFromStreamConfig(InputStream config)
-      throws ClassNotFoundException, MalformedObjectNameException, InstanceAlreadyExistsException, NotCompliantMBeanException,
-      MBeanRegistrationException, InvocationTargetException, NoSuchMethodException, InstantiationException, IOException,
-      IllegalAccessException {
-    OServer server = new OServer(false);
-    server.startup(config);
-    server.activate();
-    return server;
-  }
-
-  public static OServer getInstance(final String iServerId) {
-    return distributedServers.get(iServerId);
-  }
-
-  public static OServer getInstanceByPath(final String iPath) {
-    for (Map.Entry<String, OServer> entry : distributedServers.entrySet()) {
-      if (iPath.startsWith(entry.getValue().getDatabaseDirectory()))
-        return entry.getValue();
-    }
-    return null;
-  }
-
-  public static void registerServerInstance(final String iServerId, final OServer iServer) {
-    distributedServers.put(iServerId, iServer);
-  }
-
-  public static void unregisterServerInstance(final String iServerId) {
-    distributedServers.remove(iServerId);
+    shutdownHook = new OServerShutdownHook(this);
   }
 
   /**
@@ -210,43 +156,12 @@ public class OServer {
     return extensionClassLoader;
   }
 
-  public OServerSecurity getSecurity() {
-    return serverSecurity;
-  }
-
   public boolean isActive() {
     return running;
   }
 
   public OClientConnectionManager getClientConnectionManager() {
     return clientConnectionManager;
-  }
-
-  public OPushManager getPushManager() {
-    return pushManager;
-  }
-
-  public void saveConfiguration() throws IOException {
-    serverCfg.saveConfiguration();
-  }
-
-  public void restart() throws ClassNotFoundException, InvocationTargetException, InstantiationException, NoSuchMethodException,
-      IllegalAccessException, IOException {
-    try {
-      deinit();
-    } finally {
-      Orient.instance().startup();
-      startup(serverCfg.getConfiguration());
-      activate();
-    }
-  }
-
-  public OSystemDatabase getSystemDatabase() {
-    return systemDatabase;
-  }
-
-  public String getServerId() {
-    return getSystemDatabase().getServerId();
   }
 
   /**
@@ -267,7 +182,7 @@ public class OServer {
   }
 
   /**
-   * Attempt to load a class from givenstar class-loader.
+   * Attempt to load a class from given class-loader.
    */
   /* @Nullable */
   private Class<?> tryLoadClass(/* @Nullable */final ClassLoader classLoader, final String name) {
@@ -281,9 +196,24 @@ public class OServer {
     return null;
   }
 
-  public OServer startup()
-      throws InstantiationException, IllegalAccessException, ClassNotFoundException, IllegalArgumentException, SecurityException,
-      InvocationTargetException, NoSuchMethodException {
+  public static OServer getInstance(final String iServerId) {
+    return distributedServers.get(iServerId);
+  }
+
+  public static OServer getInstanceByPath(final String iPath) {
+    for (Map.Entry<String, OServer> entry : distributedServers.entrySet()) {
+      if (iPath.startsWith(entry.getValue().getDatabaseDirectory()))
+        return entry.getValue();
+    }
+    return null;
+  }
+
+  public static void registerServerInstance(final String iServerId, final OServer iServer) {
+    distributedServers.put(iServerId, iServer);
+  }
+
+  public OServer startup() throws InstantiationException, IllegalAccessException, ClassNotFoundException, IllegalArgumentException,
+      SecurityException, InvocationTargetException, NoSuchMethodException {
     String config = OServerConfiguration.DEFAULT_CONFIG_FILE;
     if (System.getProperty(OServerConfiguration.PROPERTY_CONFIG_FILE) != null)
       config = System.getProperty(OServerConfiguration.PROPERTY_CONFIG_FILE);
@@ -292,112 +222,75 @@ public class OServer {
 
     startup(new File(OSystemVariableResolver.resolveSystemVariables(config)));
 
+    Orient
+        .instance()
+        .getProfiler()
+        .registerHookValue("system.databases", "List of databases configured in Server", METRIC_TYPE.TEXT, new OProfilerHookValue() {
+            @Override
+            public Object getValue() {
+              final StringBuilder dbs = new StringBuilder(64);
+              for (String dbName : getAvailableStorageNames().keySet()) {
+                if (dbs.length()>0)
+                  dbs.append(',');
+                dbs.append(dbName);
+              }
+              return dbs.toString();
+            }
+          });
+
     return this;
   }
 
-  public OServer startup(final File iConfigurationFile)
-      throws InstantiationException, IllegalAccessException, ClassNotFoundException, IllegalArgumentException, SecurityException,
-      InvocationTargetException, NoSuchMethodException {
+  public OServer startup(final File iConfigurationFile) throws InstantiationException, IllegalAccessException,
+      ClassNotFoundException, IllegalArgumentException, SecurityException, InvocationTargetException, NoSuchMethodException {
     // Startup function split to allow pre-activation changes
-    try {
-      serverCfg = new OServerConfigurationManager(iConfigurationFile);
-      return startupFromConfiguration();
-
-    } catch (IOException e) {
-      final String message = "Error on reading server configuration from file: " + iConfigurationFile;
-      OLogManager.instance().error(this, message, e);
-      throw OException.wrapException(new OConfigurationException(message), e);
-    }
+    return startup(loadConfigurationFromFile(iConfigurationFile));
   }
 
-  public OServer startup(final String iConfiguration)
-      throws InstantiationException, IllegalAccessException, ClassNotFoundException, IllegalArgumentException, SecurityException,
-      InvocationTargetException, NoSuchMethodException, IOException {
+  public OServer startup(final String iConfiguration) throws InstantiationException, IllegalAccessException,
+      ClassNotFoundException, IllegalArgumentException, SecurityException, InvocationTargetException, NoSuchMethodException,
+      IOException {
     return startup(new ByteArrayInputStream(iConfiguration.getBytes()));
   }
 
-  public OServer startup(final InputStream iInputStream)
-      throws InstantiationException, IllegalAccessException, ClassNotFoundException, IllegalArgumentException, SecurityException,
-      InvocationTargetException, NoSuchMethodException, IOException {
+  public OServer startup(final InputStream iInputStream) throws InstantiationException, IllegalAccessException,
+      ClassNotFoundException, IllegalArgumentException, SecurityException, InvocationTargetException, NoSuchMethodException,
+      IOException {
     if (iInputStream == null)
       throw new OConfigurationException("Configuration file is null");
 
-    serverCfg = new OServerConfigurationManager(iInputStream);
+    configurationLoader = new OServerConfigurationLoaderXml(OServerConfiguration.class, iInputStream);
+    configuration = configurationLoader.load();
 
     // Startup function split to allow pre-activation changes
-    return startupFromConfiguration();
+    return startup(configuration);
   }
 
-  public OServer startup(final OServerConfiguration iConfiguration)
-      throws IllegalArgumentException, SecurityException, InvocationTargetException, NoSuchMethodException, IOException {
-    serverCfg = new OServerConfigurationManager(iConfiguration);
-    return startupFromConfiguration();
-  }
-
-  public OServer startupFromConfiguration()
-      throws IllegalArgumentException, SecurityException, InvocationTargetException, NoSuchMethodException, IOException {
+  public OServer startup(final OServerConfiguration iConfiguration) throws IllegalArgumentException, SecurityException,
+      InvocationTargetException, NoSuchMethodException {
     OLogManager.instance().info(this, "OrientDB Server v" + OConstants.getVersion() + " is starting up...");
 
     Orient.instance();
 
-    if (startupLatch == null)
-      startupLatch = new CountDownLatch(1);
-    if (shutdownLatch == null)
-      shutdownLatch = new CountDownLatch(1);
+    clientConnectionManager = new OClientConnectionManager();
 
-    clientConnectionManager = new OClientConnectionManager(this);
-    pushManager = new OPushManager();
-    rejectRequests = false;
+    loadConfiguration(iConfiguration);
 
-    initFromConfiguration();
-
-    if (contextConfiguration.getValueAsBoolean(OGlobalConfiguration.ENVIRONMENT_DUMP_CFG_AT_STARTUP)) {
+    if (OGlobalConfiguration.ENVIRONMENT_DUMP_CFG_AT_STARTUP.getValueAsBoolean()) {
       System.out.println("Dumping environment after server startup...");
       OGlobalConfiguration.dumpConfiguration(System.out);
     }
 
+    dbPoolFactory = new OPartitionedDatabasePoolFactory();
+    dbPoolFactory.setMaxPoolSize(contextConfiguration.getValueAsInteger(OGlobalConfiguration.DB_POOL_MAX));
+
     databaseDirectory = contextConfiguration.getValue("server.database.path", serverRootDirectory + "/databases/");
     databaseDirectory = OFileUtils.getPath(OSystemVariableResolver.resolveSystemVariables(databaseDirectory));
     databaseDirectory = databaseDirectory.replace("//", "/");
-
-    // CONVERT IT TO ABSOLUTE PATH
-    databaseDirectory = (new File(databaseDirectory)).getCanonicalPath();
-    databaseDirectory = OFileUtils.getPath(databaseDirectory);
-
     if (!databaseDirectory.endsWith("/"))
       databaseDirectory += "/";
 
-    OrientDBConfig config = OrientDBConfig.builder().fromContext(contextConfiguration).build();
-    if (contextConfiguration.getValueAsBoolean(OGlobalConfiguration.SERVER_BACKWARD_COMPATIBILITY)) {
-      databases = ODatabaseDocumentTxInternal.getOrCreateEmbeddedFactory(this.databaseDirectory, config);
-    } else {
-      try {
-        databases = OrientDBInternal.distributed(this.databaseDirectory, config);
-      } catch (ODatabaseException ex) {
-        databases = OrientDBInternal.embedded(this.databaseDirectory, config);
-      }
-    }
-    if (databases instanceof OServerAware) {
-      ((OServerAware) databases).init(this);
-    }
-    context = databases.newOrientDB();
-
     OLogManager.instance().info(this, "Databases directory: " + new File(databaseDirectory).getAbsolutePath());
-
-    Orient.instance().getProfiler()
-        .registerHookValue("system.databases", "List of databases configured in Server", METRIC_TYPE.TEXT,
-            new OProfilerHookValue() {
-              @Override
-              public Object getValue() {
-                final StringBuilder dbs = new StringBuilder(64);
-                for (String dbName : getAvailableStorageNames().keySet()) {
-                  if (dbs.length() > 0)
-                    dbs.append(',');
-                  dbs.append(dbName);
-                }
-                return dbs.toString();
-              }
-            });
 
     return this;
   }
@@ -405,18 +298,8 @@ public class OServer {
   @SuppressWarnings("unchecked")
   public OServer activate() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
     try {
-      serverSecurity = new ODefaultServerSecurity(this, serverCfg);
-      Orient.instance().setSecurity(serverSecurity);
-      // Checks to see if the OrientDB System Database exists and creates it if not.
-      // Make sure this happens after setSecurity() is called.
-      initSystemDatabase();
-
       for (OServerLifecycleListener l : lifecycleListeners)
         l.onBeforeActivate();
-
-      final OServerConfiguration configuration = serverCfg.getConfiguration();
-
-      tokenHandler = new OTokenHandlerImpl(this);
 
       if (configuration.network != null) {
         // REGISTER/CREATE SOCKET FACTORIES
@@ -439,9 +322,8 @@ public class OServer {
 
         // STARTUP LISTENERS
         for (OServerNetworkListenerConfiguration l : configuration.network.listeners)
-          networkListeners.add(
-              new OServerNetworkListener(this, networkSocketFactories.get(l.socket), l.ipAddress, l.portRange, l.protocol,
-                  networkProtocols.get(l.protocol), l.parameters, l.commands));
+          networkListeners.add(new OServerNetworkListener(this, networkSocketFactories.get(l.socket), l.ipAddress, l.portRange,
+              l.protocol, networkProtocols.get(l.protocol), l.parameters, l.commands));
 
       } else
         OLogManager.instance().warn(this, "Network configuration was not found");
@@ -449,12 +331,8 @@ public class OServer {
       try {
         loadStorages();
         loadUsers();
-        loadDatabases();
       } catch (IOException e) {
-        final String message = "Error on reading server configuration";
-        OLogManager.instance().error(this, message, e);
-
-        throw OException.wrapException(new OConfigurationException(message), e);
+        OLogManager.instance().error(this, "Error on reading server configuration", e, OConfigurationException.class);
       }
 
       registerPlugins();
@@ -464,28 +342,17 @@ public class OServer {
 
       running = true;
 
-      String httpAddress = "localhost:2480";
-      for (OServerNetworkListener listener : getNetworkListeners()) {
-        if (listener.getProtocolType().getName().equals(ONetworkProtocolHttpDb.class.getName()))
-          httpAddress = listener.getListeningAddress(true);
-      }
-
-      OLogManager.instance().info(this, "OrientDB Studio available at $ANSI{blue http://%s/studio/index.html}", httpAddress);
-      OLogManager.instance().info(this, "$ANSI{green:italic OrientDB Server is active} v" + OConstants.getVersion() + ".");
+      OLogManager.instance().info(this, "OrientDB Server v" + OConstants.getVersion() + " is active.");
     } catch (ClassNotFoundException e) {
-      databases.close();
       running = false;
       throw e;
     } catch (InstantiationException e) {
-      databases.close();
       running = false;
       throw e;
     } catch (IllegalAccessException e) {
-      databases.close();
       running = false;
       throw e;
     } catch (RuntimeException e) {
-      databases.close();
       running = false;
       throw e;
     } finally {
@@ -503,170 +370,135 @@ public class OServer {
   }
 
   public boolean shutdown() {
-    try {
-      boolean res = deinit();
-
-      if (!getContextConfiguration().getValueAsBoolean(OGlobalConfiguration.SERVER_BACKWARD_COMPATIBILITY) && databases != null) {
-        databases.close();
-        databases = null;
-      }
-      return res;
-    } finally {
-      startupLatch = null;
-      if (shutdownLatch != null) {
-        shutdownLatch.countDown();
-        shutdownLatch = null;
-      }
-
-      if (shutdownEngineOnExit) {
-        OLogManager.instance().shutdown();
-      }
-    }
-  }
-
-  protected boolean deinit() {
     if (!running)
       return false;
 
+    running = false;
+
+    OLogManager.instance().info(this, "OrientDB Server is shutting down...");
+
+    if (shutdownHook != null)
+      shutdownHook.cancel();
+
+    Orient.instance().getProfiler().unregisterHookValue("system.databases");
+
+    for (OServerLifecycleListener l : lifecycleListeners)
+      l.onBeforeDeactivate();
+
+    lock.lock();
     try {
-      running = false;
-
-      OLogManager.instance().info(this, "OrientDB Server is shutting down...");
-
-      if (shutdownHook != null)
-        shutdownHook.cancel();
-
-      Orient.instance().getProfiler().unregisterHookValue("system.databases");
-
-      for (OServerLifecycleListener l : lifecycleListeners)
-        l.onBeforeDeactivate();
-
-      lock.lock();
-      try {
-        if (networkListeners.size() > 0) {
-          // SHUTDOWN LISTENERS
-          OLogManager.instance().info(this, "Shutting down listeners:");
-          // SHUTDOWN LISTENERS
-          for (OServerNetworkListener l : networkListeners) {
-            OLogManager.instance().info(this, "- %s", l);
-            try {
-              l.shutdown();
-            } catch (Exception e) {
-              OLogManager.instance().error(this, "Error during shutdown of listener %s.", e, l);
-            }
-          }
-
-        }
-
-        if (networkProtocols.size() > 0) {
-          // PROTOCOL SHUTDOWN
-          OLogManager.instance().info(this, "Shutting down protocols");
-          networkProtocols.clear();
-        }
-
-        for (OServerLifecycleListener l : lifecycleListeners)
+      if (networkListeners.size() > 0) {
+        // SHUTDOWN LISTENERS
+        OLogManager.instance().info(this, "Shutting down listeners:");
+        // SHUTDOWN LISTENERS
+        for (OServerNetworkListener l : networkListeners) {
+          OLogManager.instance().info(this, "- %s", l);
           try {
-            l.onAfterDeactivate();
-          } catch (Exception e) {
-            OLogManager.instance().error(this, "Error during deactivation of server lifecycle listener %s", e, l);
+            l.shutdown();
+          } catch (Throwable e) {
+            OLogManager.instance().error(this, "Error during shutdown of listener %s.", e, l);
           }
-
-        rejectRequests = true;
-        pushManager.shutdown();
-        clientConnectionManager.shutdown();
-
-        if (pluginManager != null)
-          pluginManager.shutdown();
-
-        if (serverSecurity != null)
-          serverSecurity.shutdown();
-
-        networkListeners.clear();
-      } finally {
-        lock.unlock();
+        }
       }
 
-      if (shutdownEngineOnExit && !Orient.isRegisterDatabaseByPath())
+      if (networkProtocols.size() > 0) {
+        // PROTOCOL SHUTDOWN
+        OLogManager.instance().info(this, "Shutting down protocols");
+        networkProtocols.clear();
+      }
+
+      for (OServerLifecycleListener l : lifecycleListeners)
         try {
-          OLogManager.instance().info(this, "Shutting down databases:");
-          Orient.instance().shutdown();
+          l.onAfterDeactivate();
         } catch (Exception e) {
-          OLogManager.instance().error(this, "Error during OrientDB shutdown", e);
+          OLogManager.instance().error(this, "Error during deactivation of server lifecycle listener %s", e, l);
         }
+
+      if (pluginManager != null)
+        pluginManager.shutdown();
+
+      clientConnectionManager.shutdown();
+
     } finally {
-      OLogManager.instance().info(this, "OrientDB Server shutdown complete\n");
-      OLogManager.instance().flush();
+      lock.unlock();
     }
 
+    if (shutdownEngineOnExit && !Orient.isRegisterDatabaseByPath())
+      try {
+        OLogManager.instance().info(this, "Shutting down databases:");
+        Orient.instance().shutdown();
+      } catch (Throwable e) {
+        OLogManager.instance().error(this, "Error during OrientDB shutdown", e);
+      }
+
+    OLogManager.instance().info(this, "OrientDB Server shutdown complete");
+    OLogManager.instance().flush();
     return true;
   }
 
-  public boolean rejectRequests() {
-    return rejectRequests;
-  }
+  public String getStoragePath(final String iName) {
+    if (iName == null)
+      throw new IllegalArgumentException("Storage path is null");
 
-  public void waitForShutdown() {
-    try {
-      shutdownLatch.await();
-    } catch (InterruptedException e) {
-      OLogManager.instance().error(this, "Error during waiting for OrientDB shutdown", e);
+    final String name = iName.indexOf(':') > -1 ? iName.substring(iName.indexOf(':') + 1) : iName;
+
+    final String dbName = Orient.isRegisterDatabaseByPath() ? getDatabaseDirectory() + name : name;
+    final String dbPath = Orient.isRegisterDatabaseByPath() ? dbName : getDatabaseDirectory() + name;
+
+    final OStorage stg = Orient.instance().getStorage(dbName);
+    if (stg != null)
+      // ALREADY OPEN
+      return stg.getURL();
+
+    // SEARCH IN CONFIGURED PATHS
+    String dbURL = configuration.getStoragePath(name);
+    if (dbURL == null) {
+      // SEARCH IN DEFAULT DATABASE DIRECTORY
+      if (new File(OIOUtils.getPathFromDatabaseName(dbPath) + "/default.pcl").exists())
+        dbURL = "plocal:" + dbPath;
+      else
+        throw new OConfigurationException("Database '" + name + "' is not configured on server (home=" + getDatabaseDirectory()
+            + ")");
     }
+
+    return dbURL;
   }
 
   public Map<String, String> getAvailableStorageNames() {
-    Set<String> dbs = listDatabases();
-    Map<String, String> toSend = new HashMap<String, String>();
-    for (String dbName : dbs) {
-      toSend.put(dbName, dbName);
+    // SEARCH IN CONFIGURED PATHS
+    final Map<String, String> storages = new HashMap<String, String>();
+    if (configuration.storages != null && configuration.storages.length > 0)
+      for (OServerStorageConfiguration s : configuration.storages)
+        storages.put(OIOUtils.getDatabaseNameFromPath(s.name), s.path);
+
+    // SEARCH IN DEFAULT DATABASE DIRECTORY
+    final String rootDirectory = getDatabaseDirectory();
+    scanDatabaseDirectory(new File(rootDirectory), storages);
+
+    for (OStorage storage : Orient.instance().getStorages()) {
+      final String storageUrl = storage.getURL();
+      // TEST IT'S OF CURRENT SERVER INSTANCE BY CHECKING THE PATH
+      if (storage instanceof OAbstractPaginatedStorage && storage.exists() && !storages.containsValue(storageUrl)
+          && isStorageOfCurrentServerInstance(storage))
+        storages.put(OIOUtils.getDatabaseNameFromPath(storage.getName()), storageUrl);
     }
 
-    return toSend;
+    return storages;
   }
 
-  /**
-   * Opens all the available server's databases.
-   */
-  protected void loadDatabases() {
-    if (!getContextConfiguration().getValueAsBoolean(OGlobalConfiguration.SERVER_OPEN_ALL_DATABASES_AT_STARTUP))
-      return;
-    getDatabases().loadAllDatabases();
-  }
+  public String getStorageURL(final String iName) {
+    // SEARCH IN CONFIGURED PATHS
+    if (configuration.storages != null && configuration.storages.length > 0)
+      for (OServerStorageConfiguration s : configuration.storages)
+        if (s.name.equals(iName))
+          return s.path;
 
-  private boolean askForEncryptionKey(final String iDatabaseName) {
-    try {
-      Thread.sleep(500);
-    } catch (InterruptedException e) {
-    }
+    // SEARCH IN DEFAULT DATABASE DIRECTORY
+    final Map<String, String> storages = new HashMap<String, String>();
+    final String rootDirectory = getDatabaseDirectory();
+    scanDatabaseDirectory(new File(rootDirectory), storages);
 
-    System.out.println();
-    System.out.println();
-    System.out
-        .println(OAnsiCode.format("$ANSI{yellow +--------------------------------------------------------------------------+}"));
-    System.out.println(OAnsiCode
-        .format(String.format("$ANSI{yellow | INSERT THE KEY FOR THE ENCRYPTED DATABASE %-31s|}", "'" + iDatabaseName + "'")));
-    System.out
-        .println(OAnsiCode.format("$ANSI{yellow +--------------------------------------------------------------------------+}"));
-    System.out
-        .println(OAnsiCode.format("$ANSI{yellow | To avoid this message set the environment variable or JVM setting        |}"));
-    System.out
-        .println(OAnsiCode.format("$ANSI{yellow | 'storage.encryptionKey' to the key to use.                               |}"));
-    System.out
-        .println(OAnsiCode.format("$ANSI{yellow +--------------------------------------------------------------------------+}"));
-    System.out.print(OAnsiCode.format("\n$ANSI{yellow Database encryption key [BLANK=to skip opening]: }"));
-
-    final OConsoleReader reader = new ODefaultConsoleReader();
-    try {
-      String key = reader.readPassword();
-      if (key != null) {
-        key = key.trim();
-        if (!key.isEmpty()) {
-          OGlobalConfiguration.STORAGE_ENCRYPTION_KEY.setValue(key);
-          return true;
-        }
-      }
-    } catch (IOException e) {
-    }
-    return false;
+    return storages.get(iName);
   }
 
   public String getDatabaseDirectory() {
@@ -678,75 +510,59 @@ public class OServer {
   }
 
   public OServerUserConfiguration serverLogin(final String iUser, final String iPassword, final String iResource) {
-    // Returns null if authentication or authorization fails for any reason.
-    return authenticateUser(iUser, iPassword, iResource);
+    if (!authenticate(iUser, iPassword, iResource))
+      throw new OSecurityAccessException(
+          "Wrong user/password to [connect] to the remote OrientDB Server instance. Get the user/password from the config/orientdb-server-config.xml file");
+
+    return getUser(iUser);
   }
 
   /**
    * Authenticate a server user.
-   *
-   * @param iUserName Username to authenticate
-   * @param iPassword Password in clear
-   *
+   * 
+   * @param iUserName
+   *          Username to authenticate
+   * @param iPassword
+   *          Password in clear
    * @return true if authentication is ok, otherwise false
    */
   public boolean authenticate(final String iUserName, final String iPassword, final String iResourceToCheck) {
-    // FALSE INDICATES WRONG PASSWORD OR NO AUTHORIZATION
-    return authenticateUser(iUserName, iPassword, iResourceToCheck) != null;
-  }
+    final OServerUserConfiguration user = getUser(iUserName);
 
-  // Returns null if the user cannot be authenticated. Otherwise returns the OServerUserConfiguration user.
-  protected OServerUserConfiguration authenticateUser(final String iUserName, final String iPassword,
-      final String iResourceToCheck) {
-    if (serverSecurity != null && serverSecurity.isEnabled()) {
-      // Returns the authenticated username, if successful, otherwise null.
-      String authUsername = serverSecurity.authenticate(iUserName, iPassword);
+    if (user != null && user.password.equals(iPassword)) {
+      if (user.resources.equals("*"))
+        // ACCESS TO ALL
+        return true;
 
-      // Authenticated, now see if the user is authorized.
-      if (authUsername != null) {
-        if (serverSecurity.isAuthorized(authUsername, iResourceToCheck)) {
-          return serverSecurity.getUser(authUsername);
-        }
-      }
-    } else {
-      OServerUserConfiguration user = getUser(iUserName);
-
-      if (user != null && user.password != null) {
-        if (OSecurityManager.instance().checkPassword(iPassword, user.password) && isAllowed(iUserName, iResourceToCheck)) {
-          return user;
-        }
-      }
+      String[] resourceParts = user.resources.split(",");
+      for (String r : resourceParts)
+        if (r.equals(iResourceToCheck))
+          return true;
     }
 
-    return null;
+    // WRONG PASSWORD OR NO AUTHORIZATION
+    return false;
   }
 
   /**
    * Checks if a server user is allowed to operate with a resource.
    *
-   * @param iUserName Username to authenticate
-   *
+   * @param iUserName
+   *          Username to authenticate
    * @return true if authentication is ok, otherwise false
    */
   public boolean isAllowed(final String iUserName, final String iResourceToCheck) {
+    final OServerUserConfiguration user = getUser(iUserName);
 
-    if (serverSecurity != null && serverSecurity.isEnabled()) {
-      // Let the security plug-in check its users list first.
-      if (serverSecurity.isAuthorized(iUserName, iResourceToCheck))
+    if (user != null) {
+      if (user.resources.equals("*"))
+        // ACCESS TO ALL
         return true;
-    } else {
-      final OServerUserConfiguration user = getUser(iUserName);
 
-      if (user != null) {
-        if (user.resources.equals("*"))
-          // ACCESS TO ALL
+      String[] resourceParts = user.resources.split(",");
+      for (String r : resourceParts)
+        if (r.equals(iResourceToCheck))
           return true;
-
-        String[] resourceParts = user.resources.split(",");
-        for (String r : resourceParts)
-          if (r.equals(iResourceToCheck))
-            return true;
-      }
     }
 
     // WRONG PASSWORD OR NO AUTHORIZATION
@@ -754,32 +570,20 @@ public class OServer {
   }
 
   public OServerUserConfiguration getUser(final String iUserName) {
-    OServerUserConfiguration userCfg = null;
-
-    // First see if iUserName is a security plugin user.
-    if (serverSecurity != null && serverSecurity.isEnabled()) {
-      userCfg = serverSecurity.getUser(iUserName);
-    } else {
-      // This will throw an IllegalArgumentException if iUserName is null or empty.
-      // However, a null or empty iUserName is possible with some security implementations.
-      if (iUserName != null && !iUserName.isEmpty())
-        userCfg = serverCfg.getUser(iUserName);
-    }
-
-    return userCfg;
-  }
-
-  public void dropUser(final String iUserName) throws IOException {
-    serverCfg.dropUser(iUserName);
-    serverCfg.saveConfiguration();
+    return configuration.getUser(iUserName);
   }
 
   public boolean existsStoragePath(final String iURL) {
-    return serverCfg.getConfiguration().getStoragePath(iURL) != null;
+    return configuration.getStoragePath(iURL) != null;
   }
 
   public OServerConfiguration getConfiguration() {
-    return serverCfg.getConfiguration();
+    return configuration;
+  }
+
+  public void saveConfiguration() throws IOException {
+    if (configurationLoader != null)
+      configurationLoader.save(configuration);
   }
 
   public Map<String, Class<? extends ONetworkProtocol>> getNetworkProtocols() {
@@ -800,7 +604,7 @@ public class OServer {
   }
 
   public Collection<OServerPluginInfo> getPlugins() {
-    return pluginManager != null ? pluginManager.getPlugins() : null;
+    return pluginManager.getPlugins();
   }
 
   public OContextConfiguration getContextConfiguration() {
@@ -809,16 +613,13 @@ public class OServer {
 
   @SuppressWarnings("unchecked")
   public <RET extends OServerPlugin> RET getPluginByClass(final Class<RET> iPluginClass) {
-    if (startupLatch == null)
-      throw new ODatabaseException("Error on plugin lookup: the server did not start correctly");
-
     try {
       startupLatch.await();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
     if (!running)
-      throw new ODatabaseException("Error on plugin lookup the server did not start correctly.");
+      throw new ODatabaseException("Error on plugin lookup the server didn't start correcty.");
 
     for (OServerPluginInfo h : getPlugins())
       if (h.getInstance() != null && h.getInstance().getClass().equals(iPluginClass))
@@ -829,9 +630,6 @@ public class OServer {
 
   @SuppressWarnings("unchecked")
   public <RET extends OServerPlugin> RET getPlugin(final String iName) {
-    if (startupLatch == null)
-      throw new ODatabaseException("Error on plugin lookup: the server did not start correctly");
-
     try {
       startupLatch.await();
     } catch (InterruptedException e) {
@@ -858,24 +656,25 @@ public class OServer {
     return this;
   }
 
-  public void addTemporaryUser(final String iName, final String iPassword, final String iPermissions) {
-    serverCfg.setEphemeralUser(iName, iPassword, iPermissions);
-  }
-
   public void addUser(final String iName, String iPassword, final String iPermissions) throws IOException {
-    if (iPassword == null) {
+    if (iName == null || iName.length() == 0)
+      throw new IllegalArgumentException("User name null or empty");
+
+    if (iPermissions == null || iPermissions.length() == 0)
+      throw new IllegalArgumentException("User permissions null or empty");
+
+    if (configuration.users == null)
+      configuration.users = new OServerUserConfiguration[1];
+    else
+      configuration.users = Arrays.copyOf(configuration.users, configuration.users.length + 1);
+
+    if (iPassword == null)
       // AUTO GENERATE PASSWORD
-      final byte[] buffer = new byte[32];
-      random.nextBytes(buffer);
-      iPassword = OSecurityManager.instance().createSHA256(OSecurityManager.byteArrayToHexStr(buffer));
-    }
+      iPassword = OSecurityManager.instance().digest2String(String.valueOf(random.nextLong()), false);
 
-    // HASH THE PASSWORD
-    iPassword = OSecurityManager.instance().createHash(iPassword,
-        getContextConfiguration().getValueAsString(OGlobalConfiguration.SECURITY_USER_PASSWORD_DEFAULT_ALGORITHM), true);
+    configuration.users[configuration.users.length - 1] = new OServerUserConfiguration(iName, iPassword, iPermissions);
 
-    serverCfg.setUser(iName, iPassword, iPermissions);
-    serverCfg.saveConfiguration();
+    saveConfiguration();
   }
 
   public OServer registerLifecycleListener(final OServerLifecycleListener iListener) {
@@ -888,164 +687,196 @@ public class OServer {
     return this;
   }
 
-  public ODatabaseDocumentInternal openDatabase(final String iDbUrl, final OToken iToken) {
-    ODatabaseDocumentInternal database = databases.openNoAuthenticate(iDbUrl, null);
-    database.setUser(iToken.getUser(database));
+  public ODatabase<?> openDatabase(final String iDbType, final String iDbUrl, final OToken iToken) {
+    final String path = getStoragePath(iDbUrl);
+
+    final ODatabaseInternal<?> database = Orient.instance().getDatabaseFactory().createDatabase(iDbType, path);
+
+    if (database.isClosed())
+      if (database.getStorage() instanceof ODirectMemoryStorage)
+        database.create();
+      else {
+        database.open(iToken);
+      }
+
     return database;
   }
 
-  public ODatabaseDocumentInternal openDatabase(final String iDbUrl, final String user, final String password) {
-    return openDatabase(iDbUrl, user, password, null, false);
+  public ODatabase<?> openDatabase(final String iDbType, final String iDbUrl, final String user, final String password) {
+    return openDatabase(iDbType, iDbUrl, user, password, null);
   }
 
-  public ODatabaseDocumentInternal openDatabase(final String iDbUrl, final String user, final String password,
+  public ODatabase<?> openDatabase(final String iDbType, final String iDbUrl, final String user, final String password,
       ONetworkProtocolData data) {
-    return openDatabase(iDbUrl, user, password, data, false);
-  }
+    final String path = getStoragePath(iDbUrl);
 
-  public ODatabaseDocumentInternal openDatabase(final String iDbUrl, String user, final String password, ONetworkProtocolData data,
-      final boolean iBypassAccess) {
-    final ODatabaseDocumentInternal database;
-    // TODO: memory used to be created on the fly not sure for which reason.
-    // TODO: final String path = getStoragePath(iDbUrl); it use to resolve the path in some way
-    boolean serverAuth = false;
-    if (iBypassAccess) {
-      database = databases.openNoAuthenticate(iDbUrl, user);
-      serverAuth = true;
-    } else {
-      OServerUserConfiguration serverUser = serverLogin(user, password, "database.passthrough");
-      if (serverUser != null) {
-        user = serverUser.name;
-        serverAuth = true;
-        // Why do we use the returned serverUser name instead of just passing-in user?
-        // Because in some security implementations the user is embedded inside a ticket of some kind
-        // that must be decrypted to retrieve the actual user identity. If serverLogin() is successful,
-        // that user identity is returned.
+    final ODatabaseInternal<?> database = Orient.instance().getDatabaseFactory().createDatabase(iDbType, path);
 
-        // SERVER AUTHENTICATED, BYPASS SECURITY
-        database = databases.openNoAuthenticate(iDbUrl, user);
+    final OStorage storage = database.getStorage();
+    if (database.isClosed()) {
+      if (database.getStorage() instanceof ODirectMemoryStorage && !storage.exists()) {
+        try {
+          database.create();
+        } catch (OStorageException e) {
+        }
       } else {
-        // TRY DATABASE AUTHENTICATION
-        database = databases.open(iDbUrl, user, password);
+        try {
+          database.open(user, password);
+          if (data != null) {
+            data.serverUser = false;
+            data.serverUsername = null;
+          }
+        } catch (OSecurityException e) {
+          // TRY WITH SERVER'S USER
+          try {
+            serverLogin(user, password, "database.passthrough");
+          } catch (OSecurityException ex) {
+            throw e;
+          }
+
+          // SERVER AUTHENTICATED, BYPASS SECURITY
+          database.activateOnCurrentThread();
+          database.resetInitialization();
+          database.setProperty(ODatabase.OPTIONS.SECURITY.toString(), OSecurityServerUser.class);
+          database.open(user, password);
+          if (data != null) {
+            data.serverUser = true;
+            data.serverUsername = user;
+          }
+        }
       }
     }
-    if (serverAuth && data != null) {
-      data.serverUser = true;
-      data.serverUsername = user;
-    } else if (data != null) {
-      data.serverUser = false;
-      data.serverUsername = null;
-    }
+
     return database;
   }
 
-  public ODatabaseDocumentInternal openDatabase(String database) {
-    return openDatabase(database, "internal", "internal", null, true);
+  public ODatabaseInternal openDatabase(final ODatabaseInternal database) {
+    database.activateOnCurrentThread();
+
+    if (database.isClosed())
+      if (database.getStorage() instanceof ODirectMemoryStorage)
+        database.create();
+      else {
+        final OServerUserConfiguration replicatorUser = getUser(ODistributedAbstractPlugin.REPLICATOR_USER);
+        try {
+          serverLogin(replicatorUser.name, replicatorUser.password, "database.passthrough");
+        } catch (OSecurityException ex) {
+          throw ex;
+        }
+
+        // SERVER AUTHENTICATED, BYPASS SECURITY
+        database.resetInitialization();
+        database.setProperty(ODatabase.OPTIONS.SECURITY.toString(), OSecurityServerUser.class);
+        database.open(replicatorUser.name, replicatorUser.password);
+      }
+
+    return database;
   }
 
   public ODistributedServerManager getDistributedManager() {
     return distributedManager;
   }
 
+  public OPartitionedDatabasePoolFactory getDatabasePoolFactory() {
+    return dbPoolFactory;
+  }
+
   public void setServerRootDirectory(final String rootDirectory) {
     this.serverRootDirectory = rootDirectory;
   }
 
-  protected void initFromConfiguration() {
-    final OServerConfiguration cfg = serverCfg.getConfiguration();
+  protected void loadConfiguration(final OServerConfiguration iConfiguration) {
+    configuration = iConfiguration;
 
     // FILL THE CONTEXT CONFIGURATION WITH SERVER'S PARAMETERS
     contextConfiguration = new OContextConfiguration();
-
-    if (cfg.properties != null)
-      for (OServerEntryConfiguration prop : cfg.properties)
+    if (iConfiguration.properties != null)
+      for (OServerEntryConfiguration prop : iConfiguration.properties)
         contextConfiguration.setValue(prop.name, prop.value);
 
-    hookManager = new OConfigurableHooksManager(cfg);
+    hookManager = new OConfigurableHooksManager(iConfiguration);
   }
 
-  public OConfigurableHooksManager getHookManager() {
-    return hookManager;
+  protected OServerConfiguration loadConfigurationFromFile(final File iFile) {
+    try {
+      configurationLoader = new OServerConfigurationLoaderXml(OServerConfiguration.class, iFile);
+      return configurationLoader.load();
+
+    } catch (IOException e) {
+      OLogManager.instance().error(this, "Error on reading server configuration from file: " + iFile, e,
+          OConfigurationException.class);
+    }
+    return null;
   }
 
   protected void loadUsers() throws IOException {
-    try {
-      final OServerConfiguration configuration = serverCfg.getConfiguration();
-
-      if (configuration.isAfterFirstTime) {
-        return;
+    if (configuration.users != null && configuration.users.length > 0) {
+      for (OServerUserConfiguration u : configuration.users) {
+        if (u.name.equals(OServerConfiguration.SRV_ROOT_ADMIN))
+          // FOUND
+          return;
       }
-
-      configuration.isAfterFirstTime = true;
-
-      if (getContextConfiguration().getValueAsBoolean(OGlobalConfiguration.CREATE_DEFAULT_USERS))
-        createDefaultServerUsers();
-
-    } finally {
-      // REMOVE THE ENV VARIABLE FOR SECURITY REASONS
-      OSystemVariableResolver.setEnv(ROOT_PASSWORD_VAR, "");
     }
+
+    createDefaultServerUsers();
   }
 
   /**
    * Load configured storages.
    */
   protected void loadStorages() {
-    final OServerConfiguration configuration = serverCfg.getConfiguration();
-
     if (configuration.storages == null)
       return;
-    /*
-     * String type; for (OServerStorageConfiguration stg : configuration.storages) if (stg.loadOnStartup) { // @COMPATIBILITY if
-     * (stg.userName == null) stg.userName = OUser.ADMIN; if (stg.userPassword == null) stg.userPassword = OUser.ADMIN;
-     *
-     * int idx = stg.path.indexOf(':'); if (idx == -1) { OLogManager.instance().error(this, "-> Invalid path '" + stg.path +
-     * "' for database '" + stg.name + "'"); return; } type = stg.path.substring(0, idx);
-     *
-     * ODatabaseDocument db = null; try { db = new ODatabaseDocumentTx(stg.path);
-     *
-     * if (db.exists()) db.open(stg.userName, stg.userPassword); else { db.create(); if (stg.userName.equals(OUser.ADMIN)) { if
-     * (!stg.userPassword.equals(OUser.ADMIN)) // CHANGE ADMIN PASSWORD
-     * db.getMetadata().getSecurity().getUser(OUser.ADMIN).setPassword(stg.userPassword); } else { // CREATE A NEW USER AS ADMIN AND
-     * REMOVE THE DEFAULT ONE db.getMetadata().getSecurity().createUser(stg.userName, stg.userPassword, ORole.ADMIN);
-     * db.getMetadata().getSecurity().dropUser(OUser.ADMIN); db.close(); db.open(stg.userName, stg.userPassword); } }
-     *
-     * OLogManager.instance().info(this, "-> Loaded " + type + " database '" + stg.name + "'"); } catch (Exception e) {
-     * OLogManager.instance().error(this, "-> Cannot load " + type + " database '" + stg.name + "': " + e);
-     *
-     * } finally { if (db != null) db.close(); } }
-     */
-    for (OServerStorageConfiguration stg : configuration.storages) {
+
+    String type;
+    for (OServerStorageConfiguration stg : configuration.storages)
       if (stg.loadOnStartup) {
-        String url = stg.path;
-        if (url.endsWith("/"))
-          url = url.substring(0, url.length() - 1);
-        url = url.replace('\\', '/');
+        // @COMPATIBILITY
+        if (stg.userName == null)
+          stg.userName = OUser.ADMIN;
+        if (stg.userPassword == null)
+          stg.userPassword = OUser.ADMIN;
 
-        int typeIndex = url.indexOf(':');
-        if (typeIndex <= 0)
-          throw new OConfigurationException(
-              "Error in database URL: the engine was not specified. Syntax is: " + Orient.URL_SYNTAX + ". URL was: " + url);
-
-        String remoteUrl = url.substring(typeIndex + 1);
-        int index = remoteUrl.lastIndexOf('/');
-        String baseUrl;
-        if (index > 0) {
-          baseUrl = remoteUrl.substring(0, index);
-        } else {
-          baseUrl = "./";
+        int idx = stg.path.indexOf(':');
+        if (idx == -1) {
+          OLogManager.instance().error(this, "-> Invalid path '" + stg.path + "' for database '" + stg.name + "'");
+          return;
         }
-        databases.initCustomStorage(stg.name, baseUrl, stg.userName, stg.userPassword);
-      }
-    }
+        type = stg.path.substring(0, idx);
 
+        ODatabaseDocument db = null;
+        try {
+          db = new ODatabaseDocumentTx(stg.path);
+
+          if (db.exists())
+            db.open(stg.userName, stg.userPassword);
+          else {
+            db.create();
+            if (stg.userName.equals(OUser.ADMIN)) {
+              if (!stg.userPassword.equals(OUser.ADMIN))
+                // CHANGE ADMIN PASSWORD
+                db.getMetadata().getSecurity().getUser(OUser.ADMIN).setPassword(stg.userPassword);
+            } else {
+              // CREATE A NEW USER AS ADMIN AND REMOVE THE DEFAULT ONE
+              db.getMetadata().getSecurity().createUser(stg.userName, stg.userPassword, ORole.ADMIN);
+              db.getMetadata().getSecurity().dropUser(OUser.ADMIN);
+              db.close();
+              db.open(stg.userName, stg.userPassword);
+            }
+          }
+
+          OLogManager.instance().info(this, "-> Loaded " + type + " database '" + stg.name + "'");
+        } catch (Exception e) {
+          OLogManager.instance().error(this, "-> Cannot load " + type + " database '" + stg.name + "': " + e);
+
+        } finally {
+          if (db != null)
+            db.close();
+        }
+      }
   }
 
   protected void createDefaultServerUsers() throws IOException {
-
-    if (serverSecurity != null && !serverSecurity.arePasswordsStored())
-      return;
-
     // ORIENTDB_ROOT_PASSWORD ENV OR JVM SETTING
     String rootPassword = OSystemVariableResolver.resolveVariable(ROOT_PASSWORD_VAR);
 
@@ -1055,7 +886,7 @@ public class OServer {
         rootPassword = null;
     }
 
-    if (rootPassword == null && !serverCfg.existsUser(OServerConfiguration.DEFAULT_ROOT_USER)) {
+    if (rootPassword == null) {
       try {
         // WAIT ANY LOG IS PRINTED
         Thread.sleep(1000);
@@ -1064,59 +895,30 @@ public class OServer {
 
       System.out.println();
       System.out.println();
-      System.out.println(OAnsiCode.format("$ANSI{yellow +---------------------------------------------------------------+}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow |                WARNING: FIRST RUN CONFIGURATION               |}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow +---------------------------------------------------------------+}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow | This is the first time the server is running. Please type a   |}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow | password of your choice for the 'root' user or leave it blank |}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow | to auto-generate it.                                          |}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow |                                                               |}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow | To avoid this message set the environment variable or JVM     |}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow | setting ORIENTDB_ROOT_PASSWORD to the root password to use.   |}"));
-      System.out.println(OAnsiCode.format("$ANSI{yellow +---------------------------------------------------------------+}"));
+      System.out.println("+---------------------------------------------------------------+");
+      System.out.println("|                WARNING: FIRST RUN CONFIGURATION               |");
+      System.out.println("+---------------------------------------------------------------+");
+      System.out.println("| This is the first time the server is running. Please type a   |");
+      System.out.println("| password of your choice for the 'root' user or leave it blank |");
+      System.out.println("| to auto-generate it.                                          |");
+      System.out.println("|                                                               |");
+      System.out.println("| To avoid this message set the environment variable or JVM     |");
+      System.out.println("| setting ORIENTDB_ROOT_PASSWORD to the root password to use.   |");
+      System.out.println("+---------------------------------------------------------------+");
+      System.out.print("\nRoot password [BLANK=auto generate it]: ");
 
-      final OConsoleReader console = new ODefaultConsoleReader();
-
-      // ASK FOR PASSWORD + CONFIRM
-      do {
-        System.out.print(OAnsiCode.format("\n$ANSI{yellow Root password [BLANK=auto generate it]: }"));
-        rootPassword = console.readPassword();
-
-        if (rootPassword != null) {
-          rootPassword = rootPassword.trim();
-          if (rootPassword.isEmpty())
-            rootPassword = null;
-        }
-
-        if (rootPassword != null) {
-          System.out.print(OAnsiCode.format("$ANSI{yellow Please confirm the root password: }"));
-
-          String rootConfirmPassword = console.readPassword();
-          if (rootConfirmPassword != null) {
-            rootConfirmPassword = rootConfirmPassword.trim();
-            if (rootConfirmPassword.isEmpty())
-              rootConfirmPassword = null;
-          }
-
-          if (!rootPassword.equals(rootConfirmPassword)) {
-            System.out.println(OAnsiCode.format(
-                "$ANSI{red ERROR: Passwords don't match, please reinsert both of them, or press ENTER to auto generate it}"));
-          } else
-            // PASSWORDS MATCH
-            break;
-        }
-
-      } while (rootPassword != null);
-
-    } else
-      OLogManager.instance().info(this, "Found ORIENTDB_ROOT_PASSWORD variable, using this value as root's password", rootPassword);
-
-    if (!serverCfg.existsUser(OServerConfiguration.DEFAULT_ROOT_USER)) {
-      addUser(OServerConfiguration.DEFAULT_ROOT_USER, rootPassword, "*");
+      OConsoleReader reader = new DefaultConsoleReader();
+      rootPassword = reader.readLine();
+      if (rootPassword != null) {
+        rootPassword = rootPassword.trim();
+        if (rootPassword.isEmpty())
+          rootPassword = null;
+      }
     }
-    if (!serverCfg.existsUser(OServerConfiguration.GUEST_USER)) {
-      addUser(OServerConfiguration.GUEST_USER, OServerConfiguration.GUEST_PASS, "connect,server.listDatabases,server.dblist");
-    }
+
+    addUser(OServerConfiguration.SRV_ROOT_ADMIN, rootPassword, "*");
+    addUser(OServerConfiguration.SRV_ROOT_GUEST, OServerConfiguration.SRV_ROOT_GUEST, "connect,server.listDatabases,server.dblist");
+    saveConfiguration();
   }
 
   public OServerPluginManager getPluginManager() {
@@ -1128,16 +930,10 @@ public class OServer {
     pluginManager.config(this);
     pluginManager.startup();
 
-    if (serverSecurity != null)
-      serverSecurity.onAfterDynamicPlugins();
-
     // PLUGINS CONFIGURED IN XML
-    final OServerConfiguration configuration = serverCfg.getConfiguration();
-
     if (configuration.handlers != null) {
       // ACTIVATE PLUGINS
-      final List<OServerPlugin> plugins = new ArrayList<OServerPlugin>();
-
+      OServerPlugin handler;
       for (OServerHandlerConfiguration h : configuration.handlers) {
         if (h.parameters != null) {
           // CHECK IF IT'S ENABLED
@@ -1164,25 +960,15 @@ public class OServer {
             continue;
         }
 
-        final OServerPlugin plugin = (OServerPlugin) loadClass(h.clazz).newInstance();
+        handler = (OServerPlugin) loadClass(h.clazz).newInstance();
 
-        if (plugin instanceof ODistributedServerManager)
-          distributedManager = (ODistributedServerManager) plugin;
+        if (handler instanceof ODistributedServerManager)
+          distributedManager = (ODistributedServerManager) handler;
 
-        pluginManager.registerPlugin(new OServerPluginInfo(plugin.getName(), null, null, null, plugin, null, 0, null));
+        pluginManager.registerPlugin(new OServerPluginInfo(handler.getName(), null, null, null, handler, null, 0, null));
 
-        pluginManager.callListenerBeforeConfig(plugin, h.parameters);
-        plugin.config(this, h.parameters);
-        pluginManager.callListenerAfterConfig(plugin, h.parameters);
-
-        plugins.add(plugin);
-      }
-
-      // START ALL THE CONFIGURED PLUGINS
-      for (OServerPlugin plugin : plugins) {
-        pluginManager.callListenerBeforeStartup(plugin);
-        plugin.startup();
-        pluginManager.callListenerAfterStartup(plugin);
+        handler.config(this, h.parameters);
+        handler.startup();
       }
     }
   }
@@ -1190,53 +976,30 @@ public class OServer {
   protected void defaultSettings() {
   }
 
-  public OTokenHandler getTokenHandler() {
-    return tokenHandler;
+  private boolean isStorageOfCurrentServerInstance(OStorage storage) {
+    if (storage.getUnderlying() instanceof OLocalPaginatedStorage) {
+      final String rootDirectory = getDatabaseDirectory();
+      return storage.getURL().contains(rootDirectory);
+    } else
+      return true;
   }
 
-  public ThreadGroup getThreadGroup() {
-    return Orient.instance().getThreadGroup();
-  }
-
-  private void initSystemDatabase() {
-    systemDatabase = new OSystemDatabase(this);
-  }
-
-  public OrientDBInternal getDatabases() {
-    return databases;
-  }
-
-  public OrientDB getContext() {
-    return context;
-  }
-
-  public void dropDatabase(String databaseName) {
-    if (databases.exists(databaseName, null, null)) {
-      databases.drop(databaseName, null, null);
-    } else {
-      throw new OStorageException("Database with name '" + databaseName + "' does not exist");
+  private void scanDatabaseDirectory(final File directory, final Map<String, String> storages) {
+    if (directory.exists() && directory.isDirectory()) {
+      final File[] files = directory.listFiles();
+      if (files != null)
+        for (File db : files) {
+          if (db.isDirectory()) {
+            final File plocalFile = new File(db.getAbsolutePath() + "/default.pcl");
+            final String dbPath = db.getPath().replace('\\', '/');
+            final int lastBS = dbPath.lastIndexOf('/', dbPath.length() - 1) + 1;// -1 of dbPath may be ended with slash
+            if (plocalFile.exists()) {
+              storages.put(OIOUtils.getDatabaseNameFromPath(dbPath.substring(lastBS)), "plocal:" + dbPath);
+            } else
+              // TRY TO GO IN DEEP RECURSIVELY
+              scanDatabaseDirectory(db, storages);
+          }
+        }
     }
-  }
-
-  public boolean existsDatabase(String databaseName) {
-    return databases.exists(databaseName, null, null);
-  }
-
-  public void createDatabase(String databaseName, ODatabaseType type, OrientDBConfig config) {
-    databases.create(databaseName, null, null, type, config);
-  }
-
-  public Set<String> listDatabases() {
-    Set<String> dbs = databases.listDatabases(null, null);
-    dbs.remove(OSystemDatabase.SYSTEM_DB_NAME);
-    return dbs;
-  }
-
-  public void restore(String name, String path) {
-    databases.restore(name, null, null, null, path, OrientDBConfig.defaultConfig());
-  }
-
-  public Date getStartedOn() {
-    return startedOn;
   }
 }

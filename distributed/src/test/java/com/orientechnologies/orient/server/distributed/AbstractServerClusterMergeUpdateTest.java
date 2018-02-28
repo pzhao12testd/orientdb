@@ -39,22 +39,19 @@ public abstract class AbstractServerClusterMergeUpdateTest  extends AbstractServ
       ODatabaseDocumentTx db1 = poolFactory.get(getDatabaseURL(serverInstance.get(1)), "admin", "admin").acquire();
       try {
         executeTest(db0, db1);
-      } finally{
-        db1.activateOnCurrentThread();
-        db1.close();
+      } finally {
+        db0.close();
       }
     } finally {
-      db0.activateOnCurrentThread();
       db0.close();
     }
   }
 
   private void executeTest(ODatabaseDocumentTx db0, ODatabaseDocumentTx db1) {
 
-    db0.activateOnCurrentThread();
-
     // Event #0: Create new document with value 2L, and version 1
     ODocument doc = new ODocument("Paper").field(FIELD_NAME, 2L);
+    db0.activateOnCurrentThread();
     db0.save(doc);
     ORID orid = doc.getIdentity().copy();
 

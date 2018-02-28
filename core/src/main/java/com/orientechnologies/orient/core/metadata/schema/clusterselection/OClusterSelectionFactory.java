@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2014 OrientDB LTD (info(-at-)orientdb.com)
+ * Copyright 2010-2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,32 +25,30 @@ import com.orientechnologies.common.log.OLogManager;
 
 /**
  * Factory to get the cluster selection strategy.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  */
 public class OClusterSelectionFactory extends OConfigurableStatefulFactory<String, OClusterSelectionStrategy> {
   public OClusterSelectionFactory() {
     setDefaultClass(ORoundRobinClusterSelectionStrategy.class);
     this.registerStrategy();
   }
-
-  private static ClassLoader orientClassLoader = OClusterSelectionFactory.class.getClassLoader();
-
+  
+  private static ClassLoader orientClassLoader  = OClusterSelectionFactory.class.getClassLoader();
   private void registerStrategy() {
-    final Iterator<OClusterSelectionStrategy> ite = lookupProviderWithOrientClassLoader(OClusterSelectionStrategy.class,
-        orientClassLoader);
-    while (ite.hasNext()) {
+    final Iterator<OClusterSelectionStrategy> ite = lookupProviderWithOrientClassLoader(OClusterSelectionStrategy.class, orientClassLoader);
+    while(ite.hasNext()) {
       OClusterSelectionStrategy strategy = ite.next();
       Class clz = strategy.getClass();
       try {
         Method method = clz.getMethod("getName");
-        if (method != null) {
-          String key = (String) method.invoke(clz.newInstance());
+        if(method != null) {
+          String key = (String)method.invoke(clz.newInstance());
           register(key, clz);
         } else
-          OLogManager.instance().error(this, "getName() funciton missing", null);
-      } catch (Exception ex) {
-        OLogManager.instance().error(this, "failed to register class - " + clz.getName(), ex);
+          OLogManager.instance().error(this, "getName() funciton missing");
+      }catch(Exception ex) {
+          OLogManager.instance().error(this, "failed to register class - " + clz.getName());
       }
     }
   }

@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,10 @@ import javax.persistence.Id;
 import javax.persistence.OneToOne;
 import javax.persistence.Version;
 
-import com.orientechnologies.orient.core.record.impl.OBlob;
 import com.orientechnologies.orient.core.record.impl.ORecordBytes;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 public class Media {
@@ -38,7 +37,7 @@ public class Media {
   private String       name;
 
   @OneToOne(orphanRemoval = true)
-  private OBlob content;
+  private ORecordBytes content;
 
   public Object getId() {
     return id;
@@ -64,12 +63,12 @@ public class Media {
     this.name = name;
   }
 
-  public OBlob getContent() {
+  public ORecordBytes getContent() {
     return content;
   }
 
-  public void setContent(OBlob content) {
-    OBlob current = this.getContent();
+  public void setContent(ORecordBytes content) {
+    ORecordBytes current = this.getContent();
     this.content = content;
     if (current != null)
       current.getRecord().delete();

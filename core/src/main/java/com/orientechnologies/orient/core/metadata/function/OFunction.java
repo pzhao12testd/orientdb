@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,13 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.metadata.function;
 
-import com.orientechnologies.common.concur.ONeedRetryException;
-import com.orientechnologies.common.util.OCallable;
 import com.orientechnologies.orient.core.Orient;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.command.script.OCommandExecutorFunction;
@@ -28,7 +26,6 @@ import com.orientechnologies.orient.core.command.script.OCommandExecutorScript;
 import com.orientechnologies.orient.core.command.script.OCommandFunction;
 import com.orientechnologies.orient.core.command.script.OCommandScript;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
-import com.orientechnologies.orient.core.exception.ORetryQueryException;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -41,12 +38,12 @@ import java.util.Map;
 /**
  * Stored function. It contains language and code to execute as a function. The execute() takes parameters. The function is
  * state-less, so can be used by different threads.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 public class OFunction extends ODocumentWrapper {
-  public static final String                     CLASS_NAME = "OFunction";
-  private OCallable<Object, Map<Object, Object>> callback;
+  public static final String CLASS_NAME = "OFunction";
 
   /**
    * Creates a new function.
@@ -58,7 +55,7 @@ public class OFunction extends ODocumentWrapper {
 
   /**
    * Creates a new function wrapping the saved document.
-   *
+   * 
    * @param iDocument
    *          Document to assign
    */
@@ -68,7 +65,7 @@ public class OFunction extends ODocumentWrapper {
 
   /**
    * Loads a function.
-   *
+   * 
    * @param iRid
    *          RID of the function to load
    */
@@ -122,22 +119,14 @@ public class OFunction extends ODocumentWrapper {
     return this;
   }
 
-  public OCallable<Object, Map<Object, Object>> getCallback() {
-    return callback;
-  }
-
-  public OFunction setCallback(final OCallable<Object, Map<Object, Object>> callback) {
-    this.callback = callback;
-    return this;
-  }
-
-  @Deprecated
   public Object execute(final Object... iArgs) {
     return executeInContext(null, iArgs);
   }
 
-  @Deprecated
   public Object executeInContext(final OCommandContext iContext, final Object... iArgs) {
+    final OCommandExecutorFunction command = new OCommandExecutorFunction();
+    command.parse(new OCommandFunction(getName()));
+
     final List<String> params = getParameters();
 
     // CONVERT PARAMETERS IN A MAP
@@ -156,19 +145,13 @@ public class OFunction extends ODocumentWrapper {
       }
     }
 
-    if (callback != null) {
-      // EXECUTE CALLBACK
-      return callback.call(args);
-    }
-
-    // EXECUTE DB FUNCTION
-    final OCommandExecutorFunction command = new OCommandExecutorFunction();
-    command.parse(new OCommandFunction(getName()));
     return command.executeInContext(iContext, args);
   }
 
-  @Deprecated
   public Object executeInContext(final OCommandContext iContext, final Map<String, Object> iArgs) {
+    final OCommandExecutorFunction command = new OCommandExecutorFunction();
+    command.parse(new OCommandFunction(getName()));
+
     // CONVERT PARAMETERS IN A MAP
     final Map<Object, Object> args = new LinkedHashMap<Object, Object>();
 
@@ -180,39 +163,22 @@ public class OFunction extends ODocumentWrapper {
       }
     }
 
-    if (callback != null) {
-      // EXECUTE CALLBACK
-      return callback.call(args);
-    }
-
-    // EXECUTE DB FUNCTION
-    final OCommandExecutorFunction command = new OCommandExecutorFunction();
-    command.parse(new OCommandFunction(getName()));
     return command.executeInContext(iContext, args);
   }
 
-  @Deprecated
   public Object execute(final Map<Object, Object> iArgs) {
     final long start = Orient.instance().getProfiler().startChrono();
 
-    Object result;
-    while (true) {
-      try {
-        if (callback != null)
-          return callback.call(iArgs);
-
-        final OCommandExecutorScript command = new OCommandExecutorScript();
-        command.parse(new OCommandScript(getLanguage(), getCode()));
-        result = command.execute(iArgs);
-        break;
-
-      } catch (ONeedRetryException | ORetryQueryException ignore) {
-      }
-    }
+    final OCommandExecutorScript command = new OCommandExecutorScript();
+    command.parse(new OCommandScript(getLanguage(), getCode()));
+    final Object result = command.execute(iArgs);
 
     if (Orient.instance().getProfiler().isRecording())
-      Orient.instance().getProfiler().stopChrono("db." + ODatabaseRecordThreadLocal.instance().get().getName() + ".function.execute",
-          "Time to execute a function", start, "db.*.function.execute");
+      Orient
+          .instance()
+          .getProfiler()
+          .stopChrono("db." + ODatabaseRecordThreadLocal.INSTANCE.get().getName() + ".function.execute",
+              "Time to execute a function", start, "db.*.function.execute");
 
     return result;
   }
@@ -225,4 +191,5 @@ public class OFunction extends ODocumentWrapper {
   public String toString() {
     return getName();
   }
+
 }

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,48 +14,67 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.index;
 
+import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.exception.OInvalidIndexEngineIdException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
-import com.orientechnologies.orient.core.tx.OTransactionIndexChangesPerKey;
 
 /**
  * Dictionary index similar to unique index but does not check for updates, just executes changes. Last put always wins and override
  * the previous value.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 public class OIndexDictionary extends OIndexOneValue {
 
-  public OIndexDictionary(String name, String typeId, String algorithm, int version, OAbstractPaginatedStorage storage,
+  public OIndexDictionary(String name, String typeId, String algorithm, OIndexEngine<OIdentifiable> engine,
       String valueContainerAlgorithm, ODocument metadata) {
-    super(name, typeId, algorithm, version, storage, valueContainerAlgorithm, metadata);
+    super(name, typeId, algorithm, engine, valueContainerAlgorithm, metadata);
   }
 
   public OIndexOneValue put(Object key, final OIdentifiable value) {
 
     key = getCollatingValue(key);
 
-    acquireSharedLock();
-    try {
-      while (true) {
-        try {
-          storage.putIndexValue(indexId, key, value);
-          return this;
-        } catch (OInvalidIndexEngineIdException ignore) {
-          doReloadIndexEngine();
-        }
-      }
+    final ODatabase database = getDatabase();
+    final boolean txIsActive = database.getTransaction().isActive();
 
+    if (!txIsActive)
+      keyLockManager.acquireExclusiveLock(key);
+
+    try {
+      modificationLock.requestModificationLock();
+      try {
+        checkForKeyType(key);
+        acquireSharedLock();
+        try {
+          markStorageDirty();
+          indexEngine.put(key, value);
+          return this;
+
+        } finally {
+          releaseSharedLock();
+        }
+      } finally {
+        modificationLock.releaseModificationLock();
+      }
     } finally {
-      releaseSharedLock();
+      if (!txIsActive)
+        keyLockManager.releaseExclusiveLock(key);
     }
+  }
+
+  /**
+   * Disables check of entries.
+   */
+  @Override
+  public ODocument checkEntry(final OIdentifiable record, final Object key) {
+    return null;
   }
 
   public boolean canBeUsedInEqualityOperators() {
@@ -64,11 +83,5 @@ public class OIndexDictionary extends OIndexOneValue {
 
   public boolean supportsOrderedIterations() {
     return false;
-  }
-
-  @Override
-  protected Iterable<OTransactionIndexChangesPerKey.OTransactionIndexEntry> interpretTxKeyChanges(
-      OTransactionIndexChangesPerKey changes) {
-    return changes.interpret(OTransactionIndexChangesPerKey.Interpretation.Dictionary);
   }
 }

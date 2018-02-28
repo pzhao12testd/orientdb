@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,52 +14,40 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 
 package com.orientechnologies.common.log;
 
+import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.common.parser.OSystemVariableResolver;
-import com.orientechnologies.orient.core.command.OCommandOutputListener;
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.*;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/**
- * Centralized Log Manager.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
- */
 public class OLogManager {
-  private static final String      DEFAULT_LOG                  = "com.orientechnologies";
-  private static final String      ENV_INSTALL_CUSTOM_FORMATTER = "orientdb.installCustomFormatter";
-  private static final OLogManager instance                     = new OLogManager();
-  private              boolean     debug                        = false;
-  private              boolean     info                         = true;
-  private              boolean     warn                         = true;
-  private              boolean     error                        = true;
-  private              Level       minimumLevel                 = Level.SEVERE;
+  private static final String                 DEFAULT_LOG                  = "com.orientechnologies";
+  private static final String                 ENV_INSTALL_CUSTOM_FORMATTER = "orientdb.installCustomFormatter";
+  private static final OLogManager            instance                     = new OLogManager();
+  private boolean                             debug                        = true;
+  private boolean                             info                         = true;
+  private boolean                             warn                         = true;
+  private boolean                             error                        = true;
+  private Level                               minimumLevel                 = Level.SEVERE;
 
-  private final AtomicBoolean                 shutdownFlag = new AtomicBoolean();
-  private final ConcurrentMap<String, Logger> loggersCache = new ConcurrentHashMap<>();
-
-  private static final AtomicReference<StorageFilter> storageFilterHolder = new AtomicReference<>();
-
-  /**
-   * Labels are needed to filer different kind of messages, for example to filter exceptions which should be logged during the
-   * tests
-   */
-  private enum LogLabel {
-    STORAGE_LOGGING
-  }
+  private final ConcurrentMap<String, Logger> loggersCache                 = new ConcurrentHashMap<String, Logger>();
 
   protected OLogManager() {
   }
@@ -68,9 +56,9 @@ public class OLogManager {
     return instance;
   }
 
-  public void installCustomFormatter() {
-    final boolean installCustomFormatter = Boolean
-        .parseBoolean(OSystemVariableResolver.resolveSystemVariables("${" + ENV_INSTALL_CUSTOM_FORMATTER + "}", "true"));
+  public static void installCustomFormatter() {
+    final boolean installCustomFormatter = Boolean.parseBoolean(OSystemVariableResolver.resolveSystemVariables("${"
+        + ENV_INSTALL_CUSTOM_FORMATTER + "}", "true"));
 
     if (!installCustomFormatter)
       return;
@@ -78,18 +66,15 @@ public class OLogManager {
     try {
       // ASSURE TO HAVE THE ORIENT LOG FORMATTER TO THE CONSOLE EVEN IF NO CONFIGURATION FILE IS TAKEN
       final Logger log = Logger.getLogger("");
-
-      setLevelInternal(log.getLevel());
-
       if (log.getHandlers().length == 0) {
         // SET DEFAULT LOG FORMATTER
         final Handler h = new ConsoleHandler();
-        h.setFormatter(new OAnsiLogFormatter());
+        h.setFormatter(new OLogFormatter());
         log.addHandler(h);
       } else {
         for (Handler h : log.getHandlers()) {
-          if (h instanceof ConsoleHandler && !h.getFormatter().getClass().equals(OAnsiLogFormatter.class))
-            h.setFormatter(new OAnsiLogFormatter());
+          if (h instanceof ConsoleHandler && !h.getFormatter().getClass().equals(OLogFormatter.class))
+            h.setFormatter(new OLogFormatter());
         }
       }
     } catch (Exception e) {
@@ -105,44 +90,22 @@ public class OLogManager {
     setLevel(iLevel, FileHandler.class);
   }
 
-  /**
-   * Start filter out all messages which are logged using {@link #errorStorage(Object, String, Throwable, Object...)} method.
-   */
-  public void applyStorageFilter() {
-    final StorageFilter filter = new StorageFilter();
-
-    if (storageFilterHolder.compareAndSet(null, filter)) {
-      for (Logger logger : loggersCache.values()) {
-        logger.setFilter(filter);
-      }
-    }
-  }
-
   public void log(final Object iRequester, final Level iLevel, String iMessage, final Throwable iException,
-      final boolean extractDatabase, final LogLabel label, final Object... iAdditionalArgs) {
-
-    if (shutdownFlag.get()) {
-      System.err.println("ERROR: LogManager is shutdown, no logging is possible !!!");
-      return;
-    }
-
+      final Object... iAdditionalArgs) {
     if (iMessage != null) {
-      if (extractDatabase)
-        try {
-          final ODatabaseDocumentInternal db =
-              ODatabaseRecordThreadLocal.instance() != null ? ODatabaseRecordThreadLocal.instance().getIfDefined() : null;
-          if (db != null && db.getStorage() != null && db.getStorage() instanceof OAbstractPaginatedStorage) {
-            final String dbName = db.getStorage().getName();
-            if (dbName != null)
-              iMessage = "$ANSI{green {db=" + dbName + "}} " + iMessage;
-          }
-        } catch (Exception ignore) {
+      try {
+        final ODatabaseDocumentInternal db = ODatabaseRecordThreadLocal.INSTANCE != null ? ODatabaseRecordThreadLocal.INSTANCE
+            .getIfDefined() : null;
+        if (db != null && db.getStorage() != null && db.getStorage() instanceof OAbstractPaginatedStorage) {
+          final String dbName = db.getStorage().getName();
+          if (dbName != null)
+            iMessage = "{db=" + dbName + "} " + iMessage;
         }
+      } catch (Throwable e) {
+      }
 
       final String requesterName;
-      if (iRequester instanceof Class<?>) {
-        requesterName = ((Class<?>) iRequester).getName();
-      } else if (iRequester != null) {
+      if (iRequester != null) {
         requesterName = iRequester.getClass().getName();
       } else {
         requesterName = DEFAULT_LOG;
@@ -155,12 +118,8 @@ public class OLogManager {
         if (log != null) {
           Logger oldLogger = loggersCache.putIfAbsent(requesterName, log);
 
-          if (oldLogger != null) {
+          if (oldLogger != null)
             log = oldLogger;
-          } else {
-            StorageFilter filter = storageFilterHolder.get();
-            log.setFilter(filter);
-          }
         }
       }
 
@@ -169,23 +128,16 @@ public class OLogManager {
         try {
           System.err.println(String.format(iMessage, iAdditionalArgs));
         } catch (Exception e) {
-          System.err.print(String.format("Error on formatting message '%s'. Exception: %s", iMessage, e.toString()));
+          OLogManager.instance().warn(this, "Error on formatting message", e);
         }
       } else if (log.isLoggable(iLevel)) {
         // USE THE LOG
         try {
           final String msg = String.format(iMessage, iAdditionalArgs);
-          final LogRecord record = new LogRecord(iLevel, msg);
-
-          if (iException != null) {
-            record.setThrown(iException);
-          }
-
-          if (label != null) {
-            record.setParameters(new Object[] { label });
-          }
-
-          log.log(record);
+          if (iException != null)
+            log.log(iLevel, msg, iException);
+          else
+            log.log(iLevel, msg);
         } catch (Exception e) {
           System.err.print(String.format("Error on formatting message '%s'. Exception: %s", iMessage, e.toString()));
         }
@@ -195,70 +147,130 @@ public class OLogManager {
 
   public void debug(final Object iRequester, final String iMessage, final Object... iAdditionalArgs) {
     if (isDebugEnabled())
-      log(iRequester, Level.FINE, iMessage, null, true, null, iAdditionalArgs);
+      log(iRequester, Level.FINE, iMessage, null, iAdditionalArgs);
   }
 
   public void debug(final Object iRequester, final String iMessage, final Throwable iException, final Object... iAdditionalArgs) {
     if (isDebugEnabled())
-      log(iRequester, Level.FINE, iMessage, iException, true, null, iAdditionalArgs);
+      log(iRequester, Level.FINE, iMessage, iException, iAdditionalArgs);
   }
 
-  public void debugNoDb(final Object iRequester, final String iMessage, final Throwable iException,
-      final Object... iAdditionalArgs) {
-    if (isDebugEnabled())
-      log(iRequester, Level.FINE, iMessage, iException, false, null, iAdditionalArgs);
+  public void debug(final Object iRequester, final String iMessage, final Throwable iException,
+      final Class<? extends OException> iExceptionClass, final Object... iAdditionalArgs) {
+    debug(iRequester, iMessage, iException, iAdditionalArgs);
+
+    if (iExceptionClass != null)
+      try {
+        throw iExceptionClass.getConstructor(String.class, Throwable.class).newInstance(iMessage, iException);
+      } catch (NoSuchMethodException e) {
+      } catch (IllegalArgumentException e) {
+      } catch (SecurityException e) {
+      } catch (InstantiationException e) {
+      } catch (IllegalAccessException e) {
+      } catch (InvocationTargetException e) {
+      }
   }
 
   public void info(final Object iRequester, final String iMessage, final Object... iAdditionalArgs) {
     if (isInfoEnabled())
-      log(iRequester, Level.INFO, iMessage, null, true, null, iAdditionalArgs);
-  }
-
-  public void infoNoDb(final Object iRequester, final String iMessage, final Object... iAdditionalArgs) {
-    if (isInfoEnabled())
-      log(iRequester, Level.INFO, iMessage, null, false, null, iAdditionalArgs);
+      log(iRequester, Level.INFO, iMessage, null, iAdditionalArgs);
   }
 
   public void info(final Object iRequester, final String iMessage, final Throwable iException, final Object... iAdditionalArgs) {
     if (isInfoEnabled())
-      log(iRequester, Level.INFO, iMessage, iException, true, null, iAdditionalArgs);
+      log(iRequester, Level.INFO, iMessage, iException, iAdditionalArgs);
   }
 
   public void warn(final Object iRequester, final String iMessage, final Object... iAdditionalArgs) {
     if (isWarnEnabled())
-      log(iRequester, Level.WARNING, iMessage, null, true, null, iAdditionalArgs);
-  }
-
-  public void warnNoDb(final Object iRequester, final String iMessage, final Object... iAdditionalArgs) {
-    if (isWarnEnabled())
-      log(iRequester, Level.WARNING, iMessage, null, false, null, iAdditionalArgs);
+      log(iRequester, Level.WARNING, iMessage, null, iAdditionalArgs);
   }
 
   public void warn(final Object iRequester, final String iMessage, final Throwable iException, final Object... iAdditionalArgs) {
     if (isWarnEnabled())
-      log(iRequester, Level.WARNING, iMessage, iException, true, null, iAdditionalArgs);
+      log(iRequester, Level.WARNING, iMessage, iException, iAdditionalArgs);
   }
 
   public void config(final Object iRequester, final String iMessage, final Object... iAdditionalArgs) {
-    log(iRequester, Level.CONFIG, iMessage, null, true, null, iAdditionalArgs);
+    log(iRequester, Level.CONFIG, iMessage, null, iAdditionalArgs);
+  }
+
+  public void error(final Object iRequester, final String iMessage, final Object... iAdditionalArgs) {
+    log(iRequester, Level.SEVERE, iMessage, null, iAdditionalArgs);
   }
 
   public void error(final Object iRequester, final String iMessage, final Throwable iException, final Object... iAdditionalArgs) {
     if (isErrorEnabled())
-      log(iRequester, Level.SEVERE, iMessage, iException, true, null, iAdditionalArgs);
+      log(iRequester, Level.SEVERE, iMessage, iException, iAdditionalArgs);
   }
 
-  public void errorNoDb(final Object iRequester, final String iMessage, final Throwable iException,
-      final Object... iAdditionalArgs) {
-    if (isErrorEnabled())
-      log(iRequester, Level.SEVERE, iMessage, iException, false, null, iAdditionalArgs);
+  public void error(final Object iRequester, final String iMessage, final Throwable iException,
+      final Class<? extends OException> iExceptionClass, final Object... iAdditionalArgs) {
+    error(iRequester, iMessage, iException, iAdditionalArgs);
+
+    final String msg = String.format(iMessage, iAdditionalArgs);
+
+    if (iExceptionClass != null)
+      try {
+        throw iExceptionClass.getConstructor(String.class, Throwable.class).newInstance(msg, iException);
+      } catch (NoSuchMethodException e) {
+      } catch (IllegalArgumentException e) {
+      } catch (SecurityException e) {
+      } catch (InstantiationException e) {
+      } catch (IllegalAccessException e) {
+      } catch (InvocationTargetException e) {
+      }
   }
 
-  public void errorStorage(final Object iRequester, final String iMessage, final Throwable iException,
-      final Object... iAdditionalArgs) {
-    if (isErrorEnabled())
-      log(iRequester, Level.SEVERE, iMessage, iException, false, LogLabel.STORAGE_LOGGING, iAdditionalArgs);
+  public void error(final Object iRequester, final String iMessage, final Class<? extends OException> iExceptionClass) {
+    error(iRequester, iMessage, (Throwable) null);
 
+    try {
+      throw iExceptionClass.getConstructor(String.class).newInstance(iMessage);
+    } catch (IllegalArgumentException e) {
+    } catch (SecurityException e) {
+    } catch (InstantiationException e) {
+    } catch (IllegalAccessException e) {
+    } catch (InvocationTargetException e) {
+    } catch (NoSuchMethodException e) {
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public void exception(final String iMessage, final Exception iNestedException, final Class<? extends OException> iExceptionClass,
+      final Object... iAdditionalArgs) throws OException {
+    if (iMessage == null)
+      return;
+
+    // FORMAT THE MESSAGE
+    String msg = String.format(iMessage, iAdditionalArgs);
+
+    Constructor<OException> c;
+    OException exceptionToThrow = null;
+    try {
+      if (iNestedException != null) {
+        c = (Constructor<OException>) iExceptionClass.getConstructor(String.class, Throwable.class);
+        exceptionToThrow = c.newInstance(msg, iNestedException);
+      }
+    } catch (Exception e) {
+    }
+
+    if (exceptionToThrow == null)
+      try {
+        c = (Constructor<OException>) iExceptionClass.getConstructor(String.class);
+        exceptionToThrow = c.newInstance(msg);
+      } catch (SecurityException e1) {
+      } catch (NoSuchMethodException e1) {
+      } catch (IllegalArgumentException e1) {
+      } catch (InstantiationException e1) {
+      } catch (IllegalAccessException e1) {
+      } catch (InvocationTargetException e1) {
+      }
+
+    if (exceptionToThrow != null)
+      throw exceptionToThrow;
+    else
+      throw new IllegalArgumentException("Cannot create the exception of type: " + iExceptionClass);
   }
 
   public boolean isWarn() {
@@ -316,11 +328,23 @@ public class OLogManager {
       // UPDATE MINIMUM LEVEL
       minimumLevel = level;
 
-      setLevelInternal(level);
+      if (level.equals(Level.FINER) || level.equals(Level.FINE) || level.equals(Level.FINEST))
+        debug = info = warn = error = true;
+      else if (level.equals(Level.INFO)) {
+        info = warn = error = true;
+        debug = false;
+      } else if (level.equals(Level.WARNING)) {
+        warn = error = true;
+        debug = info = false;
+      } else if (level.equals(Level.SEVERE)) {
+        error = true;
+        debug = info = warn = false;
+      }
     }
 
     Logger log = Logger.getLogger(DEFAULT_LOG);
     while (log != null) {
+      log.setLevel(level);
 
       for (Handler h : log.getHandlers()) {
         if (h.getClass().isAssignableFrom(iHandler)) {
@@ -335,78 +359,8 @@ public class OLogManager {
     return level;
   }
 
-  protected void setLevelInternal(final Level level) {
-    if (level == null)
-      return;
-
-    if (level.equals(Level.FINER) || level.equals(Level.FINE) || level.equals(Level.FINEST))
-      debug = info = warn = error = true;
-    else if (level.equals(Level.INFO)) {
-      info = warn = error = true;
-      debug = false;
-    } else if (level.equals(Level.WARNING)) {
-      warn = error = true;
-      debug = info = false;
-    } else if (level.equals(Level.SEVERE)) {
-      error = true;
-      debug = info = warn = false;
-    }
-  }
-
   public void flush() {
     for (Handler h : Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).getHandlers())
       h.flush();
   }
-
-  public OCommandOutputListener getCommandOutputListener(final Object iThis, final Level iLevel) {
-    return new OCommandOutputListener() {
-      @Override
-      public void onMessage(String iText) {
-        log(iThis, iLevel, iText, null, true, null);
-      }
-    };
-  }
-
-  /**
-   * Shutdowns this log manager.
-   */
-  public void shutdown() {
-    if (shutdownFlag.compareAndSet(false, true)) {
-      try {
-        if (LogManager.getLogManager() instanceof ShutdownLogManager)
-          ((ShutdownLogManager) LogManager.getLogManager()).shutdown();
-      } catch (NoClassDefFoundError ignore) {
-        // Om nom nom. Some custom class loaders, like Tomcat's one, cannot load classes while in shutdown hooks, since their
-        // runtime is already shutdown. Ignoring the exception, if ShutdownLogManager is not loaded at this point there are no instances
-        // of it anyway and we have nothing to shutdown.
-      }
-    }
-  }
-
-  /**
-   * @return <code>true</code> if log manager is shutdown by {@link #shutdown()} method and no logging is possible.
-   */
-  public boolean isShutdown() {
-    return shutdownFlag.get();
-  }
-
-  /**
-   * Removes all message which were issued by {@link OLogManager#errorStorage(Object, String, Throwable, Object...)} method.
-   */
-  private static class StorageFilter implements Filter {
-    @Override
-    public boolean isLoggable(LogRecord record) {
-      Object[] params = record.getParameters();
-      if (params != null) {
-        for (Object param : params) {
-          if (LogLabel.STORAGE_LOGGING == param) {
-            return false;
-          }
-        }
-      }
-
-      return true;
-    }
-  }
-
 }

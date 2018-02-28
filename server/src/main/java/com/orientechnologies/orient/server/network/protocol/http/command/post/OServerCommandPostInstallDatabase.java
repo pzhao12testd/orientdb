@@ -1,6 +1,6 @@
 /*
  *
- *  * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  * Copyright 2014 Orient Technologies.
  *  *
  *  * Licensed under the Apache License, Version 2.0 (the "License");
  *  * you may not use this file except in compliance with the License.
@@ -26,12 +26,9 @@ import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpUtils;
 import com.orientechnologies.orient.server.network.protocol.http.command.OServerCommandAuthenticatedServerAbstract;
 
-
+import java.io.File;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class OServerCommandPostInstallDatabase extends OServerCommandAuthenticatedServerAbstract {
   private static final String[] NAMES = { "POST|installDatabase" };
@@ -49,21 +46,22 @@ public class OServerCommandPostInstallDatabase extends OServerCommandAuthenticat
       final String name = getDbName(url);
       if (name != null) {
 
-        final Path folder = Paths.get(server.getDatabaseDirectory(), name);
-        if (Files.exists(folder) && OLocalPaginatedStorage.exists(folder)) {
+        final String folder = server.getDatabaseDirectory() + File.separator + name;
+        final File f = new File(folder);
+        if (f.exists() && OLocalPaginatedStorage.exists(folder)) {
           throw new ODatabaseException("Database named '" + name + "' already exists: ");
         } else {
-          Files.createDirectories(folder);
+          f.mkdirs();
           final URL uri = new URL(url);
           final URLConnection conn = uri.openConnection();
           conn.setRequestProperty("User-Agent", "OrientDB-Studio");
           conn.setDefaultUseCaches(false);
-          OZIPCompressionUtil.uncompressDirectory(conn.getInputStream(), folder.toString(), new OCommandOutputListener() {
+          OZIPCompressionUtil.uncompressDirectory(conn.getInputStream(), folder, new OCommandOutputListener() {
             @Override
             public void onMessage(String iText) {
             }
           });
-          iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN, null, null);
+          iResponse.send(OHttpUtils.STATUS_OK_CODE, "OK", OHttpUtils.CONTENT_TEXT_PLAIN, null, null);
         }
       } else {
         throw new IllegalArgumentException("Could not find database name");

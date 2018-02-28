@@ -1,6 +1,7 @@
 package com.orientechnologies.orient.core.sql.filter;
 
-import org.junit.Assert; import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import com.orientechnologies.orient.core.sql.OIndexSearchResult;
 import com.orientechnologies.orient.core.sql.OSQLEngine;

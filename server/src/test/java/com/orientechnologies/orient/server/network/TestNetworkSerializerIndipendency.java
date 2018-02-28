@@ -1,38 +1,37 @@
 package com.orientechnologies.orient.server.network;
 
-import com.orientechnologies.common.io.OFileUtils;
-import com.orientechnologies.orient.client.remote.OServerAdmin;
-import com.orientechnologies.orient.core.Orient;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.exception.OConfigurationException;
-import com.orientechnologies.orient.core.exception.OStorageException;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializer;
-import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializerFactory;
-import com.orientechnologies.orient.core.serialization.serializer.record.binary.ORecordSerializerBinary;
-import com.orientechnologies.orient.core.serialization.serializer.record.string.ORecordSerializerSchemaAware2CSV;
-import com.orientechnologies.orient.server.OServer;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.Test;
+import static org.testng.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
 
-import static org.junit.Assert.assertEquals;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+
+import com.orientechnologies.orient.client.remote.OServerAdmin;
+import com.orientechnologies.orient.core.Orient;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.core.exception.OConfigurationException;
+import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializer;
+import com.orientechnologies.orient.core.serialization.serializer.record.binary.ORecordSerializerBinary;
+import com.orientechnologies.orient.core.serialization.serializer.record.string.ORecordSerializerSchemaAware2CSV;
+import com.orientechnologies.orient.server.OServer;
 
 public class TestNetworkSerializerIndipendency {
-  private OServer server;
+  private OServer             server;
+  private static final String SERVER_DIRECTORY = "./target/db";
 
-  @Before
+  @BeforeClass
   public void before() throws Exception {
-    server = new OServer(false);
+    server = new OServer();
+    server.setServerRootDirectory(SERVER_DIRECTORY);
     server.startup(getClass().getResourceAsStream("orientdb-server-config.xml"));
     server.activate();
   }
 
-  @Test(expected = OStorageException.class)
+  @Test
   public void createCsvDatabaseConnectBinary() throws IOException {
     ORecordSerializer prev = ODatabaseDocumentTx.getDefaultSerializer();
     ODatabaseDocumentTx.setDefaultSerializer(ORecordSerializerSchemaAware2CSV.INSTANCE);
@@ -46,17 +45,17 @@ public class TestNetworkSerializerIndipendency {
       ODocument document = new ODocument();
       document.field("name", "something");
       document.field("surname", "something-else");
-      document = dbTx.save(document, dbTx.getClusterNameById(dbTx.getDefaultClusterId()));
+      document = dbTx.save(document);
       dbTx.commit();
       ODocument doc = dbTx.load(document.getIdentity());
       assertEquals(doc.fields(), document.fields());
-      assertEquals(doc.<Object>field("name"), document.field("name"));
-      assertEquals(doc.<Object>field("surname"), document.field("surname"));
+      assertEquals(doc.field("name"), document.field("name"));
+      assertEquals(doc.field("surname"), document.field("surname"));
     } finally {
-      if (dbTx != null && !dbTx.isClosed()) {
-        dbTx.close();
-        dbTx.getStorage().close();
-      }
+      if (dbTx != null) {
+				dbTx.close();
+				dbTx.getStorage().close();
+			}
 
       dropDatabase();
       ODatabaseDocumentTx.setDefaultSerializer(prev);
@@ -65,13 +64,13 @@ public class TestNetworkSerializerIndipendency {
 
   private void dropDatabase() throws IOException {
     OServerAdmin admin = new OServerAdmin("remote:localhost/test");
-    admin.connect("root", "root");
+    admin.connect("root", "D2AFD02F20640EC8B7A5140F34FCA49D2289DB1F0D0598BB9DE8AAA75A0792F3");
     admin.dropDatabase("plocal");
   }
 
   private void createDatabase() throws IOException {
     OServerAdmin admin = new OServerAdmin("remote:localhost/test");
-    admin.connect("root", "root");
+    admin.connect("root", "D2AFD02F20640EC8B7A5140F34FCA49D2289DB1F0D0598BB9DE8AAA75A0792F3");
     admin.createDatabase("document", "plocal");
   }
 
@@ -89,31 +88,28 @@ public class TestNetworkSerializerIndipendency {
       ODocument document = new ODocument();
       document.field("name", "something");
       document.field("surname", "something-else");
-      document = dbTx.save(document, dbTx.getClusterNameById(dbTx.getDefaultClusterId()));
+      document = dbTx.save(document);
       dbTx.commit();
       ODocument doc = dbTx.load(document.getIdentity());
       assertEquals(doc.fields(), document.fields());
-      assertEquals(doc.<Object>field("name"), document.field("name"));
-      assertEquals(doc.<Object>field("surname"), document.field("surname"));
+      assertEquals(doc.field("name"), document.field("name"));
+      assertEquals(doc.field("surname"), document.field("surname"));
     } finally {
       if (dbTx != null) {
-        dbTx.close();
-        dbTx.getStorage().close();
-      }
+				dbTx.close();
+				dbTx.getStorage().close();
+			}
 
       dropDatabase();
       ODatabaseDocumentTx.setDefaultSerializer(prev);
     }
   }
 
-  @After
+  @AfterClass
   public void after() {
     server.shutdown();
-
-    Orient.instance().shutdown();
-    File directory = new File(server.getDatabaseDirectory());
-    OFileUtils.deleteRecursively(directory);
-    ODatabaseDocumentTx.setDefaultSerializer(ORecordSerializerFactory.instance().getFormat(ORecordSerializerBinary.NAME));
+    File iDirectory = new File(SERVER_DIRECTORY);
+    deleteDirectory(iDirectory);
     Orient.instance().startup();
   }
 
@@ -123,7 +119,7 @@ public class TestNetworkSerializerIndipendency {
         if (f.isDirectory())
           deleteDirectory(f);
         else if (!f.delete())
-          throw new OConfigurationException("Cannot delete the file: " + f);
+          throw new OConfigurationException("Can't delete the file: " + f);
       }
   }
 }

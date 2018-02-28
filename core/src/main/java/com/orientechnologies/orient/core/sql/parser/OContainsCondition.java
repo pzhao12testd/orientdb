@@ -2,13 +2,11 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import com.orientechnologies.common.collection.OMultiValue;
-import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.sql.executor.OResult;
-import com.orientechnologies.orient.core.sql.operator.OQueryOperatorEquals;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class OContainsCondition extends OBooleanExpression {
 
@@ -24,133 +22,52 @@ public class OContainsCondition extends OBooleanExpression {
     super(p, id);
   }
 
-  /**
-   * Accept the visitor.
-   **/
+  /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
   }
 
-  public boolean execute(Object left, Object right) {
-    if (left instanceof Collection) {
-      if (right instanceof Collection) {
-        return ((Collection) left).containsAll((Collection) right);
-      }
-      if (right instanceof Iterable) {
-        right = ((Iterable) right).iterator();
-      }
-      if (right instanceof Iterator) {
-        Iterator iterator = (Iterator) right;
-        while (iterator.hasNext()) {
-          Object next = iterator.next();
-          if (!((Collection) left).contains(next)) {
-            return false;
-          }
-        }
-      }
-      for (Object o : (Collection) left) {
-        if (OQueryOperatorEquals.equals(o, right))
-          return true;
-      }
-      return false;
-    }
-    if (left instanceof Iterable) {
-      left = ((Iterable) left).iterator();
-    }
-    if (left instanceof Iterator) {
-      if (!(right instanceof Iterable)) {
-        right = Collections.singleton(right);
-      }
-      right = ((Iterable) right).iterator();
-
-      Iterator leftIterator = (Iterator) left;
-      Iterator rightIterator = (Iterator) right;
-      while (rightIterator.hasNext()) {
-        Object leftItem = rightIterator.next();
-        boolean found = false;
-        while (leftIterator.hasNext()) {
-          Object rightItem = leftIterator.next();
-          if (leftItem != null && leftItem.equals(rightItem)) {
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          return false;
-        }
-      }
-      return true;
-    }
+  @Override
+  public boolean evaluate(OIdentifiable currentRecord) {
     return false;
   }
 
   @Override
-  public boolean evaluate(OIdentifiable currentRecord, OCommandContext ctx) {
-    Object leftValue = left.execute(currentRecord, ctx);
+  public void replaceParameters(Map<Object, Object> params) {
+    left.replaceParameters(params);
     if (right != null) {
-      Object rightValue = right.execute(currentRecord, ctx);
-      return execute(leftValue, rightValue);
-    } else {
-      if (!OMultiValue.isMultiValue(leftValue)) {
-        return false;
-      }
-      Iterator<Object> iter = OMultiValue.getMultiValueIterator(leftValue);
-      while (iter.hasNext()) {
-        Object item = iter.next();
-        if (item instanceof OIdentifiable && condition.evaluate((OIdentifiable) item, ctx)) {
-          return true;
-        } else if (item instanceof OResult && condition.evaluate((OResult) item, ctx)) {
-          return true;
-        }
-      }
-      return false;
+      right.replaceParameters(params);
+    }
+    if (condition != null) {
+      condition.replaceParameters(params);
     }
   }
 
   @Override
-  public boolean evaluate(OResult currentRecord, OCommandContext ctx) {
-    Object leftValue = left.execute(currentRecord, ctx);
+  public String toString() {
+    StringBuilder result = new StringBuilder();
+    result.append(left.toString());
+    result.append(" CONTAINS ");
     if (right != null) {
-      Object rightValue = right.execute(currentRecord, ctx);
-      return execute(leftValue, rightValue);
-    } else {
-      if (!OMultiValue.isMultiValue(leftValue)) {
-        return false;
-      }
-      Iterator<Object> iter = OMultiValue.getMultiValueIterator(leftValue);
-      while (iter.hasNext()) {
-        Object item = iter.next();
-        if (item instanceof OIdentifiable && condition.evaluate((OIdentifiable) item, ctx)) {
-          return true;
-        } else if (item instanceof OResult && condition.evaluate((OResult) item, ctx)) {
-          return true;
-        }
-      }
-      return false;
-    }
-  }
-
-  public void toString(Map<Object, Object> params, StringBuilder builder) {
-    left.toString(params, builder);
-    builder.append(" CONTAINS ");
-    if (right != null) {
-      right.toString(params, builder);
+      result.append(right.toString());
     } else if (condition != null) {
-      builder.append("(");
-      condition.toString(params, builder);
-      builder.append(")");
+      result.append("(");
+      result.append(condition.toString());
+      result.append(")");
     }
+
+    return result.toString();
   }
 
   @Override
   public boolean supportsBasicCalculation() {
-    if (!left.supportsBasicCalculation()) {
+    if(!left.supportsBasicCalculation()){
       return false;
     }
-    if (!right.supportsBasicCalculation()) {
+    if(!right.supportsBasicCalculation()){
       return false;
     }
-    if (!condition.supportsBasicCalculation()) {
+    if(!condition.supportsBasicCalculation()){
       return false;
     }
 
@@ -166,7 +83,7 @@ public class OContainsCondition extends OBooleanExpression {
     if (!left.supportsBasicCalculation()) {
       total++;
     }
-    if (right != null && !right.supportsBasicCalculation()) {
+    if (right!=null && !right.supportsBasicCalculation()) {
       total++;
     }
     return total;
@@ -176,114 +93,16 @@ public class OContainsCondition extends OBooleanExpression {
   protected List<Object> getExternalCalculationConditions() {
     List<Object> result = new ArrayList<Object>();
 
-    if (condition != null) {
+    if(condition!=null) {
       result.addAll(condition.getExternalCalculationConditions());
     }
     if (!left.supportsBasicCalculation()) {
       result.add(left);
     }
-    if (right != null && !right.supportsBasicCalculation()) {
+    if (right!=null && !right.supportsBasicCalculation()) {
       result.add(right);
     }
     return result;
-  }
-
-  @Override
-  public boolean needsAliases(Set<String> aliases) {
-    if (left != null && left.needsAliases(aliases)) {
-      return true;
-    }
-    if (right != null && right.needsAliases(aliases)) {
-      return true;
-    }
-    if (condition != null && condition.needsAliases(aliases)) {
-      return true;
-    }
-    return false;
-  }
-
-  @Override
-  public OContainsCondition copy() {
-    OContainsCondition result = new OContainsCondition(-1);
-    result.left = left == null ? null : left.copy();
-    result.right = right == null ? null : right.copy();
-    result.condition = condition == null ? null : condition.copy();
-    return result;
-
-  }
-
-  @Override
-  public void extractSubQueries(SubQueryCollector collector) {
-    if (left != null) {
-      left.extractSubQueries(collector);
-    }
-    if (right != null) {
-      right.extractSubQueries(collector);
-    }
-    if (condition != null) {
-      condition.extractSubQueries(collector);
-    }
-  }
-
-  @Override
-  public boolean refersToParent() {
-    if (left != null && left.refersToParent()) {
-      return true;
-    }
-    if (right != null && right.refersToParent()) {
-      return true;
-    }
-    if (condition != null && condition.refersToParent()) {
-      return true;
-    }
-    return false;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-
-    OContainsCondition that = (OContainsCondition) o;
-
-    if (left != null ? !left.equals(that.left) : that.left != null)
-      return false;
-    if (right != null ? !right.equals(that.right) : that.right != null)
-      return false;
-    if (condition != null ? !condition.equals(that.condition) : that.condition != null)
-      return false;
-
-    return true;
-  }
-
-  @Override
-  public int hashCode() {
-    int result = left != null ? left.hashCode() : 0;
-    result = 31 * result + (right != null ? right.hashCode() : 0);
-    result = 31 * result + (condition != null ? condition.hashCode() : 0);
-    return result;
-  }
-
-  @Override
-  public List<String> getMatchPatternInvolvedAliases() {
-    List<String> leftX = left == null ? null : left.getMatchPatternInvolvedAliases();
-    List<String> rightX = right == null ? null : right.getMatchPatternInvolvedAliases();
-    List<String> conditionX = condition == null ? null : condition.getMatchPatternInvolvedAliases();
-
-    List<String> result = new ArrayList<String>();
-    if (leftX != null) {
-      result.addAll(leftX);
-    }
-    if (rightX != null) {
-      result.addAll(rightX);
-    }
-    if (conditionX != null) {
-      result.addAll(conditionX);
-    }
-
-    return result.size() == 0 ? null : result;
   }
 
 }

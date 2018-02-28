@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.object.iterator;
 
 import java.util.Iterator;
 
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.db.object.ODatabaseObject;
 import com.orientechnologies.orient.core.iterator.ORecordIteratorClass;
@@ -35,11 +34,11 @@ public class OObjectIteratorClass<T> implements OObjectIteratorClassInterface<T>
   private ORecordIteratorClass<ODocument> underlying;
   private String                          fetchPlan;
 
-  public OObjectIteratorClass(final OObjectDatabaseTx iDatabase, final ODatabaseDocumentInternal iUnderlyingDatabase,
+  public OObjectIteratorClass(final OObjectDatabaseTx iDatabase, final ODatabaseDocumentTx iUnderlyingDatabase,
       final String iClusterName, final boolean iPolymorphic) {
     database = iDatabase;
     underlying = new ORecordIteratorClass<ODocument>(iDatabase.getUnderlying(), iUnderlyingDatabase, iClusterName, iPolymorphic,
-        true);
+        true, false);
   }
 
   public boolean hasNext() {

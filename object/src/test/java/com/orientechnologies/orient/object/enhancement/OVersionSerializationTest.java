@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,16 @@ package com.orientechnologies.orient.object.enhancement;
 
 import com.orientechnologies.orient.core.annotation.OId;
 import com.orientechnologies.orient.core.annotation.OVersion;
+import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.record.impl.ODocument;
+import com.orientechnologies.orient.core.version.ORecordVersion;
+import com.orientechnologies.orient.core.version.OVersionFactory;
 import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 /**
  * @author Artem Orobets (enisher-at-gmail.com)
@@ -33,20 +36,50 @@ import org.junit.Test;
 public class OVersionSerializationTest {
   private OObjectDatabaseTx database;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  protected void setUp() throws Exception {
     database = new OObjectDatabaseTx("memory:OVersionSerializationTest");
     database.create();
 
-    database.getEntityManager().registerEntityClass(EntityLongVersion.class);
     database.getEntityManager().registerEntityClass(EntityStringVersion.class);
     database.getEntityManager().registerEntityClass(EntityObjectVersion.class);
     database.getEntityManager().registerEntityClass(EntityExactVersionType.class);
+    if (!OGlobalConfiguration.DB_USE_DISTRIBUTED_VERSION.getValueAsBoolean())
+      database.getEntityManager().registerEntityClass(EntityLongVersion.class);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  protected void tearDown() {
     database.drop();
+  }
+
+  @Test
+  public void testStringSerialization() throws Exception {
+    final EntityStringVersion object = database.save(new EntityStringVersion());
+    final EntityStringVersion loadedObject = database.load(object.getRid());
+
+    Assert.assertNotSame(object.getVersion(), loadedObject.getVersion(), "The same object of entity is shared between entities");
+    Assert.assertEquals(object.getVersion(), loadedObject.getVersion());
+
+    final ORecordVersion version = OVersionFactory.instance().createVersion();
+    version.getSerializer().fromString(loadedObject.getVersion(), version);
+    final ODocument document = database.getUnderlying().load(object.getRid());
+    Assert.assertEquals(version, document.getRecordVersion());
+    Assert.assertEquals(loadedObject.getVersion(), document.getRecordVersion().toString());
+  }
+
+  @Test
+  public void testObjectSerialization() throws Exception {
+    final EntityObjectVersion object = database.save(new EntityObjectVersion());
+    final EntityObjectVersion loadedObject = database.load(object.getRid());
+
+    Assert.assertTrue(object.getVersion() instanceof ORecordVersion);
+    Assert.assertTrue(loadedObject.getVersion() instanceof ORecordVersion);
+    Assert.assertNotSame(object.getVersion(), loadedObject.getVersion(), "The same object of entity is shared between entities");
+    Assert.assertEquals(object.getVersion(), loadedObject.getVersion());
+
+    final ODocument document = database.getUnderlying().load(object.getRid());
+    Assert.assertEquals(loadedObject.getVersion(), document.getRecordVersion());
   }
 
   @Test
@@ -54,14 +87,20 @@ public class OVersionSerializationTest {
     final EntityExactVersionType object = database.save(new EntityExactVersionType());
     final EntityExactVersionType loadedObject = database.load(object.getRid());
 
+    Assert.assertNotNull(object.getVersion());
+    Assert.assertNotNull(loadedObject.getVersion());
+    Assert.assertNotSame(object.getVersion(), loadedObject.getVersion(), "The same object of entity is shared between entities");
     Assert.assertEquals(object.getVersion(), loadedObject.getVersion());
 
     final ODocument document = database.getUnderlying().load(object.getRid());
-    Assert.assertEquals(loadedObject.getVersion(), document.getVersion());
+    Assert.assertEquals(loadedObject.getVersion(), document.getRecordVersion());
   }
 
   @Test
   public void testIntegerSerialization() throws Exception {
+    if (OGlobalConfiguration.DB_USE_DISTRIBUTED_VERSION.getValueAsBoolean())
+      return;
+
     final EntityLongVersion object = database.save(new EntityLongVersion());
     final EntityLongVersion loadedObject = database.load(object.getRid());
 
@@ -70,12 +109,12 @@ public class OVersionSerializationTest {
     Assert.assertEquals(object.getVersion(), loadedObject.getVersion());
 
     final ODocument document = database.getUnderlying().load(object.getRid());
-    Assert.assertEquals(loadedObject.getVersion().intValue(), document.getVersion());
+    Assert.assertEquals(loadedObject.getVersion().intValue(), document.getRecordVersion().getCounter());
   }
 
   public static class EntityStringVersion {
     @OId
-    private ORID rid;
+    private ORID   rid;
 
     @OVersion
     private String version;
@@ -94,7 +133,7 @@ public class OVersionSerializationTest {
 
   public static class EntityObjectVersion {
     @OId
-    private ORID rid;
+    private ORID   rid;
 
     @OVersion
     private Object version;
@@ -113,10 +152,10 @@ public class OVersionSerializationTest {
 
   public static class EntityExactVersionType {
     @OId
-    private ORID rid;
+    private ORID           rid;
 
     @OVersion
-    private int version;
+    private ORecordVersion version;
 
     public EntityExactVersionType() {
     }
@@ -125,7 +164,7 @@ public class OVersionSerializationTest {
       return rid;
     }
 
-    public int getVersion() {
+    public ORecordVersion getVersion() {
       return version;
     }
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
 import com.orientechnologies.orient.test.domain.whiz.Profile;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
@@ -49,14 +48,14 @@ public class HookTxTest extends ORecordHookAbstract {
   private String            url;
 
   @Parameters(value = "url")
-  public HookTxTest(@Optional String url) {
-    this.url = BaseTest.prepareUrl(url);
+  public HookTxTest(String url) {
+    this.url = url;
   }
 
   @BeforeClass
   public void beforeClass() {
     database = new OObjectDatabaseTx(url);
-    if (!url.startsWith("remote:") && !database.exists()) {
+    if (url.startsWith("memory:") && !database.exists()) {
       database.create();
       database.close();
     }
@@ -159,7 +158,7 @@ public class HookTxTest extends ORecordHookAbstract {
     });
 
     Assert.assertFalse(exc.get());
-    new ODocument().field("test-hook", true).save(database.getClusterNameById(database.getDefaultClusterId()));
+    new ODocument().field("test-hook", true).save();
     Assert.assertTrue(exc.get());
 
     database.activateOnCurrentThread();

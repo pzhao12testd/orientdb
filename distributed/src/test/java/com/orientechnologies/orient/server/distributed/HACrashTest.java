@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2013 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,30 +16,26 @@
 package com.orientechnologies.orient.server.distributed;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
-import com.orientechnologies.common.util.OCallable;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
- * Distributed non TX test against "remote" protocol. It starts 3 servers and during a stress test, kill last server. The test
- * checks all the clients can auto-reconnect to the next available server.
+ * Distributed TX test against "remote" protocol. It starts 3 servers and during a stress test, kill last server. The test checks
+ * all the clients can auto-reconnect to the next available server.
  */
 public class HACrashTest extends AbstractServerClusterTxTest {
-  private final static int     SERVERS         = 3;
-  private volatile     boolean inserting       = true;
-  private volatile     int     serverStarted   = 0;
-  private volatile     boolean serverRestarted = false;
+  final static int SERVERS       = 3;
+  protected Timer  timer         = new Timer(true);
+  volatile boolean inserting     = true;
+  volatile int     serverStarted = 0;
+  volatile boolean lastServerOn  = false;
 
   @Test
-  @Ignore
   public void test() throws Exception {
-    startupNodesInSequence = true;
-    count = 500;
+    count = 1500;
     maxRetries = 10;
-    delayWriter = 0;
-    useTransactions = false;
     init(SERVERS);
     prepare(false);
     execute();
@@ -50,101 +46,46 @@ public class HACrashTest extends AbstractServerClusterTxTest {
     super.onServerStarted(server);
 
     if (serverStarted++ == (SERVERS - 1)) {
-      // RUN ASYNCHRONOUSLY
-      new Thread(new Runnable() {
+      lastServerOn = true;
+
+      // CRASH LAST SERVER IN 2 SECONDS
+      timer.schedule(new TimerTask() {
         @Override
         public void run() {
-          try {
-            // CRASH LAST SERVER try {
-            executeWhen(0, new OCallable<Boolean, ODatabaseDocument>() {
-              // CONDITION
-              @Override
-              public Boolean call(ODatabaseDocument db) {
-                return db.countClass("Person") > (count * SERVERS * writerCount + baseCount) * 1 / 3;
+          Assert.assertTrue("Insert was too fast", inserting);
+
+          // RESTART LAST SERVER IN 10 SECONDS
+          timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+              Assert.assertTrue("Insert was too fast", inserting);
+
+              banner("RESTART SERVER " + (SERVERS - 1));
+              try {
+                serverInstance.get(SERVERS - 1).startServer(getDistributedServerConfiguration(serverInstance.get(SERVERS - 1)));
+                lastServerOn = true;
+              } catch (Exception e) {
+                e.printStackTrace();
               }
-            }, // ACTION
-                new OCallable<Boolean, ODatabaseDocument>() {
-                  @Override
-                  public Boolean call(ODatabaseDocument db) {
-                    Assert.assertTrue("Insert was too fast", inserting);
-                    banner("SIMULATE FAILURE ON SERVER " + (SERVERS - 1));
+            }
+          }, 10000);
 
-                    delayWriter = 50;
-                    serverInstance.get(SERVERS - 1).crashServer();
-
-                    executeWhen(db, new OCallable<Boolean, ODatabaseDocument>() {
-                      @Override
-                      public Boolean call(ODatabaseDocument db) {
-                        return db.countClass("Person") > (count * writerCount * SERVERS) * 2 / 4;
-                      }
-                    }, new OCallable<Boolean, ODatabaseDocument>() {
-                      @Override
-                      public Boolean call(ODatabaseDocument db) {
-                        Assert.assertTrue("Insert was too fast", inserting);
-
-                        banner("RESTARTING SERVER " + (SERVERS - 1) + "...");
-                        try {
-                          serverInstance.get(SERVERS - 1)
-                              .startServer(getDistributedServerConfiguration(serverInstance.get(SERVERS - 1)));
-                          serverRestarted = true;
-                          delayWriter = 0;
-
-                        } catch (Exception e) {
-                          e.printStackTrace();
-                        }
-                        return null;
-                      }
-                    });
-                    return null;
-                  }
-                });
-
-          } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail("Error on execution flow");
-          }
+          banner("SIMULATE FAILURE ON SERVER " + (SERVERS - 1));
+          serverInstance.get(SERVERS - 1).crashServer();
+          lastServerOn = false;
         }
-      }).start();
+      }, 2000);
     }
-  }
-
-  @Override
-  protected void onBeforeChecks() throws InterruptedException {
-    // // WAIT UNTIL THE END
-    waitFor(2, new OCallable<Boolean, ODatabaseDocument>() {
-      @Override
-      public Boolean call(ODatabaseDocument db) {
-        final boolean ok = db.countClass("Person") >= count * writerCount * SERVERS + baseCount;
-        if (!ok)
-          System.out.println(
-              "FOUND " + db.countClass("Person") + " people instead of expected " + (count * writerCount * SERVERS) + baseCount);
-        return ok;
-      }
-    }, 10000);
   }
 
   @Override
   protected void onAfterExecution() throws Exception {
     inserting = false;
-
-    waitFor(20000, new OCallable<Boolean, Void>() {
-      @Override
-      public Boolean call(Void iArgument) {
-        return serverRestarted;
-      }
-    }, "Server 2 is not active yet");
-
-    banner("CHECKING IF NODE 2 IS STILL ACTIVE");
-    Assert.assertTrue(serverRestarted);
+    Assert.assertTrue(lastServerOn);
   }
 
   protected String getDatabaseURL(final ServerRun server) {
-    final String address = server.getBinaryProtocolAddress();
-
-    if( address == null )
-      return null;
-
-    return "remote:" + address + "/" + getDatabaseName();
+    return "remote:" + server.getBinaryProtocolAddress() + "/" + getDatabaseName();
   }
 
   @Override

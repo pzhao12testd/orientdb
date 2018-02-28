@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,19 +16,17 @@
  */
 package com.orientechnologies.orient.core.sql.method.misc;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
-import com.orientechnologies.orient.core.record.impl.ODocument;
 
 /**
- * Transforms current value into a Map.
+ * Transforms current value in a Map.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodAsMap extends OAbstractSQLMethod {
 
@@ -48,15 +46,9 @@ public class OSQLMethodAsMap extends OAbstractSQLMethod {
     }
 
     if (ioResult == null)
-    // NULL VALUE, RETURN AN EMPTY MAP
+    // NULL VALUE, RETURN AN EMPTY SET
     {
-      return Collections.EMPTY_MAP;
-    }
-
-    if (ioResult instanceof ODocument)
-    // CONVERT ODOCUMENT TO MAP
-    {
-      return ((ODocument) ioResult).toMap();
+      return new HashMap<Object, Object>();
     }
 
     Iterator<Object> iter;

@@ -1,12 +1,11 @@
 package com.orientechnologies.orient.object.enhancement;
 
 import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import javax.persistence.CascadeType;
-import javax.persistence.Embedded;
 import javax.persistence.OneToMany;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -15,11 +14,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.AssertJUnit.fail;
 
 /**
  * @author JN <a href="mailto:jn@brain-activit.com">Julian Neuhaus</a>
- * @author Nathan Brown (anecdotesoftware--at--gmail.com)
  * @since 18.08.2014
  */
 public class OObjectProxyMethodHandlerTest {
@@ -27,15 +26,12 @@ public class OObjectProxyMethodHandlerTest {
 
   private Map<String, Object> fieldsAndThereDefaultValue;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  protected void setUp() throws Exception {
     databaseTx = new OObjectDatabaseTx("memory:OObjectEnumLazyListTest");
     databaseTx.create();
 
     databaseTx.getEntityManager().registerEntityClass(EntityWithDifferentFieldTypes.class);
-    databaseTx.getEntityManager().registerEntityClass(EmbeddedType1.class);
-    databaseTx.getEntityManager().registerEntityClass(EmbeddedType2.class);
-    databaseTx.getEntityManager().registerEntityClass(EntityWithEmbeddedFields.class);
 
     fieldsAndThereDefaultValue = new HashMap<String, Object>();
     fieldsAndThereDefaultValue.put("byteField", Byte.valueOf("0"));
@@ -49,8 +45,8 @@ public class OObjectProxyMethodHandlerTest {
     fieldsAndThereDefaultValue.put("objectField", null);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  protected void tearDown() {
     databaseTx.drop();
   }
 
@@ -204,47 +200,6 @@ public class OObjectProxyMethodHandlerTest {
     }
   }
 
-  @Test
-  public void testEntityWithEmbeddedFieldDetachingAllWithoutError() throws Exception {
-    EntityWithEmbeddedFields entity = new EntityWithEmbeddedFields();
-    entity.setEmbeddedType1(new EmbeddedType1());
-    entity.setEmbeddedType2(new EmbeddedType2());
-    EntityWithEmbeddedFields saved = databaseTx.save(entity);
-    databaseTx.detachAll(saved, true);
-  }
-
-  public static class EmbeddedType1 {
-  }
-
-  public static class EmbeddedType2 {
-  }
-
-  public static class EntityWithEmbeddedFields {
-    @Embedded
-    private EmbeddedType1 _embeddedType1;
-    @Embedded
-    private EmbeddedType2 _embeddedType2;
-
-    public EntityWithEmbeddedFields() {
-    }
-
-    public EmbeddedType1 getEmbeddedType1() {
-      return _embeddedType1;
-    }
-
-    public void setEmbeddedType1(EmbeddedType1 embeddedType1) {
-      _embeddedType1 = embeddedType1;
-    }
-
-    public EmbeddedType2 getEmbeddedType2() {
-      return _embeddedType2;
-    }
-
-    public void setEmbeddedType2(EmbeddedType2 embeddedType2) {
-      _embeddedType2 = embeddedType2;
-    }
-  }
-
   public class EntityWithDifferentFieldTypes {
     private byte                          byteField;
     private short                         shortField;
@@ -255,8 +210,8 @@ public class OObjectProxyMethodHandlerTest {
     private String                        stringField;
     private boolean                       booleanField;
     private EntityWithDifferentFieldTypes objectField;
-    private Map<String, String> stringStringMap  = new HashMap<String, String>();
-    private Map<String, String> stringStringMap2 = new HashMap<String, String>();
+    private Map<String, String>           stringStringMap  = new HashMap<String, String>();
+    private Map<String, String>           stringStringMap2 = new HashMap<String, String>();
 
     @OneToMany(cascade = CascadeType.ALL)
     private List<EntityWithDifferentFieldTypes> listOfEntityWithDifferentFieldTypes;

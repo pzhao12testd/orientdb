@@ -1,6 +1,6 @@
 /*
   *
-  *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+  *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
   *  *
   *  *  Licensed under the Apache License, Version 2.0 (the "License");
   *  *  you may not use this file except in compliance with the License.
@@ -14,83 +14,71 @@
   *  *  See the License for the specific language governing permissions and
   *  *  limitations under the License.
   *  *
-  *  * For more information: http://orientdb.com
+  *  * For more information: http://www.orientechnologies.com
   *
   */
 package com.orientechnologies.orient.core.sql;
+
+import java.util.Map;
 
 import com.orientechnologies.orient.core.command.OCommandRequest;
 import com.orientechnologies.orient.core.command.OCommandRequestText;
 import com.orientechnologies.orient.core.exception.OCommandExecutionException;
 import com.orientechnologies.orient.core.metadata.security.ORole;
 
-import java.util.Map;
-
 /**
  * SQL GRANT command: Grant a privilege to a database role.
- *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * 
+ * @author Luca Garulli
+ * 
  */
 public class OCommandExecutorSQLGrant extends OCommandExecutorSQLPermissionAbstract {
-  public static final  String KEYWORD_GRANT = "GRANT";
+  public static final String  KEYWORD_GRANT = "GRANT";
   private static final String KEYWORD_TO    = "TO";
 
   @SuppressWarnings("unchecked")
   public OCommandExecutorSQLGrant parse(final OCommandRequest iRequest) {
-    final OCommandRequestText textRequest = (OCommandRequestText) iRequest;
+    init((OCommandRequestText) iRequest);
 
-    String queryText = textRequest.getText();
-    String originalQuery = queryText;
-    try {
-      queryText = preParse(queryText, iRequest);
-      textRequest.setText(queryText);
+    privilege = ORole.PERMISSION_NONE;
+    resource = null;
+    role = null;
 
-      init((OCommandRequestText) iRequest);
+    StringBuilder word = new StringBuilder();
 
-      privilege = ORole.PERMISSION_NONE;
-      resource = null;
-      role = null;
+    int oldPos = 0;
+    int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_GRANT))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_GRANT + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      StringBuilder word = new StringBuilder();
+    pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
+    if (pos == -1)
+      throw new OCommandSQLParsingException("Invalid privilege", parserText, oldPos);
 
-      int oldPos = 0;
-      int pos = nextWord(parserText, parserTextUpperCase, oldPos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_GRANT))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_GRANT + " not found. Use " + getSyntax(), parserText, oldPos);
+    parsePrivilege(word, oldPos);
 
-      pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
-      if (pos == -1)
-        throw new OCommandSQLParsingException("Invalid privilege", parserText, oldPos);
+    pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_ON))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_ON + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      parsePrivilege(word, oldPos);
+    pos = nextWord(parserText, parserText, pos, word, true);
+    if (pos == -1)
+      throw new OCommandSQLParsingException("Invalid resource", parserText, oldPos);
 
-      pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_ON))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_ON + " not found. Use " + getSyntax(), parserText, oldPos);
+    resource = word.toString();
 
-      pos = nextWord(parserText, parserText, pos, word, true);
-      if (pos == -1)
-        throw new OCommandSQLParsingException("Invalid resource", parserText, oldPos);
+    pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
+    if (pos == -1 || !word.toString().equals(KEYWORD_TO))
+      throw new OCommandSQLParsingException("Keyword " + KEYWORD_TO + " not found. Use " + getSyntax(), parserText, oldPos);
 
-      resource = word.toString();
+    pos = nextWord(parserText, parserText, pos, word, true);
+    if (pos == -1)
+      throw new OCommandSQLParsingException("Invalid role", parserText, oldPos);
 
-      pos = nextWord(parserText, parserTextUpperCase, pos, word, true);
-      if (pos == -1 || !word.toString().equals(KEYWORD_TO))
-        throw new OCommandSQLParsingException("Keyword " + KEYWORD_TO + " not found. Use " + getSyntax(), parserText, oldPos);
-
-      pos = nextWord(parserText, parserText, pos, word, true);
-      if (pos == -1)
-        throw new OCommandSQLParsingException("Invalid role", parserText, oldPos);
-
-      final String roleName = word.toString();
-      role = getDatabase().getMetadata().getSecurity().getRole(roleName);
-      if (role == null)
-        throw new OCommandSQLParsingException("Invalid role: " + roleName);
-
-    } finally {
-      textRequest.setText(originalQuery);
-    }
-
+    final String roleName = word.toString();
+    role = getDatabase().getMetadata().getSecurity().getRole(roleName);
+    if (role == null)
+      throw new OCommandSQLParsingException("Invalid role: " + roleName);
     return this;
   }
 

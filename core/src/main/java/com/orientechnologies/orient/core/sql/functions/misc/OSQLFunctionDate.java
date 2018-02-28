@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql.functions.misc;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
@@ -35,7 +34,7 @@ import java.util.TimeZone;
 /**
  * Builds a date object from the format passed. If no arguments are passed, than the system date is built (like sysdate() function)
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
  * @see OSQLFunctionSysdate
  * 
  */
@@ -69,7 +68,7 @@ public class OSQLFunctionDate extends OSQLFunctionAbstract {
         format = new SimpleDateFormat((String) iParams[1]);
         format.setTimeZone(ODateHelper.getDatabaseTimeZone());
       } else
-        format = ODatabaseRecordThreadLocal.instance().get().getStorage().getConfiguration().getDateTimeFormatInstance();
+        format = ODatabaseRecordThreadLocal.INSTANCE.get().getStorage().getConfiguration().getDateTimeFormatInstance();
 
       if (iParams.length == 3)
         format.setTimeZone(TimeZone.getTimeZone(iParams[2].toString()));
@@ -78,8 +77,7 @@ public class OSQLFunctionDate extends OSQLFunctionAbstract {
     try {
       return format.parse((String) iParams[0]);
     } catch (ParseException e) {
-      throw OException.wrapException(new OQueryParsingException("Error on formatting date '" + iParams[0] + "' using the format: "
-          + format.toPattern()), e);
+      throw new OQueryParsingException("Error on formatting date '" + iParams[0] + "' using the format: " + format.toPattern(), e);
     }
   }
 

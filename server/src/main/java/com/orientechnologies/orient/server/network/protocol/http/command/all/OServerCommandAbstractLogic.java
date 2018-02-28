@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,15 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command.all;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.command.OBasicCommandContext;
 import com.orientechnologies.orient.core.command.script.OCommandScriptException;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.metadata.function.OFunction;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -40,7 +38,7 @@ public abstract class OServerCommandAbstractLogic extends OServerCommandAuthenti
   @Override
   public boolean execute(final OHttpRequest iRequest, final OHttpResponse iResponse) throws Exception {
     final String[] parts = init(iRequest, iResponse);
-    ODatabaseDocument db = null;
+    ODatabaseDocumentTx db = null;
 
     try {
       db = getProfiledDatabaseInstance(iRequest);
@@ -73,7 +71,7 @@ public abstract class OServerCommandAbstractLogic extends OServerCommandAuthenti
           final ODocument params = new ODocument().fromJSON(iRequest.content);
           functionResult = f.executeInContext(context, params.toMap());
         } catch (Exception e) {
-          throw OException.wrapException(new OCommandScriptException("Error on parsing parameters from request body"), e);
+          throw new OCommandScriptException("Error on parsing parameters from request body", e);
         }
       } else
         functionResult = f.executeInContext(context, args);

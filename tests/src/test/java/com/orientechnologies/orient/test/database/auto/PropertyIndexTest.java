@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,12 @@
  */
 package com.orientechnologies.orient.test.database.auto;
 
+import java.util.Collection;
+
+import org.testng.Assert;
+import org.testng.annotations.*;
+
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.index.OIndex;
 import com.orientechnologies.orient.core.index.OIndexDefinition;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
@@ -23,10 +29,6 @@ import com.orientechnologies.orient.core.metadata.schema.OSchema;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
-import org.testng.Assert;
-import org.testng.annotations.*;
-
-import java.util.Collection;
 
 @Test(groups = { "index" })
 public class PropertyIndexTest extends DocumentDBBaseTest {
@@ -67,7 +69,7 @@ public class PropertyIndexTest extends DocumentDBBaseTest {
     final OClass oClass = schema.getClass("PropertyIndexTestClass");
     final OProperty propOne = oClass.getProperty("prop1");
 
-    propOne.createIndex(OClass.INDEX_TYPE.UNIQUE, new ODocument().field("ignoreNullValues", true));
+    propOne.createIndex(OClass.INDEX_TYPE.UNIQUE);
 
     final Collection<OIndex<?>> indexes = propOne.getIndexes();
     OIndexDefinition indexDefinition = null;
@@ -94,11 +96,11 @@ public class PropertyIndexTest extends DocumentDBBaseTest {
     final OSchema schema = database.getMetadata().getSchema();
     final OClass oClass = schema.getClass("PropertyIndexTestClass");
 
-    oClass.createIndex("propOne0", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{"prop0", "prop1"});
-    oClass.createIndex("propOne1", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{"prop1", "prop2"});
-    oClass.createIndex("propOne2", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{"prop1", "prop3"});
-    oClass.createIndex("propOne3", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{"prop2", "prop3"});
-    oClass.createIndex("propOne4", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{"prop2", "prop1"});
+    oClass.createIndex("propOne0", OClass.INDEX_TYPE.UNIQUE, "prop0", "prop1");
+    oClass.createIndex("propOne1", OClass.INDEX_TYPE.UNIQUE, "prop1", "prop2");
+    oClass.createIndex("propOne2", OClass.INDEX_TYPE.UNIQUE, "prop1", "prop3");
+    oClass.createIndex("propOne3", OClass.INDEX_TYPE.UNIQUE, "prop2", "prop3");
+    oClass.createIndex("propOne4", OClass.INDEX_TYPE.UNIQUE, "prop2", "prop1");
 
     schema.save();
   }
@@ -110,8 +112,10 @@ public class PropertyIndexTest extends DocumentDBBaseTest {
     final OProperty propOne = oClass.getProperty("prop1");
 
     final Collection<OIndex<?>> indexes = propOne.getIndexes();
-    Assert.assertEquals(indexes.size(), 1);
+    Assert.assertEquals(indexes.size(), 3);
     Assert.assertNotNull(containsIndex(indexes, "PropertyIndexTestClass.prop1"));
+    Assert.assertNotNull(containsIndex(indexes, "propOne1"));
+    Assert.assertNotNull(containsIndex(indexes, "propOne2"));
   }
 
   @Test(dependsOnMethods = "createAdditionalSchemas")
@@ -180,8 +184,8 @@ public class PropertyIndexTest extends DocumentDBBaseTest {
     final OSchema schema = database.getMetadata().getSchema();
     final OClass oClass = schema.getClass("PropertyIndexTestClass");
 
-    oClass.createIndex("PropertyIndexFirstIndex", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{ "prop4"});
-    oClass.createIndex("PropertyIndexSecondIndex", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{ "prop4"});
+    oClass.createIndex("PropertyIndexFirstIndex", OClass.INDEX_TYPE.UNIQUE, "prop4");
+    oClass.createIndex("PropertyIndexSecondIndex", OClass.INDEX_TYPE.UNIQUE, "pROp4");
 
     oClass.getProperty("prop4").dropIndexes();
 
@@ -194,8 +198,8 @@ public class PropertyIndexTest extends DocumentDBBaseTest {
     final OSchema schema = database.getMetadata().getSchema();
     final OClass oClass = schema.getClass("PropertyIndexTestClass");
 
-    oClass.createIndex("PropertyIndexFirstIndex", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{"prop4"});
-    oClass.createIndex("PropertyIndexSecondIndex", OClass.INDEX_TYPE.UNIQUE.toString(), null, new ODocument().fields("ignoreNullValues", true), new String[]{"prop4", "prop5"});
+    oClass.createIndex("PropertyIndexFirstIndex", OClass.INDEX_TYPE.UNIQUE, "pROp4");
+    oClass.createIndex("PropertyIndexSecondIndex", OClass.INDEX_TYPE.UNIQUE, "prop4", "prop5");
 
     try {
       oClass.getProperty("prop4").dropIndexes();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2010-2012 Luca Garulli (l.garulli--at--orientechnologies.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,19 @@
  */
 package com.orientechnologies.orient.test.database.auto;
 
-import com.orientechnologies.orient.core.db.OPartitionedDatabasePool;
-import org.testng.annotations.*;
+import org.testng.annotations.Optional;
+import org.testng.annotations.Parameters;
+import org.testng.annotations.Test;
 
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.ODatabase;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
+import com.orientechnologies.orient.object.db.OObjectDatabasePool;
 import com.orientechnologies.orient.object.db.OObjectDatabaseTx;
 import com.orientechnologies.orient.test.database.base.SetupTest;
 
 @Test(groups = "db")
 public class DbClosedTest extends DocumentDBBaseTest {
-  private OPartitionedDatabasePool pool;
-
   @Parameters(value = { "url" })
   public DbClosedTest(@Optional String url) {
     super(url);
@@ -35,21 +35,11 @@ public class DbClosedTest extends DocumentDBBaseTest {
     setDropDb(true);
   }
 
-  @BeforeClass
-  public void before() {
-    pool = new OPartitionedDatabasePool(url, "admin", "admin");
-  }
-
-  @AfterClass
-  public void after() {
-    pool.close();
-  }
-
   public void testDoubleDb() {
-    ODatabaseDocumentTx db = pool.acquire();
+    OObjectDatabaseTx db = OObjectDatabasePool.global().acquire(url, "admin", "admin");
 
     // now I am getting another db instance
-    ODatabaseDocumentTx dbAnother = pool.acquire();
+    OObjectDatabaseTx dbAnother = OObjectDatabasePool.global().acquire(url, "admin", "admin");
     dbAnother.close();
 
     db.activateOnCurrentThread();
@@ -57,10 +47,10 @@ public class DbClosedTest extends DocumentDBBaseTest {
   }
 
   public void testDoubleDbWindowsPath() {
-    ODatabaseDocumentTx db = pool.acquire();
+    OObjectDatabaseTx db = OObjectDatabasePool.global().acquire(url.replace('/', '\\'), "admin", "admin");
 
     // now I am getting another db instance
-    ODatabaseDocumentTx dbAnother = pool.acquire();
+    OObjectDatabaseTx dbAnother = OObjectDatabasePool.global().acquire(url, "admin", "admin");
     dbAnother.close();
 
     db.activateOnCurrentThread();

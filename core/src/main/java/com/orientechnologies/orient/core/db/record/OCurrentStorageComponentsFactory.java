@@ -24,7 +24,7 @@ import com.orientechnologies.orient.core.serialization.serializer.binary.OBinary
  * if you open a database create with old version of OrientDB it defines a components that should be used to provide backward
  * compatibility with that version of database.
  * 
- * @author Andrey Lomakin (a.lomakin-at-orientdb.com)
+ * @author Andrey Lomakin (a.lomakin-at-orientechnologies.com)
  * @since 2/14/14
  */
 public class OCurrentStorageComponentsFactory {
@@ -32,7 +32,7 @@ public class OCurrentStorageComponentsFactory {
   public final OBinarySerializerFactory binarySerializerFactory;
 
   public OCurrentStorageComponentsFactory(OStorageConfiguration configuration) {
-    this.binaryFormatVersion = configuration.getBinaryFormatVersion();
+    this.binaryFormatVersion = configuration.binaryFormatVersion;
 
     binarySerializerFactory = OBinarySerializerFactory.create(binaryFormatVersion);
   }

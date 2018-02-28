@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.binary;
 
-import com.orientechnologies.orient.client.remote.SimpleValueFetchPlanCommandListener;
 import com.orientechnologies.orient.core.command.OCommandResultListener;
 import com.orientechnologies.orient.core.fetch.OFetchContext;
 import com.orientechnologies.orient.core.fetch.OFetchHelper;
@@ -31,23 +30,17 @@ import com.orientechnologies.orient.core.record.ORecord;
 /**
  * Abstract class to manage command results.
  *
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli (l.garulli--at--orientechnologies.com)
+ *
  */
-public abstract class OAbstractCommandResultListener implements  SimpleValueFetchPlanCommandListener {
-  protected final OCommandResultListener wrappedResultListener;
+public abstract class OAbstractCommandResultListener implements OCommandResultListener {
 
   private OFetchPlan fetchPlan;
-
-  protected OAbstractCommandResultListener(final OCommandResultListener wrappedResultListener) {
-    this.wrappedResultListener = wrappedResultListener;
-  }
 
   public abstract boolean isEmpty();
 
   @Override
   public void end() {
-    if (wrappedResultListener != null)
-      wrappedResultListener.end();
   }
 
   public void setFetchPlan(final String iText) {
@@ -61,13 +54,4 @@ public abstract class OAbstractCommandResultListener implements  SimpleValueFetc
       OFetchHelper.fetch(record, record, fetchPlan, iFetchListener, context, "");
     }
   }
-
-  @Override
-  public Object getResult() {
-    if (wrappedResultListener != null)
-      return wrappedResultListener.getResult();
-
-    return null;
-  }
-  
 }

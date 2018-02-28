@@ -1,18 +1,13 @@
 package com.orientechnologies.orient.test.database.auto;
 
 import com.orientechnologies.orient.core.command.OCommandResultListener;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLNonBlockingQuery;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Optional;
-import org.testng.annotations.Parameters;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -47,7 +42,7 @@ public class NonBlockingQueryTest extends DocumentDBBaseTest {
     db.begin();
     db.command(new OCommandSQL("insert into Foo (a) values ('bar')")).execute();
     db.commit();
-    ODatabaseDocumentInternal newDb = db.copy();
+    ODatabaseDocumentTx newDb = db.copy();
 
     List<ODocument> result = newDb.query(new OSQLSynchQuery<ODocument>("Select from Foo"));
     Assert.assertEquals(result.size(), 1);
@@ -72,11 +67,6 @@ public class NonBlockingQueryTest extends DocumentDBBaseTest {
       @Override
       public void end() {
 
-      }
-
-      @Override
-      public Object getResult() {
-        return null;
       }
     }));
     Assert.assertFalse(counter.get() == 1000);
@@ -103,23 +93,18 @@ public class NonBlockingQueryTest extends DocumentDBBaseTest {
     for (int i = 0; i < 1000; i++) {
       db.command(new OCommandSQL("insert into Foo (a, x, y) values ('bar', ?, ?)")).execute(i, 1000 - i);
     }
-    Future future = db.query(new OSQLNonBlockingQuery<Object>("select from Foo where x=500 and y=500",
-        new OCommandResultListener() {
-          @Override
-          public boolean result(Object iRecord) {
-            counter.incrementAndGet();
-            return true;
-          }
+    Future future = db.query(new OSQLNonBlockingQuery<Object>("select from Foo where x=500 and y=500", new OCommandResultListener() {
+      @Override
+      public boolean result(Object iRecord) {
+        counter.incrementAndGet();
+        return true;
+      }
 
-          @Override
-          public void end() {
-          }
+      @Override
+      public void end() {
 
-          @Override
-          public Object getResult() {
-            return null;
-          }
-        }));
+      }
+    }));
     Assert.assertFalse(counter.get() == 1);
     try {
       future.get();

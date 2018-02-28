@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,17 +14,16 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.index;
 
+import java.util.Set;
+
+import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.exception.OConfigurationException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.storage.OStorage;
-
-import java.util.Map;
-import java.util.Set;
 
 public interface OIndexFactory {
 
@@ -41,10 +40,14 @@ public interface OIndexFactory {
   Set<String> getAlgorithms();
 
   /**
-   * Creates an index.
-   * 
+   *
+   *
+   *
+   *
+   *
+   *
    * @param name
-   * @param storage TODO
+   * @param database
    * @param indexType
    *          index type
    * @param algorithm
@@ -53,9 +56,7 @@ public interface OIndexFactory {
    * @throws OConfigurationException
    *           if index creation failed
    */
-  OIndexInternal<?> createIndex(String name, OStorage storage, String indexType, String algorithm,
+  OIndexInternal<?> createIndex(String name, ODatabaseDocumentInternal database, String indexType, String algorithm,
       String valueContainerAlgorithm, ODocument metadata, int version) throws OConfigurationException;
 
-  OIndexEngine createIndexEngine(String algorithm, String name, Boolean durableInNonTxMode, OStorage storage, int version,
-      Map<String, String> engineProperties);
 }

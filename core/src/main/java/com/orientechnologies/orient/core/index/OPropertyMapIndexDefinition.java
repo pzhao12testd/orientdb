@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.index;
@@ -31,9 +31,7 @@ import java.util.*;
  * 
  * @link com.orientechnologies.orient.core.metadata.schema.OType#LINKMAP} property.
  */
-public class OPropertyMapIndexDefinition extends OAbstractIndexDefinitionMultiValue {
-
-  private static final long serialVersionUID = 275241019910834466L;
+public class OPropertyMapIndexDefinition extends OAbstractIndexDefinitionMultiValue implements OIndexDefinitionMultiValue {
 
   /**
    * Indicates whether Map will be indexed using its keys or values.
@@ -58,7 +56,7 @@ public class OPropertyMapIndexDefinition extends OAbstractIndexDefinitionMultiVa
 
   @Override
   public Object getDocumentValueToIndex(ODocument iDocument) {
-    return createValue(iDocument.<Object>field(field));
+    return createValue(iDocument.field(field));
   }
 
   @Override
@@ -199,10 +197,10 @@ public class OPropertyMapIndexDefinition extends OAbstractIndexDefinitionMultiVa
 
   @Override
   public String toCreateIndexDDL(String indexName, String indexType,String engine) {
-    final StringBuilder ddl = new StringBuilder("create index `");
+    final StringBuilder ddl = new StringBuilder("create index ");
 
-    ddl.append(indexName).append("` on `");
-    ddl.append(className).append("` ( `").append(field).append("`");
+    ddl.append(indexName).append(" on ");
+    ddl.append(className).append(" ( ").append(field);
 
     if (indexBy == INDEX_BY.KEY)
       ddl.append(" by key");

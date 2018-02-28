@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol.http.command.put;
 
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.id.ORecordId;
-import com.orientechnologies.orient.core.record.ORecordInternal;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpRequest;
 import com.orientechnologies.orient.server.network.protocol.http.OHttpResponse;
@@ -38,7 +37,7 @@ public class OServerCommandPutDocument extends OServerCommandDocumentAbstract {
 
     iRequest.data.commandInfo = "Edit Document";
 
-    ODatabaseDocument db = null;
+    ODatabaseDocumentTx db = null;
     ORecordId recordId;
     final ODocument doc;
 
@@ -58,11 +57,11 @@ public class OServerCommandPutDocument extends OServerCommandDocumentAbstract {
 
       // UNMARSHALL DOCUMENT WITH REQUEST CONTENT
       doc = new ODocument();
-      doc.fromJSON(iRequest.content).setTrackingChanges(false);
+      doc.fromJSON(iRequest.content);
 
       if (iRequest.ifMatch != null)
         // USE THE IF-MATCH HTTP HEADER AS VERSION
-        ORecordInternal.setVersion(doc, Integer.parseInt(iRequest.ifMatch));
+        doc.getRecordVersion().getSerializer().fromString(iRequest.ifMatch, doc.getRecordVersion());
 
       if (!recordId.isValid())
         recordId = (ORecordId) doc.getIdentity();
@@ -91,13 +90,13 @@ public class OServerCommandPutDocument extends OServerCommandDocumentAbstract {
       if (currentDocument.isDirty()) {
         if (doc.getVersion() > 0)
           // OVERWRITE THE VERSION
-          ORecordInternal.setVersion(currentDocument, doc.getVersion());
+          currentDocument.getRecordVersion().copyFrom(doc.getRecordVersion());
 
         currentDocument.save();
       }
 
-      iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_JSON, currentDocument.toJSON(),
-          OHttpUtils.HEADER_ETAG + currentDocument.getVersion());
+      iResponse.send(OHttpUtils.STATUS_OK_CODE, OHttpUtils.STATUS_OK_DESCRIPTION, OHttpUtils.CONTENT_TEXT_PLAIN,
+          currentDocument.toJSON(), OHttpUtils.HEADER_ETAG + currentDocument.getVersion());
 
     } finally {
       if (db != null)

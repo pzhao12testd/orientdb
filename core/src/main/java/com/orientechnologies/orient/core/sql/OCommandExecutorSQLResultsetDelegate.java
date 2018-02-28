@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.core.sql;
@@ -27,7 +27,7 @@ import java.util.Map;
 /**
  * SQL UPDATE command.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  * 
  */
 @SuppressWarnings("unchecked")
@@ -36,11 +36,11 @@ public class OCommandExecutorSQLResultsetDelegate extends OCommandExecutorSQLDel
 
   @Override
   public Iterator<OIdentifiable> iterator() {
-    return ((OIterableRecordSource) delegate).iterator(null);
+    return ((OCommandExecutorSQLResultsetAbstract) delegate).iterator();
   }
 
   @Override
   public Iterator<OIdentifiable> iterator(final Map<Object, Object> iArgs) {
-    return ((OIterableRecordSource) delegate).iterator(iArgs);
+    return ((OCommandExecutorSQLResultsetAbstract) delegate).iterator(iArgs);
   }
 }

@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2012 Luca Molino (molino.luca--AT--gmail.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.exception.ODatabaseException;
 
 /**
- * @author Luca Molino (molino.luca--at--gmail.com)
+ * @author luca.molino
  * 
  */
 @Test
@@ -48,16 +48,16 @@ public class DatabaseThreadFactoryTest extends DocumentDBBaseTest {
   @BeforeClass
   public void init() {
     try {
-      ODatabaseDocument db = ODatabaseRecordThreadLocal.instance().get();
+      ODatabaseDocument db = ODatabaseRecordThreadLocal.INSTANCE.get();
       db.close();
-      ODatabaseRecordThreadLocal.instance().remove();
+      ODatabaseRecordThreadLocal.INSTANCE.remove();
     } catch (ODatabaseException ode) {
     }
   }
 
   @Test(expectedExceptions = { ODatabaseException.class })
   public void testNoFactory() {
-    ODatabaseRecordThreadLocal.instance().get();
+    ODatabaseRecordThreadLocal.INSTANCE.get();
     Assert.fail("Database Should not be set in Current Thread");
   }
 
@@ -70,7 +70,7 @@ public class DatabaseThreadFactoryTest extends DocumentDBBaseTest {
         return poolFactory.get(url, "admin", "admin").acquire();
       }
     });
-    ODatabaseDocument db = ODatabaseRecordThreadLocal.instance().get();
+    ODatabaseDocument db = ODatabaseRecordThreadLocal.INSTANCE.get();
     Assert.assertNotNull(db);
     db.close();
   }

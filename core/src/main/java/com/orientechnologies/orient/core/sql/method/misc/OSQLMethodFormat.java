@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ * Copyright 2013 Orient Technologies.
  * Copyright 2013 Geomatys.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,17 +16,18 @@
  */
 package com.orientechnologies.orient.core.sql.method.misc;
 
-import com.orientechnologies.common.collection.OMultiValue;
 import com.orientechnologies.orient.core.command.OCommandContext;
 import com.orientechnologies.orient.core.db.record.OIdentifiable;
 import com.orientechnologies.orient.core.util.ODateHelper;
 
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.TimeZone;
 
 /**
+ * 
  * @author Johann Sorel (Geomatys)
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OSQLMethodFormat extends OAbstractSQLMethod {
 
@@ -47,20 +48,7 @@ public class OSQLMethodFormat extends OAbstractSQLMethod {
       v = iParams[0].toString();
 
     if (v != null) {
-      if (isCollectionOfDates(ioResult)) {
-        List<String> result = new ArrayList<String>();
-        Iterator<Object> iterator = OMultiValue.getMultiValueIterator(ioResult);
-        final SimpleDateFormat format = new SimpleDateFormat(v.toString());
-        if (iParams.length > 1) {
-          format.setTimeZone(TimeZone.getTimeZone(iParams[1].toString()));
-        } else {
-          format.setTimeZone(ODateHelper.getDatabaseTimeZone());
-        }
-        while (iterator.hasNext()) {
-          result.add(format.format(iterator.next()));
-        }
-        ioResult = result;
-      } else if (ioResult instanceof Date) {
+      if (ioResult instanceof Date) {
         final SimpleDateFormat format = new SimpleDateFormat(v.toString());
         if (iParams.length > 1) {
           format.setTimeZone(TimeZone.getTimeZone(iParams[1].toString()));
@@ -74,19 +62,5 @@ public class OSQLMethodFormat extends OAbstractSQLMethod {
     }
 
     return ioResult;
-  }
-
-  private boolean isCollectionOfDates(Object ioResult) {
-    if (OMultiValue.isMultiValue(ioResult)) {
-      Iterator<Object> iterator = OMultiValue.getMultiValueIterator(ioResult);
-      while (iterator.hasNext()) {
-        Object item = iterator.next();
-        if (item != null && !(item instanceof Date)) {
-          return false;
-        }
-      }
-      return true;
-    }
-    return false;
   }
 }

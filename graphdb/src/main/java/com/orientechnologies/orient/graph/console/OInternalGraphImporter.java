@@ -1,15 +1,13 @@
 package com.orientechnologies.orient.graph.console;
 
-import com.orientechnologies.common.exception.OSystemException;
+import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.client.db.ODatabaseHelper;
 import com.orientechnologies.orient.console.OConsoleDatabaseApp;
 import com.orientechnologies.orient.core.Orient;
-import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -27,29 +25,28 @@ public class OInternalGraphImporter {
   public void runImport(String inputFile, String dbURL) throws IOException, FileNotFoundException {
 
     if (inputFile == null)
-      throw new OSystemException("needed an input file as first argument");
+      throw new OException("needed an input file as first argument");
 
     if (dbURL == null)
-      throw new OSystemException("needed an database location as second argument");
+      throw new OException("needed an database location as second argument");
 
-    ODatabaseDocumentInternal db = new ODatabaseDocumentTx(dbURL);
-    ODatabaseHelper.deleteDatabase(db, db.getType());
+    ODatabaseDocumentTx db = new ODatabaseDocumentTx(dbURL);
+    ODatabaseHelper.deleteDatabase(db, db.getStorage().getType());
 
-    OrientBaseGraph g = OrientGraphFactory.getNoTxGraphImplFactory().getGraph(dbURL);
+    OrientBaseGraph g = new OrientGraphNoTx(dbURL);
 
     System.out.println("Importing graph from file '" + inputFile + "' into database: " + g + "...");
 
     final long startTime = System.currentTimeMillis();
 
-    OConsoleDatabaseApp console = new OGremlinConsole(new String[] { "import database " + inputFile })
-        .setCurrentDatabase(g.getRawGraph());
+    OConsoleDatabaseApp console = new OGremlinConsole(new String[] { "import database " + inputFile }).setCurrentDatabase(g.getRawGraph());
     console.run();
 
     System.out.println("Imported in " + (System.currentTimeMillis() - startTime) + "ms. Vertexes: " + g.countVertices());
 
-    g.command(new OCommandSQL("alter database TIMEZONE 'GMT'")).execute();
-    g.command(new OCommandSQL("alter database LOCALECOUNTRY 'UK'")).execute();
-    g.command(new OCommandSQL("alter database LOCALELANGUAGE 'EN'")).execute();
+    g.command(new OCommandSQL("alter database TIMEZONE GMT")).execute();
+    g.command(new OCommandSQL("alter database LOCALECOUNTRY UK")).execute();
+    g.command(new OCommandSQL("alter database LOCALELANGUAGE EN")).execute();
     g.shutdown();
   }
 }

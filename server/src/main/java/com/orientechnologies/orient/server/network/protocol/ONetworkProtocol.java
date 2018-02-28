@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,24 +14,26 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *
  */
 package com.orientechnologies.orient.server.network.protocol;
 
+import com.orientechnologies.common.concur.OTimeoutException;
+import com.orientechnologies.common.log.OLogManager;
 import com.orientechnologies.common.thread.OSoftThread;
-import com.orientechnologies.orient.client.binary.OBinaryRequestExecutor;
 import com.orientechnologies.orient.core.config.OContextConfiguration;
 import com.orientechnologies.orient.enterprise.channel.OChannel;
-import com.orientechnologies.orient.server.OClientConnection;
 import com.orientechnologies.orient.server.OServer;
+import com.orientechnologies.orient.server.distributed.ODistributedServerManager;
 import com.orientechnologies.orient.server.network.OServerNetworkListener;
 
 import java.io.IOException;
 import java.net.Socket;
 
 public abstract class ONetworkProtocol extends OSoftThread {
-  protected OServer server;
+  private static final int MAX_RETRIES = 20;
+  protected OServer        server;
 
   public ONetworkProtocol(final ThreadGroup group, final String name) {
     super(group, name);
@@ -58,5 +60,23 @@ public abstract class ONetworkProtocol extends OSoftThread {
     return server;
   }
 
-  public abstract OBinaryRequestExecutor executor(OClientConnection connection);
+  public void waitNodeIsOnline() throws OTimeoutException {
+    // WAIT THE NODE IS ONLINE AGAIN
+    final ODistributedServerManager mgr = server.getDistributedManager();
+    if (mgr != null && mgr.isEnabled() && mgr.isOffline()) {
+      for (int retry = 0; retry < MAX_RETRIES; ++retry) {
+        if (mgr != null && mgr.isOffline()) {
+          // NODE NOT ONLINE YET, REFUSE THE CONNECTION
+          OLogManager.instance().info(this, "Node is not online yet (status=%s), blocking the command until it's online %d/%d",
+              mgr.getNodeStatus(), retry + 1, MAX_RETRIES);
+          pauseCurrentThread(300);
+        } else
+          // OK, RETURN
+          return;
+      }
+
+      // TIMEOUT
+      throw new OTimeoutException("Cannot execute operation while the node is not online (status=" + mgr.getNodeStatus() + ")");
+    }
+  }
 }

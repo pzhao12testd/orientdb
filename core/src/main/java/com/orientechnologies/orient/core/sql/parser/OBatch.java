@@ -2,16 +2,16 @@
 /* JavaCCOptions:MULTI=true,NODE_USES_PARSER=false,VISITOR=true,TRACK_TOKENS=true,NODE_PREFIX=O,NODE_EXTENDS=,NODE_FACTORY=,SUPPORT_CLASS_VISIBILITY_PUBLIC=true */
 package com.orientechnologies.orient.core.sql.parser;
 
-import com.orientechnologies.orient.core.command.OCommandContext;
-import com.orientechnologies.orient.core.exception.OCommandExecutionException;
-
 import java.util.Map;
 
-public class OBatch extends SimpleNode {
+public
+class OBatch extends SimpleNode {
 
-  protected OInteger num;
+  protected OInteger         num;
 
   protected OInputParameter inputParam;
+
+  protected Object          inputFinalValue;
 
   public OBatch(int id) {
     super(id);
@@ -21,66 +21,36 @@ public class OBatch extends SimpleNode {
     super(p, id);
   }
 
-  /**
-   * Accept the visitor.
-   **/
+
+  /** Accept the visitor. **/
   public Object jjtAccept(OrientSqlVisitor visitor, Object data) {
     return visitor.visit(this, data);
   }
 
-  public Integer evaluate(OCommandContext ctx) {
-    if (this.num != null) {
-      return num.getValue().intValue();
-    } else if (inputParam != null) {
-      Object obj = inputParam.getValue(ctx.getInputParameters());
-      if (obj == null || !(obj instanceof Number)) {
-        throw new OCommandExecutionException("" + obj + " is not a number (BATCH)");
+  public void replaceParameters(Map<Object, Object> params) {
+    if (inputParam != null) {
+      Object result = inputParam.bindFromInputParams(params);
+      if (inputParam != result) {
+        inputFinalValue = result;
       }
-      return ((Number) obj).intValue();
     }
-    return -1;
   }
 
-  public void toString(Map<Object, Object> params, StringBuilder builder) {
+  @Override
+  public String toString() {
     if (num == null && inputParam == null) {
-      return;
+      return "";
     }
-
-    builder.append(" BATCH ");
+    StringBuilder result = new StringBuilder();
+    result.append(" BATCH ");
     if (num != null) {
-      num.toString(params, builder);
+      result.append(num);
+    } else if (inputFinalValue != null) {
+      result.append(inputFinalValue);
     } else {
-      inputParam.toString(params, builder);
+      result.append(inputParam);
     }
-  }
-
-  public OBatch copy() {
-    OBatch result = new OBatch(-1);
-    result.inputParam = inputParam == null ? null : inputParam.copy();
-    result.num = num == null ? null : num.copy();
-    return result;
-  }
-
-  @Override public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-
-    OBatch oBatch = (OBatch) o;
-
-    if (num != null ? !num.equals(oBatch.num) : oBatch.num != null)
-      return false;
-    if (inputParam != null ? !inputParam.equals(oBatch.inputParam) : oBatch.inputParam != null)
-      return false;
-
-    return true;
-  }
-
-  @Override public int hashCode() {
-    int result = num != null ? num.hashCode() : 0;
-    result = 31 * result + (inputParam != null ? inputParam.hashCode() : 0);
-    return result;
+    return result.toString();
   }
 }
 /* JavaCC - OriginalChecksum=b1587460e08cbf21086d8c8fcca192e0 (do not edit this line) */

@@ -1,6 +1,6 @@
 /*
  *
- *  *  Copyright 2010-2016 OrientDB LTD (http://orientdb.com)
+ *  *  Copyright 2014 Orient Technologies LTD (info(at)orientechnologies.com)
  *  *
  *  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  *  you may not use this file except in compliance with the License.
@@ -14,11 +14,13 @@
  *  *  See the License for the specific language governing permissions and
  *  *  limitations under the License.
  *  *
- *  * For more information: http://orientdb.com
+ *  * For more information: http://www.orientechnologies.com
  *  
  */
 
 package com.orientechnologies.orient.core.conflict;
+
+import java.util.Arrays;
 
 import com.orientechnologies.orient.core.db.ODatabaseDocumentInternal;
 import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
@@ -29,31 +31,29 @@ import com.orientechnologies.orient.core.record.impl.ODocumentHelper;
 import com.orientechnologies.orient.core.storage.ORawBuffer;
 import com.orientechnologies.orient.core.storage.OStorage;
 import com.orientechnologies.orient.core.storage.OStorageOperationResult;
-
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
+import com.orientechnologies.orient.core.version.ORecordVersion;
 
 /**
  * Record conflict strategy that check the records content: if content is the same, se the higher version number.
  * 
- * @author Luca Garulli (l.garulli--(at)--orientdb.com)
+ * @author Luca Garulli
  */
 public class OContentRecordConflictStrategy extends OVersionRecordConflictStrategy {
   public static final String NAME = "content";
 
   @Override
-  public byte[] onUpdate(OStorage storage, final byte iRecordType, final ORecordId rid, final int iRecordVersion,
-      final byte[] iRecordContent, final AtomicInteger iDatabaseVersion) {
+  public byte[] onUpdate(OStorage storage, final byte iRecordType, final ORecordId rid, final ORecordVersion iRecordVersion,
+      final byte[] iRecordContent, final ORecordVersion iDatabaseVersion) {
 
     final boolean hasSameContent;
 
     if (iRecordType == ODocument.RECORD_TYPE) {
       // No need lock, is already inside a lock.
-      OStorageOperationResult<ORawBuffer> res = storage.readRecord(rid, null, false, false, null);
+      OStorageOperationResult<ORawBuffer> res = storage.readRecord(rid, null, false, null);
       final ODocument storedRecord = new ODocument(rid).fromStream(res.getResult().getBuffer());
       final ODocument newRecord = new ODocument().fromStream(iRecordContent);
 
-      final ODatabaseDocumentInternal currentDb = ODatabaseRecordThreadLocal.instance().get();
+      final ODatabaseDocumentInternal currentDb = ODatabaseRecordThreadLocal.INSTANCE.get();
       hasSameContent = ODocumentHelper.hasSameContentOf(storedRecord, currentDb, newRecord, currentDb, null, false);
     } else {
       // CHECK BYTE PER BYTE
@@ -63,10 +63,10 @@ public class OContentRecordConflictStrategy extends OVersionRecordConflictStrate
 
     if (hasSameContent)
       // OK
-      iDatabaseVersion.set(Math.max(iDatabaseVersion.get(), iRecordVersion));
+      iDatabaseVersion.setCounter(Math.max(iDatabaseVersion.getCounter(), iRecordVersion.getCounter()));
     else
       // NO DOCUMENT, CANNOT MERGE SO RELY TO THE VERSION CHECK
-      checkVersions(rid, iRecordVersion, iDatabaseVersion.get());
+      checkVersions(rid, iRecordVersion, iDatabaseVersion);
 
     return null;
   }
